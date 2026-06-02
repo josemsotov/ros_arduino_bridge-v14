@@ -52,16 +52,44 @@
  * CARACTERÍSTICAS:
  * - Filtrado DLPF Hardware + EMA Software
  * - Sample Rate: 200 Hz
- * - Integración de ángulos
- * - Sistema de referencia calibrable
- * NOTA: Requiere conexión I2C (pines SDA/SCL)
- * DESHABILITADO - Usar MPU9250_DLPF_EMA.ino standalone
+ * - Filtro complementario pitch (accel + gyro Y)
+ * - Integración de ángulos yaw
+ * NOTA: Requiere conexión I2C (SDA=pin20, SCL=pin21)
  */
-//#define ENABLE_MPU9250                // Activar sensor MPU9250/6500 (DESHABILITADO)
+#define ENABLE_MPU9250                // Activar sensor MPU9250/6500
 
 #ifdef ENABLE_MPU9250
   //#define ENABLE_MPU_DEBUG          // Debug información MPU (DESACTIVADO para ahorrar RAM)
   #define ENABLE_MPU_AUTO_CALIBRATION // Calibración automática al inicio
+#endif
+
+/**
+ * MODO HOVERBOARD — Control por inclinación del chasis
+ * El robot avanza según el ángulo de inclinación (pitch) del MPU9250:
+ *   • Inclinar adelante → avanzar
+ *   • Inclinar atrás    → frenar / retroceder
+ *   • Girar el cuerpo   → virar
+ * REQUIERE: ENABLE_MPU9250 activo
+ * COMANDOS: hb on | hb off | hb cal | hb stat
+ */
+#define ENABLE_HOVERBOARD_MODE        // Activar modo hoverboard
+
+#ifdef ENABLE_HOVERBOARD_MODE
+  // Zona muerta: inclinaciones menores a este ángulo no generan movimiento
+  #define HOVERBOARD_DEAD_ZONE_DEG    2.0f   // ±2° sin respuesta
+  // Inclinación a la que se alcanza la velocidad máxima
+  #define HOVERBOARD_MAX_TILT_DEG    15.0f   // ±15° → ±MAX_VEL
+  // Velocidad lineal máxima en modo hoverboard
+  #define HOVERBOARD_MAX_VEL_MS       0.5f   // m/s (conservador para pruebas)
+  // Escala giro yaw: gyroZ (°/s) → angular velocity (rad/s)
+  #define HOVERBOARD_YAW_SCALE        0.018f // 90°/s → 1.62 rad/s
+  // Ángulo de caída: si |pitch| supera este valor → emergency stop
+  #define HOVERBOARD_FALL_ANGLE_DEG  40.0f   // °
+  // Alpha del filtro complementario (0.98 = 98% gyro + 2% accel)
+  #define HOVERBOARD_COMP_ALPHA       0.98f
+  // Signo de pitch: +1.0 si inclinar adelante = avanzar
+  // Cambiar a -1.0 si el robot va al revés
+  #define HOVERBOARD_PITCH_SIGN       1.0f
 #endif
 
 /**

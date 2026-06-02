@@ -41,6 +41,14 @@
 #endif
 
 /**
+ * SENSOR INERCIAL
+ * Incluir antes de ROS2_Bridge y Balance_Controller (ambos dependen de mpu_*)
+ */
+#ifdef ENABLE_MPU9250
+  #include "MPU9250.h"           // Driver IMU MPU9250/6500 con filtro pitch
+#endif
+
+/**
  * CONTROL PID
  * Disponible siempre para ROS2 y comandos manuales
  */
@@ -52,6 +60,15 @@
  */
 #ifdef ENABLE_ROS2_BRIDGE
   #include "ROS2_Bridge.h"       // Comunicación con Raspberry Pi 5
+#endif
+
+/**
+ * MODO HOVERBOARD
+ * Incluir DESPUÉS de ROS2_Bridge (usa ros2_linear_vel / ros2_processCmdVel)
+ * y DESPUÉS de MPU9250.h (usa mpu_getPitch / mpu_getGyroZ)
+ */
+#if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+  #include "Balance_Controller.h"
 #endif
 
 /**

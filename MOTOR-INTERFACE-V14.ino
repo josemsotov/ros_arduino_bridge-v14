@@ -145,6 +145,14 @@ void loop() {
     processContinuousDebug();
   #endif
   
+  // ===== ACTUALIZACIÓN MPU + HOVERBOARD =====
+  #ifdef ENABLE_MPU9250
+    mpu_update();                 // Leer IMU y actualizar pitch/yaw (200 Hz, rate-limited interno)
+  #endif
+  #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+    hoverboard_update();          // Calcular setpoints desde pitch e inyectarlos en ROS2 (50 Hz)
+  #endif
+
   // ===== ROS2 BRIDGE UPDATE =====
   #ifdef ENABLE_ROS2_BRIDGE
     ros2_update();  // Procesar comandos ROS2 y publicar datos

@@ -279,6 +279,11 @@ void ros2_processStatusRequest() {
   Serial.println(ros2_status);
 }
 
+// Forward declarations de módulos que se incluyen después
+#if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+void hoverboard_processCommand(String args);
+#endif
+
 void ros2_processCommand(String cmd) {
   cmd.trim();
   
@@ -543,6 +548,14 @@ void ros2_processCommand(String cmd) {
     }
 
     default:
+      // Comando 'hb' para modo hoverboard (multi-char: empieza con 'h')
+      #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+      if (command == 'h' && cmd.length() >= 2 && cmd.charAt(1) == 'b') {
+        String args = cmd.length() > 3 ? cmd.substring(3) : "";
+        hoverboard_processCommand(args);
+        break;
+      }
+      #endif
       Serial.print("? Unknown ROS2 command: ");
       Serial.println(cmd);
       break;
@@ -600,6 +613,13 @@ bool ros2_tryProcessCommand(String cmd) {
       ros2_processCommand(cmd);
       return true;
     }
+    // hb [on|off|cal|stat] : modo hoverboard
+    #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+    else if (first_char == 'h' && cmd.length() >= 2 && cmd.charAt(1) == 'b') {
+      ros2_processCommand(cmd);
+      return true;
+    }
+    #endif
   }
   
   return false;
