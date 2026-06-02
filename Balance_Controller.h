@@ -1,44 +1,46 @@
 /**
  * ============================================================================
- * BALANCE_CONTROLLER — MODO HOVERBOARD
- * Smart Golf Trolley — Robot diferencial con control por inclinación
+ * BALANCE_CONTROLLER — ANTI-CAÍDA ACTIVA
+ * Smart Golf Trolley — Equilibrio dinámico del robot diferencial
  * ============================================================================
  *
- * FUNCIONAMIENTO:
- *   El MPU9250 mide el ángulo de inclinación (pitch) del chasis:
- *     • Inclinar hacia ADELANTE  → robot avanza
- *     • Inclinar hacia ATRÁS     → robot frena / retrocede
- *     • Girar el chasis (yaw)    → robot gira
+ * PROBLEMA QUE RESUELVE:
+ *   Un robot diferencial pierde el equilibrio dinámico cuando:
+ *     - Frena bruscamente   → inercia inclina el chasis hacia adelante
+ *     - Sube/baja una rampa → gravedad inclina el chasis
+ *     - Golpea un obstáculo → impulso inclina el chasis
  *
- *   El controlador inyecta los setpoints en ros2_linear_vel y ros2_angular_vel,
- *   que ya tienen el PID por rueda con feedforward implementado en ROS2_Bridge.h.
- *   No hay cambios en la capa de control de motores.
+ *   Este módulo mide el ángulo de inclinación (pitch) del chasis con el
+ *   MPU9250 y AÑADE una corrección de velocidad al comando del usuario
+ *   que mueve las ruedas en la dirección de la inclinación, "siguiendo"
+ *   el centro de gravedad para restablecer el equilibrio.
  *
- * ORIENTACIÓN ESPERADA DEL MPU (montado plano sobre el chasis):
- *   Eje X apunta hacia ADELANTE del robot
- *   Eje Y apunta hacia la IZQUIERDA
- *   Eje Z apunta hacia ARRIBA
+ * LEY DE CONTROL (controlador PD sobre pitch):
+ *   error      = pitch_actual - pitch_neutral    (° desde vertical calibrada)
+ *   correction = Kp * error + Kd * gyroY         (m/s — derivada = gyroY directo)
+ *   v_total    = v_usuario + correction           (se suma al comando actual)
  *
- *   pitch_accel = atan2(accelX, accelZ)
- *     → positivo cuando el robot se inclina hacia adelante
+ * EJEMPLO:
+ *   Robot avanzando a 0.4 m/s. Golpea una piedra → chasis se inclina +8°.
+ *   correction = 0.025 * 8 + 0.002 * 40 = 0.28 m/s
+ *   v_total = 0.4 + 0.28 = 0.68 m/s → ruedas aceleran → CG vuelve al eje.
  *
- * AJUSTE SI EL ROBOT VA AL REVÉS:
- *   Cambiar HOVERBOARD_PITCH_SIGN a -1.0f en Configuration.h
+ * ZONAS DE ACTUACIÓN:
+ *   |error| < HOVERBOARD_DEAD    → zona muerta, sin corrección
+ *   DEAD < |error| < FALL_ANGLE  → corrección PD proporcional
+ *   |error| > FALL_ANGLE         → caída detectada → emergency stop
  *
- * PARÁMETROS AJUSTABLES (en Configuration.h):
- *   HOVERBOARD_DEAD_ZONE_DEG   — zona muerta ±X° sin respuesta (default 2°)
- *   HOVERBOARD_MAX_TILT_DEG    — inclinación → velocidad máxima (default 15°)
- *   HOVERBOARD_MAX_VEL_MS      — velocidad lineal máxima m/s (default 0.8)
- *   HOVERBOARD_YAW_SCALE       — escala gyroZ (°/s) → rad/s (default 0.018)
- *   HOVERBOARD_FALL_ANGLE_DEG  — ángulo de caída → emergency stop (default 40°)
- *   HOVERBOARD_COMP_ALPHA      — alpha filtro complementario (default 0.98)
- *   HOVERBOARD_PITCH_SIGN      — invertir dirección (+1 o -1)
+ * ACTIVACIÓN:
+ *   Se activa AUTOMÁTICAMENTE al arrancar (tras calibración del MPU).
+ *   Siempre en segundo plano mientras el robot está habilitado.
  *
  * COMANDOS SERIAL:
- *   hb on   — activar modo hoverboard
- *   hb off  — desactivar modo hoverboard
- *   hb cal  — recalibrar MPU (robot quieto y nivelado)
- *   hb stat — estado y ángulos actuales
+ *   hb on          — reactivar (tras caída o desactivación manual)
+ *   hb off         — desactivar (solo para diagnóstico)
+ *   hb cal         — recalibrar neutral (robot quieto y nivelado)
+ *   hb stat        — estado, ángulos y parámetros actuales
+ *   hb kp <valor>  — ajustar Kp en runtime
+ *   hb kd <valor>  — ajustar Kd en runtime
  * ============================================================================
  */
 
@@ -50,202 +52,216 @@
 #include <Arduino.h>
 
 //===========================================================================
-//==================== VALORES DEFAULT (si no están en Configuration.h) ====
+//==================== PARÁMETROS POR DEFECTO ==============================
 //===========================================================================
 
-#ifndef HOVERBOARD_DEAD_ZONE_DEG
-  #define HOVERBOARD_DEAD_ZONE_DEG    2.0f
+// Ganancia proporcional: corrección en m/s por grado de inclinación
+// 0.025 → a 10° de inclinación añade 0.25 m/s de corrección
+#ifndef HOVERBOARD_KP
+  #define HOVERBOARD_KP           0.025f
 #endif
-#ifndef HOVERBOARD_MAX_TILT_DEG
-  #define HOVERBOARD_MAX_TILT_DEG    15.0f
+
+// Ganancia derivativa: corrección en m/s por (°/s) de velocidad angular
+// Usa gyroY directamente — amortigua oscilaciones sin calcular derivadas
+// 0.002 → a 50°/s añade 0.10 m/s de amortiguación
+#ifndef HOVERBOARD_KD
+  #define HOVERBOARD_KD           0.002f
 #endif
-#ifndef HOVERBOARD_MAX_VEL_MS
-  #define HOVERBOARD_MAX_VEL_MS       0.8f
+
+// Zona muerta: inclinaciones menores a este ángulo no generan corrección
+#ifndef HOVERBOARD_DEAD
+  #define HOVERBOARD_DEAD         1.5f    // grados
 #endif
-#ifndef HOVERBOARD_YAW_SCALE
-  #define HOVERBOARD_YAW_SCALE        0.018f
-#endif
+
+// Ángulo máximo de corrección (corrección satura aquí, no para el robot)
+#define BAL_MAX_CORRECTION        0.40f   // m/s
+
+// Ángulo de caída: superar esto → emergency stop inmediato
 #ifndef HOVERBOARD_FALL_ANGLE_DEG
-  #define HOVERBOARD_FALL_ANGLE_DEG  40.0f
-#endif
-#ifndef HOVERBOARD_COMP_ALPHA
-  #define HOVERBOARD_COMP_ALPHA       0.98f
-#endif
-#ifndef HOVERBOARD_PITCH_SIGN
-  #define HOVERBOARD_PITCH_SIGN       1.0f
+  #define HOVERBOARD_FALL_ANGLE_DEG  35.0f  // grados
 #endif
 
-// Frecuencia de actualización del controlador (ms)
-#define HOVERBOARD_UPDATE_MS  20    // 50 Hz
+// Intervalo de actualización del controlador
+#define BAL_UPDATE_MS  20   // 50 Hz
 
 //===========================================================================
-//==================== VARIABLES GLOBALES ===================================
+//==================== VARIABLES GLOBALES ==================================
 //===========================================================================
 
-bool  hoverboard_active    = false;   // true = modo hoverboard activo
-bool  hoverboard_fallen    = false;   // true = se detectó caída, requiere reset manual
-float hoverboard_linear    = 0.0f;   // setpoint calculado m/s
-float hoverboard_angular   = 0.0f;   // setpoint calculado rad/s
+// Velocidad base del usuario — se actualiza con cada comando 'v'
+// extern: declarado también en ROS2_Bridge.h para que el bridge lo actualice
+float bal_base_linear  = 0.0f;
+float bal_base_angular = 0.0f;
 
-static unsigned long hb_last_update = 0;
+// Flag: cuando balance llama ros2_processCmdVel(), suprime la telemetría T
+// para no inundar el serial a 50 Hz
+bool  bal_suppress_telemetry = false;
+
+// Estado del controlador
+bool  balance_active      = false;
+bool  balance_fallen      = false;   // true tras caída — requiere 'hb on'
+float bal_setpoint        = 0.0f;   // pitch neutral calibrado (°)
+float bal_Kp              = HOVERBOARD_KP;
+float bal_Kd              = HOVERBOARD_KD;
+float bal_last_correction = 0.0f;   // corrección aplicada en el último ciclo
+
+static unsigned long bal_last_update    = 0;
+static unsigned long bal_last_telemetry = 0;
 
 //===========================================================================
-//==================== FUNCIONES DE CONTROL =================================
+//==================== ACTIVACIÓN / DESACTIVACIÓN ==========================
 //===========================================================================
 
-/**
- * Activa el modo hoverboard.
- * Recalibra el MPU para establecer la posición actual como referencia.
- */
 void hoverboard_enable() {
   if (!mpu_isReady()) {
-    Serial.println("[HB] ERROR: MPU no disponible. Verifica conexión I2C.");
+    Serial.println(F("[BAL] ERROR: MPU no disponible. Verifica I2C (SDA=20, SCL=21)."));
     return;
   }
-  mpu_calibrateOffsets();   // recalibra drift giroscopio con robot quieto/nivelado
-  hoverboard_fallen  = false;
-  hoverboard_active  = true;
-  hoverboard_linear  = 0.0f;
-  hoverboard_angular = 0.0f;
-  Serial.println("[HB] Modo hoverboard ACTIVADO");
-  Serial.print(  "[HB] Dead zone: ±"); Serial.print(HOVERBOARD_DEAD_ZONE_DEG, 1); Serial.println("°");
-  Serial.print(  "[HB] Max tilt:  ±"); Serial.print(HOVERBOARD_MAX_TILT_DEG,  1); Serial.println("°");
-  Serial.print(  "[HB] Max vel:    "); Serial.print(HOVERBOARD_MAX_VEL_MS,    1); Serial.println(" m/s");
+  // Calibrar gyro drift + establecer el ángulo actual como neutral
+  mpu_calibrateOffsets();
+  bal_setpoint        = mpu_getPitch();
+  balance_fallen      = false;
+  balance_active      = true;
+  bal_last_correction = 0.0f;
+  Serial.println(F("[BAL] Anti-caída ACTIVADO"));
+  Serial.print(  F("[BAL] Setpoint: ")); Serial.print(bal_setpoint, 2); Serial.println('\u00b0');
+  Serial.print(  F("[BAL] Kp="));        Serial.print(bal_Kp, 4);
+  Serial.print(  F("  Kd="));            Serial.print(bal_Kd, 4);
+  Serial.print(  F("  Dead=\u00b1"));         Serial.print(HOVERBOARD_DEAD, 1); Serial.println('\u00b0');
+  Serial.print(  F("[BAL] Fall angle: \u00b1")); Serial.print(HOVERBOARD_FALL_ANGLE_DEG, 0); Serial.println('\u00b0');
 }
 
-/**
- * Desactiva el modo hoverboard y para los motores.
- */
 void hoverboard_disable() {
-  hoverboard_active  = false;
-  hoverboard_linear  = 0.0f;
-  hoverboard_angular = 0.0f;
-  // Detener motores de forma segura
-  setLeftMotor(0, true);
-  setRightMotor(0, false);
-  pid_reset_velocity();
-  pid_per_wheel_reset();
-  Serial.println("[HB] Modo hoverboard DESACTIVADO");
+  balance_active      = false;
+  bal_last_correction = 0.0f;
+  Serial.println(F("[BAL] Anti-caída DESACTIVADO"));
 }
 
-/**
- * Imprime el estado actual del controlador y los ángulos.
- */
+//===========================================================================
+//==================== DIAGNÓSTICO =========================================
+//===========================================================================
+
 void hoverboard_printStatus() {
-  Serial.println("======= HOVERBOARD STATUS =======");
-  Serial.print("[HB] Activo:   "); Serial.println(hoverboard_active  ? "SÍ" : "NO");
-  Serial.print("[HB] Caído:    "); Serial.println(hoverboard_fallen  ? "SÍ — resetear con 'hb on'" : "NO");
-  Serial.print("[HB] MPU listo:"); Serial.println(mpu_isReady()      ? "SÍ" : "NO");
+  Serial.println("====== BALANCE ANTI-CAÍDA ======");
+  Serial.print("[BAL] Activo:      "); Serial.println(balance_active ? "SÍ" : "NO");
+  Serial.print("[BAL] Caído:       "); Serial.println(balance_fallen ? "SÍ — 'hb on' para reactivar" : "NO");
+  Serial.print("[BAL] MPU:         "); Serial.println(mpu_isReady()  ? "OK" : "NO DETECTADO");
   if (mpu_isReady()) {
-    Serial.print("[HB] Pitch:    "); Serial.print(mpu_getPitch(),  2); Serial.println("°");
-    Serial.print("[HB] Yaw:      "); Serial.print(mpu_getYaw(),    2); Serial.println("°");
-    Serial.print("[HB] GyroZ:    "); Serial.print(mpu_getGyroZ(),  2); Serial.println("°/s");
-    Serial.print("[HB] GyroY:    "); Serial.print(mpu_gyroY_f,     2); Serial.println("°/s");
-    Serial.print("[HB] AccelX:   "); Serial.print(mpu_getAccelX(), 3); Serial.println(" g");
-    Serial.print("[HB] AccelZ:   "); Serial.print(mpu_getAccelZ(), 3); Serial.println(" g");
+    float err = mpu_getPitch() - bal_setpoint;
+    Serial.print("[BAL] Pitch abs:   "); Serial.print(mpu_getPitch(), 2); Serial.println("°");
+    Serial.print("[BAL] Error pitch: "); Serial.print(err,            2); Serial.println("°");
+    Serial.print("[BAL] GyroY:       "); Serial.print(mpu_gyroY_f,   2); Serial.println("°/s");
+    Serial.print("[BAL] Corrección:  "); Serial.print(bal_last_correction, 3); Serial.println(" m/s");
   }
-  Serial.print("[HB] Cmd lin:  "); Serial.print(hoverboard_linear,  3); Serial.println(" m/s");
-  Serial.print("[HB] Cmd ang:  "); Serial.print(hoverboard_angular, 3); Serial.println(" rad/s");
-  Serial.println("=================================");
+  Serial.print("[BAL] Cmd base:    v="); Serial.print(bal_base_linear,  3);
+  Serial.print(" w=");                   Serial.println(bal_base_angular, 3);
+  Serial.print("[BAL] Setpoint:    "); Serial.print(bal_setpoint, 2); Serial.println("°");
+  Serial.print("[BAL] Kp="); Serial.print(bal_Kp, 4);
+  Serial.print("  Kd=");     Serial.println(bal_Kd, 4);
+  Serial.println("================================");
 }
 
-/**
- * Actualiza el controlador hoverboard: lee pitch/gyroZ y calcula setpoints.
- * Llamar desde loop() — tiene su propio rate limit (HOVERBOARD_UPDATE_MS).
- * Cuando está activo, inyecta en ros2_linear_vel / ros2_angular_vel.
- */
+//===========================================================================
+//==================== BUCLE DE CONTROL (50 Hz) ============================
+//===========================================================================
+
 void hoverboard_update() {
-  if (!hoverboard_active) return;
-  if (!mpu_isReady())     return;
+  if (!balance_active) return;
+  if (!mpu_isReady())  return;
 
   unsigned long now = millis();
-  if (now - hb_last_update < HOVERBOARD_UPDATE_MS) return;
-  hb_last_update = now;
+  if (now - bal_last_update < BAL_UPDATE_MS) return;
+  bal_last_update = now;
 
-  float pitch = mpu_getPitch() * HOVERBOARD_PITCH_SIGN;
-  float gyroZ = mpu_getGyroZ();  // °/s
+  // Error de inclinación respecto al neutral calibrado
+  float pitch_error = mpu_getPitch() - bal_setpoint;
+  float gyroY       = mpu_gyroY_f;   // °/s — derivada directa del pitch
 
   // ── Detección de caída ────────────────────────────────────────────────────
-  if (fabsf(pitch) > HOVERBOARD_FALL_ANGLE_DEG) {
-    Serial.print("[HB] ⚠️ CAÍDA DETECTADA — pitch=");
-    Serial.print(pitch, 1);
-    Serial.println("°  Motores detenidos. Usa 'hb on' para reactivar.");
-    hoverboard_fallen = true;
+  if (fabsf(pitch_error) > HOVERBOARD_FALL_ANGLE_DEG) {
+    Serial.print(F("[BAL] CAIDA DETECTADA pitch="));
+    Serial.print(mpu_getPitch(), 1);
+    Serial.println(F("grds - Motores detenidos. 'hb on' para reactivar."));
+    balance_fallen = true;
     hoverboard_disable();
     emergencyStop();
     return;
   }
 
-  // ── Zona muerta ───────────────────────────────────────────────────────────
-  float abs_pitch = fabsf(pitch);
-  float linear    = 0.0f;
-
-  if (abs_pitch > HOVERBOARD_DEAD_ZONE_DEG) {
-    // Normalizar: 0.0 en el borde de la dead zone, 1.0 en MAX_TILT
-    float range = HOVERBOARD_MAX_TILT_DEG - HOVERBOARD_DEAD_ZONE_DEG;
-    float norm  = (abs_pitch - HOVERBOARD_DEAD_ZONE_DEG) / range;
-    norm        = constrain(norm, 0.0f, 1.0f);
-    linear      = (pitch > 0.0f ? 1.0f : -1.0f) * norm * HOVERBOARD_MAX_VEL_MS;
+  // ── Zona muerta ────────────────────────────────────────────────────────────
+  float correction = 0.0f;
+  if (fabsf(pitch_error) > HOVERBOARD_DEAD) {
+    // PD: proporcional al ángulo + derivativa (gyroY amortigua oscilaciones)
+    correction = bal_Kp * pitch_error + bal_Kd * gyroY;
+    correction = constrain(correction, -BAL_MAX_CORRECTION, BAL_MAX_CORRECTION);
   }
+  bal_last_correction = correction;
 
-  // ── Velocidad angular desde gyro Z ───────────────────────────────────────
-  // Zona muerta pequeña para gyroZ (ruido en reposo ~0.5°/s)
-  float angular = 0.0f;
-  if (fabsf(gyroZ) > 1.5f) {
-    angular = -gyroZ * HOVERBOARD_YAW_SCALE;   // negativo: girar CW → angular negativa
-    angular = constrain(angular, -ROS2_MAX_ANGULAR_VEL, ROS2_MAX_ANGULAR_VEL);
-  }
+  // ── Velocidad final = comando del usuario + corrección anti-caída ─────────
+  // bal_base_linear se actualiza en ROS2_Bridge.h cada vez que llega 'v linear w'
+  float final_linear  = constrain(bal_base_linear  + correction,
+                                  -ROS2_MAX_LINEAR_VEL, ROS2_MAX_LINEAR_VEL);
+  float final_angular = bal_base_angular;
 
-  hoverboard_linear  = linear;
-  hoverboard_angular = angular;
-
-  // ── Inyectar en el puente ROS2 ────────────────────────────────────────────
-  // Se inyecta directamente en las variables del bridge, exactamente igual que
-  // cuando llega un comando 'v' por serial. Así el PID por rueda ya existente
-  // maneja el control real de los motores.
-  ros2_linear_vel    = linear;
-  ros2_angular_vel   = angular;
-  ros2_last_cmd_time = now;    // evita el timeout de 1s del bridge
-  ros2_connected     = true;
-
-  // Habilitar robot si estaba inhabilitado
-  if (currentRobotState != STATE_HABILITADO) {
-    setStateHabilitado();
-  }
-
-  // Disparar el PID via ros2_processCmdVel directamente
-  // Se construye un string 'v linear angular' y se llama como si fuera un
-  // comando serial. Evita duplicar la lógica del PID.
+  // ── Enviar al PID por rueda vía ros2_processCmdVel ────────────────────────
+  // La telemetría T interna se suprime (bal_suppress_telemetry=true) para
+  // no inundar el serial a 50 Hz. El balance emite su propia línea B a 10 Hz.
+  bal_suppress_telemetry = true;
   String cmd = "v ";
-  cmd += String(linear,  4);
+  cmd += String(final_linear,  4);
   cmd += " ";
-  cmd += String(angular, 4);
+  cmd += String(final_angular, 4);
   ros2_processCmdVel(cmd);
+  ros2_last_cmd_time = now;   // evita el timeout de 1s del bridge
+  ros2_connected     = true;
+  bal_suppress_telemetry = false;
+
+  // ── Telemetría de balance (10 Hz) ─────────────────────────────────────────
+  // Formato: B err=<pitch_error> cor=<correction> base=<user_cmd> fin=<final>
+  if (now - bal_last_telemetry >= 100) {
+    bal_last_telemetry = now;
+    Serial.print("B err=");  Serial.print(pitch_error,      2);
+    Serial.print(" gy=");    Serial.print(gyroY,             1);
+    Serial.print(" cor=");   Serial.print(correction,        3);
+    Serial.print(" base=");  Serial.print(bal_base_linear,   3);
+    Serial.print(" fin=");   Serial.print(final_linear,      3);
+    Serial.print(" Lrpm=");  Serial.print((int)currentSpeedLeftHall);
+    Serial.print(" Rrpm=");  Serial.println((int)currentSpeedRightHall);
+  }
 }
 
-/**
- * Procesa comandos 'hb' recibidos por serial.
- * Llamar desde ros2_processCommand() o Serial_Command_Processor.
- */
+//===========================================================================
+//==================== PROCESAMIENTO DE COMANDOS ===========================
+//===========================================================================
+
 void hoverboard_processCommand(String args) {
   args.trim();
-  if (args == "on" || args == "ON") {
+  if (args.startsWith("on")) {
     hoverboard_enable();
-  } else if (args == "off" || args == "OFF") {
+  } else if (args.startsWith("off")) {
     hoverboard_disable();
-  } else if (args == "cal" || args == "CAL") {
-    if (!mpu_isReady()) { Serial.println("[HB] MPU no disponible."); return; }
-    Serial.println("[HB] Recalibrando MPU... (mantener robot quieto y nivelado)");
+  } else if (args.startsWith("cal")) {
+    if (!mpu_isReady()) { Serial.println(F("[BAL] MPU no disponible.")); return; }
     mpu_calibrateOffsets();
-    Serial.println("[HB] Calibración completada.");
-  } else if (args == "stat" || args == "STATUS") {
+    bal_setpoint = mpu_getPitch();
+    Serial.print(F("[BAL] Recalibrado. Setpoint: "));
+    Serial.print(bal_setpoint, 2); Serial.println('\u00b0');
+  } else if (args.startsWith("stat")) {
     hoverboard_printStatus();
+  } else if (args.startsWith("kp ") || args.startsWith("kp\t")) {
+    bal_Kp = args.substring(3).toFloat();
+    Serial.print(F("[BAL] Kp = ")); Serial.println(bal_Kp, 4);
+  } else if (args.startsWith("kd ") || args.startsWith("kd\t")) {
+    bal_Kd = args.substring(3).toFloat();
+    Serial.print(F("[BAL] Kd = ")); Serial.println(bal_Kd, 4);
   } else {
-    Serial.println("[HB] Comandos disponibles:");
-    Serial.println("  hb on   — activar modo hoverboard");
-    Serial.println("  hb off  — desactivar");
-    Serial.println("  hb cal  — recalibrar MPU (quieto y nivelado)");
-    Serial.println("  hb stat — estado y ángulos actuales");
+    Serial.println(F("[BAL] Comandos:"));
+    Serial.println(F("  hb on          - activar anti-caida"));
+    Serial.println(F("  hb off         - desactivar (diagnostico)"));
+    Serial.println(F("  hb cal         - recalibrar neutral (quieto y nivelado)"));
+    Serial.println(F("  hb stat        - angulos, correccion y parametros"));
+    Serial.println(F("  hb kp <valor>  - ajustar Kp (m/s por grado)"));
+    Serial.println(F("  hb kd <valor>  - ajustar Kd (m/s por grado/s)"));
   }
 }
 

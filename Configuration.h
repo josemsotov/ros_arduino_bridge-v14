@@ -64,30 +64,33 @@
 #endif
 
 /**
- * MODO HOVERBOARD — Control por inclinación del chasis
- * El robot avanza según el ángulo de inclinación (pitch) del MPU9250:
- *   • Inclinar adelante → avanzar
- *   • Inclinar atrás    → frenar / retroceder
- *   • Girar el cuerpo   → virar
+ * BALANCE ANTI-CAÍDA — Control de equilibrio dinámico del robot
+ * Detecta la inclinación del chasis (MPU9250) y añade una corrección PD
+ * a la velocidad del usuario para evitar que el robot se caiga:
+ *   • Chasis se inclina adelante → corrección positiva → ruedas aceleran
+ *   • Chasis se inclina atrás    → corrección negativa → ruedas frenan
+ *
+ * Ley de control: correction = Kp * pitch_error + Kd * gyroY
+ * Se activa automáticamente al arrancar. Solo para diagnóstico desactivar.
  * REQUIERE: ENABLE_MPU9250 activo
- * COMANDOS: hb on | hb off | hb cal | hb stat
+ * COMANDOS: hb on | hb off | hb cal | hb stat | hb kp <v> | hb kd <v>
  */
-#define ENABLE_HOVERBOARD_MODE        // Activar modo hoverboard
+#define ENABLE_HOVERBOARD_MODE        // Activar balance anti-caída
 
 #ifdef ENABLE_HOVERBOARD_MODE
-  // Zona muerta: inclinaciones menores a este ángulo no generan movimiento
-  #define HOVERBOARD_DEAD_ZONE_DEG    2.0f   // ±2° sin respuesta
-  // Inclinación a la que se alcanza la velocidad máxima
-  #define HOVERBOARD_MAX_TILT_DEG    15.0f   // ±15° → ±MAX_VEL
-  // Velocidad lineal máxima en modo hoverboard
-  #define HOVERBOARD_MAX_VEL_MS       0.5f   // m/s (conservador para pruebas)
-  // Escala giro yaw: gyroZ (°/s) → angular velocity (rad/s)
-  #define HOVERBOARD_YAW_SCALE        0.018f // 90°/s → 1.62 rad/s
-  // Ángulo de caída: si |pitch| supera este valor → emergency stop
-  #define HOVERBOARD_FALL_ANGLE_DEG  40.0f   // °
-  // Alpha del filtro complementario (0.98 = 98% gyro + 2% accel)
+  // Ganancia proporcional: corrección m/s por grado de inclinación
+  // Subir si el robot sigue cayendo; bajar si oscila
+  #define HOVERBOARD_KP               0.025f  // m/s / °
+  // Ganancia derivativa: amortigua oscilaciones (usa gyroY directamente)
+  // Subir si hay oscilaciones; bajar si hay sobreactuación
+  #define HOVERBOARD_KD               0.002f  // m/s / (°/s)
+  // Zona muerta: inclinaciones menores a este ángulo no generan corrección
+  #define HOVERBOARD_DEAD             1.5f    // ° — sin corrección bajo este umbral
+  // Ángulo de caída: si |pitch_error| supera esto → emergency stop
+  #define HOVERBOARD_FALL_ANGLE_DEG  35.0f   // °
+  // Alpha del filtro complementario del MPU (0.98 = 98% gyro + 2% accel)
   #define HOVERBOARD_COMP_ALPHA       0.98f
-  // Signo de pitch: +1.0 si inclinar adelante = avanzar
+  // Signo de pitch: +1.0 si adelante = pitch positivo
   // Cambiar a -1.0 si el robot va al revés
   #define HOVERBOARD_PITCH_SIGN       1.0f
 #endif

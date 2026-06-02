@@ -61,6 +61,14 @@ unsigned long ros2_last_cmd_time = 0;
 float ros2_linear_vel = 0.0;   // m/s
 float ros2_angular_vel = 0.0;  // rad/s
 
+// Extern al Balance_Controller (incluido después): base de velocidad del usuario
+// y flag para suprimir telemetría cuando el balance llama ros2_processCmdVel
+#if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+extern float bal_base_linear;
+extern float bal_base_angular;
+extern bool  bal_suppress_telemetry;
+#endif
+
 char ros2_buffer[ROS2_BUFFER_SIZE];
 int ros2_buffer_index = 0;
 
@@ -113,6 +121,13 @@ void ros2_processCmdVel(String cmd) {
     ros2_angular_vel = angular;
     ros2_last_cmd_time = millis();
     ros2_connected = true;
+
+    // Actualizar velocidad base para el balance anti-caída
+    // El balance lee bal_base_linear (intención del usuario) y añade su corrección
+    #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+    bal_base_linear  = linear;
+    bal_base_angular = angular;
+    #endif
     
     // Telemetría compacta: se emite al final del procesamiento (ver línea T)
     
@@ -132,8 +147,13 @@ void ros2_processCmdVel(String cmd) {
         setRightMotor(0, false);
         pid_reset_velocity();
         pid_per_wheel_reset();
-        Serial.print("T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F");
-        Serial.println();
+        #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+        if (!bal_suppress_telemetry)
+        #endif
+        {
+          Serial.print("T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F");
+          Serial.println();
+        }
         return;
       }
 
@@ -236,14 +256,20 @@ void ros2_processCmdVel(String cmd) {
       setRightMotor(abs_right, !dir_right);  // Motor derecho: DIR electrica invertida
 
       // ── Telemetría compacta ────────────────────────────────────────────────
-      Serial.print("T lin="); Serial.print(linear, 3);
-      Serial.print(" ang=");  Serial.print(angular, 3);
-      Serial.print(" Lpwm="); Serial.print(abs_left);
-      Serial.print(" Rpwm="); Serial.print(abs_right);
-      Serial.print(" Lrpm="); Serial.print((int)currentSpeedLeftHall);
-      Serial.print(" Rrpm="); Serial.print((int)currentSpeedRightHall);
-      Serial.print(" Ld=");   Serial.print(dir_left  ? "F" : "B");
-      Serial.print(" Rd=");   Serial.println(dir_right ? "F" : "B");
+      // Suprimida cuando el balance anti-caída llama esta función a 50 Hz
+      #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+      if (!bal_suppress_telemetry)
+      #endif
+      {
+        Serial.print("T lin="); Serial.print(linear, 3);
+        Serial.print(" ang=");  Serial.print(angular, 3);
+        Serial.print(" Lpwm="); Serial.print(abs_left);
+        Serial.print(" Rpwm="); Serial.print(abs_right);
+        Serial.print(" Lrpm="); Serial.print((int)currentSpeedLeftHall);
+        Serial.print(" Rrpm="); Serial.print((int)currentSpeedRightHall);
+        Serial.print(" Ld=");   Serial.print(dir_left  ? "F" : "B");
+        Serial.print(" Rd=");   Serial.println(dir_right ? "F" : "B");
+      }
     #endif
   }
 }

@@ -123,6 +123,11 @@ void setup() {
   #ifdef ENABLE_ROS2_BRIDGE
     ros2_initialize();
   #endif
+
+  // Auto-activar balance anti-caída (requiere MPU ya inicializado)
+  #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
+    hoverboard_enable();
+  #endif
   
   // Mensaje final
   DEBUG_PRINTLN("✓ Sistema inicializado correctamente");
