@@ -35,12 +35,16 @@
  *   Siempre en segundo plano mientras el robot está habilitado.
  *
  * COMANDOS SERIAL:
- *   hb on          — reactivar (tras caída o desactivación manual)
- *   hb off         — desactivar (solo para diagnóstico)
- *   hb cal         — recalibrar neutral (robot quieto y nivelado)
- *   hb stat        — estado, ángulos y parámetros actuales
- *   hb kp <valor>  — ajustar Kp en runtime
- *   hb kd <valor>  — ajustar Kd en runtime
+ *   hb on              — reactivar (tras caída o desactivación manual)
+ *   hb off             — desactivar (solo para diagnóstico)
+ *   hb cal             — recalibrar neutral (robot quieto y nivelado)
+ *   hb cal front       — calibrar límite frontal en posición actual
+ *   hb cal rear        — calibrar límite trasero en posición actual
+ *   hb stat            — estado, ángulos y parámetros actuales
+ *   hb kp <valor>      — ajustar Kp en runtime
+ *   hb kd <valor>      — ajustar Kd en runtime
+ *   hb front <grados>  — fijar límite frontal manualmente
+ *   hb rear <grados>   — fijar límite trasero manualmente
  * ============================================================================
  */
 
@@ -76,9 +80,17 @@
 // Ángulo máximo de corrección (corrección satura aquí, no para el robot)
 #define BAL_MAX_CORRECTION        0.40f   // m/s
 
-// Ángulo de caída: superar esto → emergency stop inmediato
+// Límite de caída frontal y trasero — valor por defecto del define en Configuration.h
+// Se sobreescriben en runtime con 'hb cal front/rear' o 'hb front/rear <val>'
+#ifndef HOVERBOARD_FRONT_LIMIT_DEG
+  #define HOVERBOARD_FRONT_LIMIT_DEG  35.0f
+#endif
+#ifndef HOVERBOARD_REAR_LIMIT_DEG
+  #define HOVERBOARD_REAR_LIMIT_DEG   35.0f
+#endif
+// Alias de retrocompatibilidad
 #ifndef HOVERBOARD_FALL_ANGLE_DEG
-  #define HOVERBOARD_FALL_ANGLE_DEG  35.0f  // grados
+  #define HOVERBOARD_FALL_ANGLE_DEG   HOVERBOARD_FRONT_LIMIT_DEG
 #endif
 
 // Intervalo de actualización del controlador
@@ -105,6 +117,14 @@ float bal_Kp              = HOVERBOARD_KP;
 float bal_Kd              = HOVERBOARD_KD;
 float bal_last_correction = 0.0f;   // corrección aplicada en el último ciclo
 
+// Límites de inclinación asimétricos (° relativos al setpoint)
+// Positivo = frontal (robot cae hacia adelante)
+// Negativo implícito = trasero (robot cae hacia atrás)
+float bal_front_limit = HOVERBOARD_FRONT_LIMIT_DEG;  // calibrado con 'hb cal front'
+float bal_rear_limit  = HOVERBOARD_REAR_LIMIT_DEG;   // calibrado con 'hb cal rear'
+bool  bal_front_calibrated = false;  // true = límite frontal fue calibrado (no es default)
+bool  bal_rear_calibrated  = false;  // true = límite trasero fue calibrado (no es default)
+
 static unsigned long bal_last_update    = 0;
 static unsigned long bal_last_telemetry = 0;
 
@@ -124,11 +144,14 @@ void hoverboard_enable() {
   balance_active      = true;
   bal_last_correction = 0.0f;
   Serial.println(F("[BAL] Anti-caída ACTIVADO"));
-  Serial.print(  F("[BAL] Setpoint: ")); Serial.print(bal_setpoint, 2); Serial.println('\u00b0');
+  Serial.print(  F("[BAL] Setpoint: ")); Serial.print(bal_setpoint, 2); Serial.println('°');
   Serial.print(  F("[BAL] Kp="));        Serial.print(bal_Kp, 4);
   Serial.print(  F("  Kd="));            Serial.print(bal_Kd, 4);
-  Serial.print(  F("  Dead=\u00b1"));         Serial.print(HOVERBOARD_DEAD, 1); Serial.println('\u00b0');
-  Serial.print(  F("[BAL] Fall angle: \u00b1")); Serial.print(HOVERBOARD_FALL_ANGLE_DEG, 0); Serial.println('\u00b0');
+  Serial.print(  F("  Dead=±"));         Serial.print(HOVERBOARD_DEAD, 1); Serial.println('°');
+  Serial.print(  F("[BAL] Lim FRONT: +")); Serial.print(bal_front_limit, 1);
+  Serial.print(  bal_front_calibrated ? F("° (CAL)") : F("° (default)"));
+  Serial.print(  F("   REAR: -"));  Serial.print(bal_rear_limit, 1);
+  Serial.println(bal_rear_calibrated  ? F("° (CAL)") : F("° (default)"));
 }
 
 void hoverboard_disable() {
@@ -177,11 +200,23 @@ void hoverboard_update() {
   float pitch_error = mpu_getPitch() - bal_setpoint;
   float gyroY       = mpu_gyroY_f;   // °/s — derivada directa del pitch
 
-  // ── Detección de caída ────────────────────────────────────────────────────
-  if (fabsf(pitch_error) > HOVERBOARD_FALL_ANGLE_DEG) {
-    Serial.print(F("[BAL] CAIDA DETECTADA pitch="));
-    Serial.print(mpu_getPitch(), 1);
-    Serial.println(F("grds - Motores detenidos. 'hb on' para reactivar."));
+  // ── Detección de caída ASIMÉTRICA ─────────────────────────────────────────
+  // Límite frontal (+) y trasero (-) independientes, calibrables en runtime
+  if (pitch_error > bal_front_limit) {
+    Serial.print(F("[BAL] CAIDA FRONTAL pitch_err="));
+    Serial.print(pitch_error, 1);
+    Serial.print(F(" > lim=")); Serial.print(bal_front_limit, 1);
+    Serial.println(F(" — 'hb on' para reactivar."));
+    balance_fallen = true;
+    hoverboard_disable();
+    emergencyStop();
+    return;
+  }
+  if (pitch_error < -bal_rear_limit) {
+    Serial.print(F("[BAL] CAIDA TRASERA pitch_err="));
+    Serial.print(pitch_error, 1);
+    Serial.print(F(" < lim=-")); Serial.print(bal_rear_limit, 1);
+    Serial.println(F(" — 'hb on' para reactivar."));
     balance_fallen = true;
     hoverboard_disable();
     emergencyStop();
@@ -225,6 +260,8 @@ void hoverboard_update() {
     Serial.print(" cor=");   Serial.print(correction,        3);
     Serial.print(" base=");  Serial.print(bal_base_linear,   3);
     Serial.print(" fin=");   Serial.print(final_linear,      3);
+    Serial.print(" fl=");    Serial.print(bal_front_limit,   1);
+    Serial.print(" rl=");    Serial.print(bal_rear_limit,    1);
     Serial.print(" Lrpm=");  Serial.print((int)currentSpeedLeftHall);
     Serial.print(" Rrpm=");  Serial.println((int)currentSpeedRightHall);
   }
@@ -240,12 +277,48 @@ void hoverboard_processCommand(String args) {
     hoverboard_enable();
   } else if (args.startsWith("off")) {
     hoverboard_disable();
+  } else if (args.startsWith("cal front")) {
+    // Calibrar límite frontal: inclinar el robot al ángulo máximo seguro hacia adelante
+    if (!mpu_isReady()) { Serial.println(F("[BAL] MPU no disponible.")); return; }
+    float current_err = mpu_getPitch() - bal_setpoint;
+    if (current_err <= 0.0f) {
+      Serial.println(F("[BAL] ERROR: inclina el robot HACIA ADELANTE antes de calibrar el limite frontal."));
+      return;
+    }
+    bal_front_limit      = current_err;
+    bal_front_calibrated = true;
+    Serial.print(F("[BAL] Limite FRONTAL calibrado: +"));
+    Serial.print(bal_front_limit, 2); Serial.println(F(" grd desde setpoint"));
+  } else if (args.startsWith("cal rear")) {
+    // Calibrar límite trasero: inclinar el robot al ángulo máximo seguro hacia atrás
+    if (!mpu_isReady()) { Serial.println(F("[BAL] MPU no disponible.")); return; }
+    float current_err = mpu_getPitch() - bal_setpoint;
+    if (current_err >= 0.0f) {
+      Serial.println(F("[BAL] ERROR: inclina el robot HACIA ATRAS antes de calibrar el limite trasero."));
+      return;
+    }
+    bal_rear_limit      = -current_err;   // guardar como valor positivo
+    bal_rear_calibrated = true;
+    Serial.print(F("[BAL] Limite TRASERO calibrado: -"));
+    Serial.print(bal_rear_limit, 2); Serial.println(F(" grd desde setpoint"));
   } else if (args.startsWith("cal")) {
     if (!mpu_isReady()) { Serial.println(F("[BAL] MPU no disponible.")); return; }
     mpu_calibrateOffsets();
     bal_setpoint = mpu_getPitch();
     Serial.print(F("[BAL] Recalibrado. Setpoint: "));
-    Serial.print(bal_setpoint, 2); Serial.println('\u00b0');
+    Serial.print(bal_setpoint, 2); Serial.println(F(" grd"));
+  } else if (args.startsWith("front ") || args.startsWith("front\t")) {
+    float v = args.substring(6).toFloat();
+    if (v <= 0.0f) { Serial.println(F("[BAL] front debe ser > 0")); return; }
+    bal_front_limit      = v;
+    bal_front_calibrated = false;
+    Serial.print(F("[BAL] Limite FRONTAL: +")); Serial.print(bal_front_limit, 2); Serial.println(F(" grd"));
+  } else if (args.startsWith("rear ") || args.startsWith("rear\t")) {
+    float v = args.substring(5).toFloat();
+    if (v <= 0.0f) { Serial.println(F("[BAL] rear debe ser > 0")); return; }
+    bal_rear_limit      = v;
+    bal_rear_calibrated = false;
+    Serial.print(F("[BAL] Limite TRASERO: -")); Serial.print(bal_rear_limit, 2); Serial.println(F(" grd"));
   } else if (args.startsWith("stat")) {
     hoverboard_printStatus();
   } else if (args.startsWith("kp ") || args.startsWith("kp\t")) {
@@ -256,12 +329,16 @@ void hoverboard_processCommand(String args) {
     Serial.print(F("[BAL] Kd = ")); Serial.println(bal_Kd, 4);
   } else {
     Serial.println(F("[BAL] Comandos:"));
-    Serial.println(F("  hb on          - activar anti-caida"));
-    Serial.println(F("  hb off         - desactivar (diagnostico)"));
-    Serial.println(F("  hb cal         - recalibrar neutral (quieto y nivelado)"));
-    Serial.println(F("  hb stat        - angulos, correccion y parametros"));
-    Serial.println(F("  hb kp <valor>  - ajustar Kp (m/s por grado)"));
-    Serial.println(F("  hb kd <valor>  - ajustar Kd (m/s por grado/s)"));
+    Serial.println(F("  hb on              - activar anti-caida"));
+    Serial.println(F("  hb off             - desactivar"));
+    Serial.println(F("  hb cal             - recalibrar neutral (quieto y nivelado)"));
+    Serial.println(F("  hb cal front       - calibrar limite frontal (inclinado adelante)"));
+    Serial.println(F("  hb cal rear        - calibrar limite trasero (inclinado atras)"));
+    Serial.println(F("  hb front <grados>  - fijar limite frontal manualmente"));
+    Serial.println(F("  hb rear  <grados>  - fijar limite trasero manualmente"));
+    Serial.println(F("  hb stat            - angulos, limites y parametros"));
+    Serial.println(F("  hb kp <valor>      - ajustar Kp (m/s por grado)"));
+    Serial.println(F("  hb kd <valor>      - ajustar Kd (m/s por grado/s)"));
   }
 }
 

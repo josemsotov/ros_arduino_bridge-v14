@@ -86,8 +86,17 @@
   #define HOVERBOARD_KD               0.002f  // m/s / (°/s)
   // Zona muerta: inclinaciones menores a este ángulo no generan corrección
   #define HOVERBOARD_DEAD             1.5f    // ° — sin corrección bajo este umbral
-  // Ángulo de caída: si |pitch_error| supera esto → emergency stop
-  #define HOVERBOARD_FALL_ANGLE_DEG  35.0f   // °
+
+  // ── LÍMITES DE INCLINACIÓN ASIMÉTRICOS ─────────────────────────────────
+  // Límite FRONTAL: error de pitch positivo (robot cae hacia adelante)
+  // Si pitch_error > FRONT_LIMIT → caída detectada → emergency stop
+  // Calibrar con: 'hb cal front' (robot inclinado al límite seguro adelante)
+  #define HOVERBOARD_FRONT_LIMIT_DEG  35.0f   // °
+  // Límite TRASERO: error de pitch negativo (robot cae hacia atrás)
+  // Si pitch_error < -REAR_LIMIT → caída detectada → emergency stop
+  // Calibrar con: 'hb cal rear'  (robot inclinado al límite seguro atrás)
+  #define HOVERBOARD_REAR_LIMIT_DEG   35.0f   // °
+
   // Alpha del filtro complementario del MPU (0.98 = 98% gyro + 2% accel)
   #define HOVERBOARD_COMP_ALPHA       0.98f
   // Signo de pitch: +1.0 si adelante = pitch positivo
