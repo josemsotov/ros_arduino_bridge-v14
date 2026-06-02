@@ -1,0 +1,23 @@
+# Python virtual environment
+.venv/
+
+# Arduino build output
+build/
+MOTOR-INTERFACE-V-13/build/
+MOTOR-INTERFACE-V-13/slprj/
+
+# Arduino IDE / ArduinoIDE project files
+*.prj
+MOTOR-INTERFACE-V-13/resources/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini
