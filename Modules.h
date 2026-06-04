@@ -40,6 +40,10 @@
   #include "Hall_Sensors.h"      // Manejo sensores Hall
 #endif
 
+#ifdef ENABLE_CURRENT_SENSORS
+  #include "Current_Sensors.h"   // Sensores corriente ACS712 (A3=derecho, A4=izquierdo)
+#endif
+
 /**
  * SENSOR INERCIAL
  * Incluir antes de ROS2_Bridge y Balance_Controller (ambos dependen de mpu_*)

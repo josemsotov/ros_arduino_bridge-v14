@@ -72,9 +72,9 @@ AXIS_RANGE  = 127.0
 BTN_A    = 0x08   # Botón A (cara inferior)   -> PARADA EMERGENCIA
 BTN_B    = 0x04   # Botón B (cara derecha)
 BTN_X    = 0x10   # Botón X (cara izquierda)
-BTN_Y    = 0x20   # Botón Y (cara superior)
+BTN_Y    = 0x20   # Botón Y (cara superior)   -> TOGGLE AUTO-BALANCEO
 BTN_MENU = 0x40   # Botón Menu (tres líneas)  -> solicitar estado
-BTN_CAP  = 0x08   # Botón Capture (círculo)   -> encoders  (ajustar si necesario)
+BTN_CAP  = 0x02   # Botón Capture (círculo)   -> encoders
 
 # Estado compartido entre el hilo HID y el hilo serial
 _lock   = threading.Lock()
@@ -270,6 +270,7 @@ def main():
     print(f"  Left Stick arriba/abajo  -> Lineal   (max +-{MAX_LINEAR} m/s)")
     print(f"  Left Stick izq/der       -> Angular  (max +-{MAX_ANGULAR} rad/s)")
     print(f"  Boton A  (B2=0x{BTN_A:02X}) -> PARADA DE EMERGENCIA")
+    print(f"  Boton Y  (B2=0x{BTN_Y:02X}) -> TOGGLE AUTO-BALANCEO (on/off)")
     print(f"  Boton Menu (B2=0x{BTN_MENU:02X}) -> Estado del sistema (s)")
     print(f"  Ctrl+C                   -> Salir (para motores)")
     print("========================================\n")
@@ -279,11 +280,10 @@ def main():
     last_linear   = None
     last_angular  = None
     prev_btn2     = 0
-
-    _telemetry = {}  # último T parseado
+    balance_active = False  # estado local del balance
 
     def _parse_T(line):
-        """Parsea 'T lin=0.500 ang=0.000 Lpwm=45 Rpwm=42 Lrpm=120 Rrpm=115 Ld=F Rd=F'"""
+        """Parsea líneas de telemetría T o B del Arduino."""
         d = {}
         for token in line.split():
             if '=' in token:
@@ -293,6 +293,7 @@ def main():
 
     def read_arduino():
         """Hilo que lee y muestra respuestas del Arduino."""
+        nonlocal balance_active
         while True:
             try:
                 if ser.in_waiting:
@@ -300,24 +301,33 @@ def main():
                     if not line:
                         continue
                     if line.startswith("T "):
-                        # Línea de telemetría: mostrar como dashboard
                         d = _parse_T(line[2:])
                         lin  = float(d.get('lin',  0))
                         ang  = float(d.get('ang',  0))
-                        lpwm = int(d.get('Lpwm', 0))
-                        rpwm = int(d.get('Rpwm', 0))
-                        lrpm = int(d.get('Lrpm', 0))
-                        rrpm = int(d.get('Rrpm', 0))
-                        ld   = d.get('Ld', '?')
-                        rd   = d.get('Rd', '?')
+                        lrpm = int(float(d.get('Lrpm', 0)))
+                        rrpm = int(float(d.get('Rrpm', 0)))
+                        lma  = float(d.get('LmA', 0.0))
+                        rma  = float(d.get('RmA', 0.0))
+                        bal  = "[BAL]" if balance_active else "     "
                         print(
-                            f"\r  cmd v={lin:+.3f} w={ang:+.3f} | "
-                            f"L pwm={lpwm:>3} rpm={lrpm:>5} [{ld}] | "
-                            f"R pwm={rpwm:>3} rpm={rrpm:>5} [{rd}]   ",
+                            f"\r  {bal} v={lin:+.3f} w={ang:+.3f} | "
+                            f"Lrpm={lrpm:>5} Rrpm={rrpm:>5} | "
+                            f"I L={lma:+.2f}A R={rma:+.2f}A   ",
                             end='', flush=True
                         )
+                    elif line.startswith("B "):
+                        # Suprimir líneas B del balance para no contaminar pantalla
+                        pass
+                    elif "ACTIVADO" in line:
+                        balance_active = True
+                        print(f"\n  [BALANCE] *** ACTIVO ***", flush=True)
+                    elif "DESACTIVADO" in line:
+                        balance_active = False
+                        print(f"\n  [BALANCE] --- inactivo ---", flush=True)
+                    elif "CAIDA" in line:
+                        balance_active = False
+                        print(f"\n  [BALANCE] !!! CAIDA DETECTADA — balance OFF !!!", flush=True)
                     else:
-                        # Otras respuestas del Arduino
                         print(f"\n  [ARD] {line}", flush=True)
             except Exception:
                 break
@@ -344,10 +354,19 @@ def main():
                 time.sleep(0.1)
                 continue
 
+            # Botón Y → toggle auto-balanceo
+            if pressed & BTN_Y:
+                if balance_active:
+                    ser.write(b"hb off\n")
+                    print("\n  [Y] Auto-balanceo DESACTIVADO                   ", flush=True)
+                else:
+                    ser.write(b"hb on\n")
+                    print("\n  [Y] Auto-balanceo ACTIVADO                      ", flush=True)
+
             # Botón Menu → estado
             if pressed & BTN_MENU:
                 ser.write(b"s\n")
-                print("[CMD] Solicitando estado...                     ")
+                print("\n  [MENU] Solicitando estado...                    ", flush=True)
 
             # Calcular velocidades con zona muerta
             # LSY: 0=arriba → positivo; 255=abajo → negativo

@@ -124,6 +124,11 @@ void setup() {
     ros2_initialize();
   #endif
 
+  // Inicializar sensores de corriente ACS712
+  #ifdef ENABLE_CURRENT_SENSORS
+    current_sensors_init();
+  #endif
+
   // Auto-activar balance anti-caída (requiere MPU ya inicializado)
   #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
     hoverboard_enable();
@@ -150,6 +155,11 @@ void loop() {
     processContinuousDebug();
   #endif
   
+  // ===== ACTUALIZACIÓN SENSORES DE CORRIENTE =====
+  #ifdef ENABLE_CURRENT_SENSORS
+    current_sensors_update();
+  #endif
+
   // ===== ACTUALIZACIÓN MPU + HOVERBOARD =====
   #ifdef ENABLE_MPU9250
     mpu_update();                 // Leer IMU y actualizar pitch/yaw (200 Hz, rate-limited interno)

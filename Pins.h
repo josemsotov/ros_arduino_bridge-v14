@@ -87,6 +87,16 @@
   // El MPU se comunica por I2C en dirección 0x68
 #endif
 
+/**
+ * SENSORES DE CORRIENTE ACS712
+ * Monitoreo de corriente en tiempo real por motor
+ * A3 → Motor DERECHO  | A4 → Motor IZQUIERDO
+ */
+#ifdef ENABLE_CURRENT_SENSORS
+  #define CURRENT_RIGHT_PIN  A3   // ACS712 motor derecho
+  #define CURRENT_LEFT_PIN   A4   // ACS712 motor izquierdo
+#endif
+
 //===========================================================================
 //========================== PINES DE CONTROL ==============================
 //===========================================================================

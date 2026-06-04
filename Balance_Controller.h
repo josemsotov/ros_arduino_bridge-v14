@@ -263,7 +263,12 @@ void hoverboard_update() {
     Serial.print(" fl=");    Serial.print(bal_front_limit,   1);
     Serial.print(" rl=");    Serial.print(bal_rear_limit,    1);
     Serial.print(" Lrpm=");  Serial.print((int)currentSpeedLeftHall);
-    Serial.print(" Rrpm=");  Serial.println((int)currentSpeedRightHall);
+    Serial.print(" Rrpm=");  Serial.print((int)currentSpeedRightHall);
+    #ifdef ENABLE_CURRENT_SENSORS
+    Serial.print(F(" LmA="));  Serial.print(current_left_A,  2);
+    Serial.print(F(" RmA="));  Serial.print(current_right_A, 2);
+    #endif
+    Serial.println();
   }
 }
 

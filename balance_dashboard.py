@@ -111,6 +111,8 @@ class BalanceDashboard:
         self.fin_buf  = deque(maxlen=maxlen)
         self.lrpm_buf = deque(maxlen=maxlen)
         self.rrpm_buf = deque(maxlen=maxlen)
+        self.lma_buf  = deque(maxlen=maxlen)   # corriente izquierdo (A)
+        self.rma_buf  = deque(maxlen=maxlen)   # corriente derecho  (A)
 
         # Límites de inclinación actuales (se actualizan desde telemetría B)
         self.front_limit = FALL_ANGLE
@@ -355,6 +357,19 @@ class BalanceDashboard:
         self.lbl_rpm = tk.Label(frm_nums, text="  L:0 R:0 RPM", bg=PANEL_BG,
                                 fg=C_CYAN, font=("Consolas", 8))
         self.lbl_rpm.pack(side=tk.LEFT)
+
+        # Corriente ACS712
+        frm_curr = tk.Frame(f, bg=PANEL_BG)
+        frm_curr.pack(**PAD, fill="x")
+        tk.Label(frm_curr, text="I ", bg=PANEL_BG, fg=C_DIM,
+                 font=("Consolas", 8)).pack(side=tk.LEFT)
+        self.lbl_curr_l = tk.Label(frm_curr, text="L:---A", bg=PANEL_BG,
+                                   fg="#ff8c42", font=("Consolas", 9, "bold"))
+        self.lbl_curr_l.pack(side=tk.LEFT)
+        tk.Label(frm_curr, text="  ", bg=PANEL_BG).pack(side=tk.LEFT)
+        self.lbl_curr_r = tk.Label(frm_curr, text="R:---A", bg=PANEL_BG,
+                                   fg="#ff5e5e", font=("Consolas", 9, "bold"))
+        self.lbl_curr_r.pack(side=tk.LEFT)
 
         ttk.Separator(f, orient="horizontal").pack(fill="x", padx=8, pady=5)
 
@@ -616,9 +631,11 @@ class BalanceDashboard:
         last_cor  = cor_arr[-1]  if cor_arr  else 0.0
         last_lrpm = lrpm_arr[-1] if lrpm_arr else 0
         last_rrpm = rrpm_arr[-1] if rrpm_arr else 0
-        self._refresh_labels(last_err, last_cor, last_lrpm, last_rrpm)
+        last_lma  = list(self.lma_buf)[-1] if self.lma_buf else 0.0
+        last_rma  = list(self.rma_buf)[-1] if self.rma_buf else 0.0
+        self._refresh_labels(last_err, last_cor, last_lrpm, last_rrpm, last_lma, last_rma)
 
-    def _refresh_labels(self, err, cor, lrpm, rrpm):
+    def _refresh_labels(self, err, cor, lrpm, rrpm, lma=0.0, rma=0.0):
         abs_e = abs(err)
         fl = self.front_limit
         rl = self.rear_limit
@@ -631,6 +648,14 @@ class BalanceDashboard:
         self.lbl_pitch.config(text=f"Pitch: {err:+6.2f}°", fg=pitch_color)
         self.lbl_corr.config(text=f"Corr: {cor:+.3f} m/s")
         self.lbl_rpm.config(text=f"  L:{int(lrpm):3d} R:{int(rrpm):3d} rpm")
+        # Color de corriente: verde → amarillo → rojo según nivel
+        def _curr_color(a):
+            aa = abs(a)
+            if aa > 8.0:   return C_RED
+            elif aa > 4.0: return C_YELLOW
+            else:          return C_GREEN
+        self.lbl_curr_l.config(text=f"L:{lma:+.2f}A", fg=_curr_color(lma))
+        self.lbl_curr_r.config(text=f"R:{rma:+.2f}A", fg=_curr_color(rma))
 
     # =========================================================================
     # Comunicación serial  (hilo de fondo)
@@ -696,6 +721,8 @@ class BalanceDashboard:
                 self.fin_buf.append(parts.get("fin",  0.0))
                 self.lrpm_buf.append(parts.get("Lrpm", 0.0))
                 self.rrpm_buf.append(parts.get("Rrpm", 0.0))
+                self.lma_buf.append(parts.get("LmA",  0.0))
+                self.rma_buf.append(parts.get("RmA",  0.0))
                 # Actualizar límites si el robot los envía
                 if "fl" in parts:
                     self.front_limit = parts["fl"]
@@ -730,6 +757,8 @@ class BalanceDashboard:
                     self.fin_buf.append(parts.get("lin", 0.0))
                     self.lrpm_buf.append(parts.get("Lrpm", 0.0))
                     self.rrpm_buf.append(parts.get("Rrpm", 0.0))
+                    self.lma_buf.append(parts.get("LmA",  0.0))
+                    self.rma_buf.append(parts.get("RmA",  0.0))
                 except (ValueError, KeyError):
                     pass
             return

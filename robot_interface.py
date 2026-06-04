@@ -197,6 +197,18 @@ class RobotInterface:
         for w in (self.lbl_corr, self.lbl_lrpm, self.lbl_rrpm):
             w.pack(side="left", padx=12)
 
+        # Fila de corriente ACS712
+        crow = tk.Frame(rf, bg=PANEL_BG)
+        crow.pack(fill="x", padx=10, pady=(0, 4))
+        tk.Label(crow, text="Corriente:", bg=PANEL_BG, fg=C_DIM,
+                 font=FONT_MONO).pack(side="left", padx=(0, 6))
+        self.lbl_curr_l = tk.Label(crow, text="IZQ: --- A",
+                                   bg=PANEL_BG, fg="#ff8c42", font=FONT_MED)
+        self.lbl_curr_r = tk.Label(crow, text="DER: --- A",
+                                   bg=PANEL_BG, fg="#ff5e5e", font=FONT_MED)
+        self.lbl_curr_l.pack(side="left", padx=8)
+        self.lbl_curr_r.pack(side="left", padx=8)
+
         ttk.Separator(rf, orient="horizontal").pack(fill="x", padx=8, pady=4)
 
         # ── Consola serial ──────────────────────────────────────────────────────
@@ -355,7 +367,7 @@ class RobotInterface:
 
     def _parse_b_line(self, raw: str):
         """Parsea la línea B del firmware:
-        B err=X.XX gy=X.X cor=X.XXX base=X.XXX fin=X.XXX fl=35.0 rl=35.0 Lrpm=X Rrpm=X
+        B err=X.XX gy=X.X cor=X.XXX base=X.XXX fin=X.XXX fl=35.0 rl=35.0 Lrpm=X Rrpm=X LmA=X.XX RmA=X.XX
         """
         def _f(key):
             m = re.search(rf"{key}=(-?[\d.]+)", raw)
@@ -367,6 +379,8 @@ class RobotInterface:
         rrpm = _f("Rrpm")
         fl   = _f("fl")
         rl   = _f("rl")
+        lma  = _f("LmA")
+        rma  = _f("RmA")
 
         if err is not None:
             abs_e = abs(err)
@@ -391,6 +405,14 @@ class RobotInterface:
         if rl is not None:
             self.rear_limit = rl
             self.lbl_rl.config(text=f"-{rl:.1f}°")
+        if lma is not None:
+            aa = abs(lma)
+            c  = C_RED if aa > 8.0 else (C_YELLOW if aa > 4.0 else C_GREEN)
+            self.lbl_curr_l.config(text=f"IZQ: {lma:+.2f} A", fg=c)
+        if rma is not None:
+            aa = abs(rma)
+            c  = C_RED if aa > 8.0 else (C_YELLOW if aa > 4.0 else C_GREEN)
+            self.lbl_curr_r.config(text=f"DER: {rma:+.2f} A", fg=c)
 
     # ── Enviar comando ───────────────────────────────────────────────────────────
     def _send(self, cmd: str):

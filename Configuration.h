@@ -105,6 +105,28 @@
 #endif
 
 /**
+ * SENSORES DE CORRIENTE ACS712
+ * Monitoreo en tiempo real de la corriente consumida por cada motor.
+ * Motor DERECHO  → ACS712 → A3
+ * Motor IZQUIERDO → ACS712 → A4
+ *
+ * MODELOS (seleccionar sensibilidad):
+ *   5A  → ACS712_SENSITIVITY_VA 0.185f
+ *   20A → ACS712_SENSITIVITY_VA 0.100f  ← más común para motores DC
+ *   30A → ACS712_SENSITIVITY_VA 0.066f
+ */
+#define ENABLE_CURRENT_SENSORS
+
+#ifdef ENABLE_CURRENT_SENSORS
+  // Sensibilidad del modelo ACS712 en V/A
+  // Cambia este valor según el modelo que tengas soldado:
+  //   5A  → 0.185f  |  20A → 0.100f  |  30A → 0.066f
+  #define ACS712_SENSITIVITY_VA   0.100f    // ACS712-20A por defecto
+  // Factor de suavizado EMA (0.0-1.0). Más alto = más rápido pero más ruido
+  #define ACS712_FILTER_ALPHA     0.15f
+#endif
+
+/**
  * ROS2 BRIDGE - COMUNICACIÓN CON RASPBERRY PI 5
  * Bridge de comunicación serial compatible con ROS2
  * CARACTERÍSTICAS:

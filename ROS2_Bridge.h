@@ -152,6 +152,9 @@ void ros2_processCmdVel(String cmd) {
         #endif
         {
           Serial.print("T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F");
+          #ifdef ENABLE_CURRENT_SENSORS
+          Serial.print(F(" LmA=0.00 RmA=0.00"));
+          #endif
           Serial.println();
         }
         return;
@@ -268,7 +271,12 @@ void ros2_processCmdVel(String cmd) {
         Serial.print(" Lrpm="); Serial.print((int)currentSpeedLeftHall);
         Serial.print(" Rrpm="); Serial.print((int)currentSpeedRightHall);
         Serial.print(" Ld=");   Serial.print(dir_left  ? "F" : "B");
-        Serial.print(" Rd=");   Serial.println(dir_right ? "F" : "B");
+        Serial.print(" Rd=");   Serial.print(dir_right ? "F" : "B");
+        #ifdef ENABLE_CURRENT_SENSORS
+        Serial.print(F(" LmA=")); Serial.print(current_left_A,  2);
+        Serial.print(F(" RmA=")); Serial.print(current_right_A, 2);
+        #endif
+        Serial.println();
       }
     #endif
   }
