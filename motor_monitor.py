@@ -166,13 +166,27 @@ class MotorMonitor:
         self.stadia_dev = _stadia_open()
         self.stadia_ok  = self.stadia_dev is not None
 
+        # Estado del teclado (fallback si no hay Stadia)
+        self._kb_lin = 0.0
+        self._kb_ang = 0.0
+
         # Construir GUI
         self._build_gui()
 
-        # Hilos de fondo
-        threading.Thread(target=self._rx_loop, daemon=True).start()
+        # Diagnóstico de inicio
         if self.stadia_ok:
-            threading.Thread(target=self._stadia_loop, daemon=True).start()
+            print("[OK] Stadia conectado — usa L-Stick para mover")
+        else:
+            print("[!] Stadia NO detectado — usa flechas/WASD del teclado")
+            print("    ↑/W=adelante  ↓/S=atras  ←/A=giro izq  →/D=giro der  Space=stop")
+        if self.ser and self.ser.is_open:
+            print(f"[OK] Serial {port} abierto a {BAUD} baud")
+        else:
+            print(f"[ERR] No se pudo abrir {port}")
+
+        # Hilos de fondo — el hilo de control siempre arranca
+        threading.Thread(target=self._rx_loop,     daemon=True).start()
+        threading.Thread(target=self._stadia_loop, daemon=True).start()
 
     # ── GUI ───────────────────────────────────────────────────────────────────
     def _build_gui(self):
@@ -272,6 +286,11 @@ class MotorMonitor:
         # ── Panel derecho ──────────────────────────────────────────────────
         self._build_panel(body)
 
+        # ── Teclado como fallback ──────────────────────────────────────────
+        self.root.bind("<KeyPress>",   self._on_key_press)
+        self.root.bind("<KeyRelease>", self._on_key_release)
+        self.root.focus_set()
+
     def _build_panel(self, parent):
         pf = tk.Frame(parent, bg=PANEL_BG, width=230)
         pf.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
@@ -365,6 +384,22 @@ class MotorMonitor:
                   font=("Consolas", 9, "bold"),
                   relief="flat", bd=0, pady=7, cursor="hand2"
                   ).pack(fill="x", padx=8, pady=(0, 10))
+
+    # ── Teclado ───────────────────────────────────────────────────────────────
+    def _on_key_press(self, event):
+        k = event.keysym
+        if   k in ("Up",    "w", "W"): self._kb_lin =  MAX_LINEAR
+        elif k in ("Down",  "s", "S"): self._kb_lin = -MAX_LINEAR
+        elif k in ("Left",  "a", "A"): self._kb_ang =  MAX_ANGULAR
+        elif k in ("Right", "d", "D"): self._kb_ang = -MAX_ANGULAR
+        elif k == "space":
+            self._kb_lin = 0.0
+            self._kb_ang = 0.0
+
+    def _on_key_release(self, event):
+        k = event.keysym
+        if   k in ("Up",   "Down",  "w", "W", "s", "S"): self._kb_lin = 0.0
+        elif k in ("Left", "Right", "a", "A", "d", "D"): self._kb_ang = 0.0
 
     # ── Animación ─────────────────────────────────────────────────────────────
     def _animate(self, _frame):
@@ -486,7 +521,7 @@ class MotorMonitor:
                 bg="#1a3a1a", fg=C_GREEN,
                 activebackground="#1a4a1a", activeforeground=C_GREEN))
 
-    # ── Stadia loop ───────────────────────────────────────────────────────────
+    # ── Stadia + teclado loop ─────────────────────────────────────────────────
     def _stadia_loop(self):
         interval   = 1.0 / SEND_RATE_HZ
         last_send  = 0.0
@@ -499,7 +534,7 @@ class MotorMonitor:
             pressed = btn2 & ~prev_btn2
             prev_btn2 = btn2
 
-            # Parada de emergencia
+            # Parada de emergencia (Stadia BTN_A o Espacio)
             if btn2 & BTN_A:
                 self._tx(b"v 0.0 0.0\n")
                 time.sleep(0.1)
@@ -515,10 +550,16 @@ class MotorMonitor:
 
             # Velocidad al ritmo configurado
             if now - last_send >= interval:
-                lx = _axis(s["lsx"])
-                ly = _axis(s["lsy"])
-                lin  = _dz(-ly) * MAX_LINEAR
-                ang  = _dz(-lx) * MAX_ANGULAR
+                if self.stadia_ok and s["connected"]:
+                    # Stadia conectado y enviando datos → prioridad Stadia
+                    lx  = _axis(s["lsx"])
+                    ly  = _axis(s["lsy"])
+                    lin = _dz(-ly) * MAX_LINEAR
+                    ang = _dz(-lx) * MAX_ANGULAR
+                else:
+                    # Sin Stadia → usar teclado
+                    lin = self._kb_lin
+                    ang = self._kb_ang
                 self._tx(f"v {lin:.3f} {ang:.3f}\n".encode())
                 last_send = now
 

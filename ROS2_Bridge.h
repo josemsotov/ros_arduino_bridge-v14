@@ -123,10 +123,16 @@ void ros2_processCmdVel(String cmd) {
     ros2_connected = true;
 
     // Actualizar velocidad base para el balance anti-caída
-    // El balance lee bal_base_linear (intención del usuario) y añade su corrección
+    // Solo cuando el comando viene del USUARIO (bal_suppress_telemetry=false).
+    // Cuando el balance llama esta función internamente (bal_suppress_telemetry=true)
+    // NO se sobreescribe bal_base_linear para evitar acumulación de correcciones:
+    //   sin este guard: bal_base = (base+cor) → siguiente ciclo usa (base+cor)+cor = base+2*cor
+    //   con este guard: bal_base siempre refleja la intención del usuario, no el output del balance
     #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
-    bal_base_linear  = linear;
-    bal_base_angular = angular;
+    if (!bal_suppress_telemetry) {
+      bal_base_linear  = linear;
+      bal_base_angular = angular;
+    }
     #endif
     
     // Telemetría compacta: se emite al final del procesamiento (ver línea T)
