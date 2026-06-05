@@ -63,22 +63,22 @@ def reader():
             l = raw.decode("utf-8", errors="replace").strip()
             if l.startswith("T "):
                 # Extraer campos — LmA/RmA opcionales (dependen de ENABLE_CURRENT_SENSORS)
-                    Lpwm = re.search(r"Lpwm=(\S+)", l)
-                    Rpwm = re.search(r"Rpwm=(\S+)", l)
-                    Lrpm = re.search(r"Lrpm=(\S+)", l)
-                    Rrpm = re.search(r"Rrpm=(\S+)", l)
-                    LmA  = re.search(r"LmA=(\S+)",  l)
-                    RmA  = re.search(r"RmA=(\S+)",  l)
-                    if Lpwm and Lrpm:
-                        mA_str = ""
-                        if LmA and RmA:
-                            mA_str = f" | LmA={float(LmA.group(1)):>6.2f} RmA={float(RmA.group(1)):>6.2f}"
-                        print(
-                            f"\r  Lpwm={Lpwm.group(1):>3} Rpwm={Rpwm.group(1) if Rpwm else '?':>3} | "
-                            f"Lrpm={Lrpm.group(1):>5} Rrpm={Rrpm.group(1) if Rrpm else '?':>5}"
-                            f"{mA_str}     ",
-                            end="", flush=True
-                        )
+                Lpwm = re.search(r"Lpwm=(\S+)", l)
+                Rpwm = re.search(r"Rpwm=(\S+)", l)
+                Lrpm = re.search(r"Lrpm=(\S+)", l)
+                Rrpm = re.search(r"Rrpm=(\S+)", l)
+                LmA  = re.search(r"LmA=(\S+)",  l)
+                RmA  = re.search(r"RmA=(\S+)",  l)
+                if Lpwm and Lrpm:
+                    mA_str = ""
+                    if LmA and RmA:
+                        mA_str = f" | LmA={float(LmA.group(1)):>6.2f} RmA={float(RmA.group(1)):>6.2f}"
+                    print(
+                        f"\r  Lpwm={Lpwm.group(1):>3} Rpwm={Rpwm.group(1) if Rpwm else '?':>3} | "
+                        f"Lrpm={Lrpm.group(1):>5} Rrpm={Rrpm.group(1) if Rrpm else '?':>5}"
+                        f"{mA_str}     ",
+                        end="", flush=True
+                    )
         except Exception:
             pass
 
@@ -105,14 +105,21 @@ try:
                 ang = 0.0
             print(f"\n  >> v={lin:+.1f} m/s   w={ang:+.1f} rad/s", flush=True)
 
-        ser.write(f"v {lin:.2f} {ang:.2f}\n".encode())
+        try:
+            ser.write(f"v {lin:.2f} {ang:.2f}\n".encode())
+        except serial.SerialException as e:
+            print(f"\n[ERR] Puerto perdido: {e}")
+            break
         time.sleep(0.1)
 
 except KeyboardInterrupt:
     pass
 finally:
     running = False
-    ser.write(b"v 0.0 0.0\n")
-    time.sleep(0.1)
+    try:
+        ser.write(b"v 0.0 0.0\n")
+        time.sleep(0.1)
+    except Exception:
+        pass
     ser.close()
     print("\n[OK]  Motores parados. Saliendo.")
