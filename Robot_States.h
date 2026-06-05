@@ -134,9 +134,9 @@ void reportMotorPulses() {
 void setStateInhabilitado() {
   DEBUG_PRINTLN("=== CAMBIANDO A ESTADO: INHABILITADO ===");
   
-  // Detener PWM
-  analogWrite(PWM_LEFT_MOTOR, 0);
-  analogWrite(PWM_RIGHT_MOTOR, 0);
+  // Detener PWM sin llamar analogWrite(0) — ver comentario en setStateHabilitado
+  motor_pwm_write(PWM_LEFT_MOTOR,  0);
+  motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   
   // STOP pins en LOW (DISABLE)
   pinMode(STOP_LEFT_MOTOR, OUTPUT);
@@ -173,9 +173,9 @@ void setStateInhabilitado() {
 void setStateBloqueado() {
   DEBUG_PRINTLN("=== CAMBIANDO A ESTADO: BLOQUEADO ===");
   
-  // Detener PWM
-  analogWrite(PWM_LEFT_MOTOR, 0);
-  analogWrite(PWM_RIGHT_MOTOR, 0);
+  // Detener PWM sin llamar analogWrite(0) — ver comentario en setStateHabilitado
+  motor_pwm_write(PWM_LEFT_MOTOR,  0);
+  motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   
   // STOP pins en LOW (DISABLE)
   pinMode(STOP_LEFT_MOTOR, OUTPUT);
@@ -214,9 +214,11 @@ void setStateBloqueado() {
 void setStateHabilitado() {
   DEBUG_PRINTLN("=== CAMBIANDO A ESTADO: HABILITADO (LAZO ABIERTO) ===");
   
-  // Detener PWM primero por seguridad
-  analogWrite(PWM_LEFT_MOTOR, 0);
-  analogWrite(PWM_RIGHT_MOTOR, 0);
+  // Detener PWM: escribir OCR directamente para NO llamar analogWrite(0)
+  // analogWrite(pin,0) llama turnOffPWM() que limpia los bits COM de TCCR5A,
+  // desconectando físicamente los pines 44/46 del timer → 0V aunque OCR=80.
+  motor_pwm_write(PWM_LEFT_MOTOR,  0);
+  motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   
   // Ciclo BRAKE: activo → liberar.
   // CRÍTICO: el motor derecho tiene cogging severo y no puede arrancar desde

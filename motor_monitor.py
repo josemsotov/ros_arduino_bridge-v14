@@ -156,7 +156,9 @@ class MotorMonitor:
         self.ser = None
         try:
             self.ser = serial.Serial(port, BAUD, timeout=1)
-            time.sleep(2)
+            # El boot del Arduino tarda ~4s (2 calibraciones MPU9250 de 200 muestras cada una)
+            print("[..] Esperando boot Arduino (5s)...")
+            time.sleep(5)
             while self.ser.in_waiting:
                 self.ser.readline()          # descartar boot msgs
         except serial.SerialException as e:
@@ -290,6 +292,11 @@ class MotorMonitor:
         self.root.bind("<KeyPress>",   self._on_key_press)
         self.root.bind("<KeyRelease>", self._on_key_release)
         self.root.focus_set()
+        # El canvas de matplotlib puede robar el foco; redirigir teclas desde él también
+        self.canvas.get_tk_widget().bind("<KeyPress>",   self._on_key_press)
+        self.canvas.get_tk_widget().bind("<KeyRelease>", self._on_key_release)
+        # Click en cualquier parte reclamra el foco del root para teclas
+        self.root.bind("<Button-1>", lambda e: self.root.focus_set())
 
     def _build_panel(self, parent):
         pf = tk.Frame(parent, bg=PANEL_BG, width=230)

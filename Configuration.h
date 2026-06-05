@@ -115,7 +115,7 @@
  *   20A → ACS712_SENSITIVITY_VA 0.100f  ← más común para motores DC
  *   30A → ACS712_SENSITIVITY_VA 0.066f
  */
-#define ENABLE_CURRENT_SENSORS
+// #define ENABLE_CURRENT_SENSORS   // ACS712 desconectado del circuito de potencia
 
 #ifdef ENABLE_CURRENT_SENSORS
   // Sensibilidad del modelo ACS712 en V/A
