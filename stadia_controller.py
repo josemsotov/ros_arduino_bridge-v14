@@ -247,11 +247,19 @@ def main():
         list_ports()
         sys.exit(1)
 
-    time.sleep(2)
+    time.sleep(6)   # dos calibraciones MPU9250 toman ~4s
     while ser.in_waiting:
         line = ser.readline().decode("utf-8", errors="replace").strip()
         if line:
             print(f"  [BOOT] {line}")
+
+    # Desactivar balance y habilitar motores al arrancar
+    ser.write(b"hb off\n");   time.sleep(0.2)
+    ser.write(b"HABILITAR\n"); time.sleep(0.3)
+    while ser.in_waiting:
+        line = ser.readline().decode("utf-8", errors="replace").strip()
+        if line:
+            print(f"  [INIT] {line}")
 
     # --- Abrir Stadia HID ---
     dev = stadia_open()
@@ -270,7 +278,7 @@ def main():
     print(f"  Left Stick arriba/abajo  -> Lineal   (max +-{MAX_LINEAR} m/s)")
     print(f"  Left Stick izq/der       -> Angular  (max +-{MAX_ANGULAR} rad/s)")
     print(f"  Boton A  (B2=0x{BTN_A:02X}) -> PARADA DE EMERGENCIA")
-    print(f"  Boton Y  (B2=0x{BTN_Y:02X}) -> TOGGLE AUTO-BALANCEO (on/off)")
+    print(f"  Boton Y  (B2=0x{BTN_Y:02X}) -> TOGGLE AUTO-BALANCEO (arranca OFF)")
     print(f"  Boton Menu (B2=0x{BTN_MENU:02X}) -> Estado del sistema (s)")
     print(f"  Ctrl+C                   -> Salir (para motores)")
     print("========================================\n")

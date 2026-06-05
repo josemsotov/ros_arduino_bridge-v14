@@ -191,6 +191,10 @@ void hoverboard_printStatus() {
 void hoverboard_update() {
   if (!balance_active) return;
   if (!mpu_isReady())  return;
+  // Solo actuar si el robot ya está habilitado por el usuario.
+  // ros2_processCmdVel() auto-habilita los motores; sin este guard
+  // el balance encendería los motores al boot solo con >1.5° de tilt.
+  if (currentRobotState != STATE_HABILITADO) return;
 
   unsigned long now = millis();
   if (now - bal_last_update < BAL_UPDATE_MS) return;

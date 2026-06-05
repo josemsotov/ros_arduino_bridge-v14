@@ -49,8 +49,8 @@ struct MotorState {
   bool enabled;         // Motor habilitado
 };
 
-MotorState leftMotor = {0, true, true, true, false};
-MotorState rightMotor = {0, true, true, true, false};
+MotorState leftMotor  = {0, true,  true, true, false};
+MotorState rightMotor = {0, false, true, true, false};  // direction=false: DIR electrico invertido
 
 /**
  * LÍMITES DE SEGURIDAD

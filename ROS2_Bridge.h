@@ -178,16 +178,19 @@ void ros2_processCmdVel(String cmd) {
       // ── CAMBIO DE DIRECCIÓN: stop previo al driver ────────────────────────
       // ZS-X11H (BTS7960) ignora cambio de DIR si el PWM está activo.
       // Al detectar inversión: PWM=0 por 5ms + limpiar Hall stale + limpiar integral.
+      // CRÍTICO: usar motor_pwm_write(0), NO analogWrite(0).
+      // analogWrite(pin,0) llama turnOffPWM() → limpia COM5A1/COM5C1 en TCCR5A
+      // → pines 44/46 quedan como GPIO LOW y no emiten PWM aunque OCR sea >0.
       static bool prev_cmd_dir_left  = true;
       static bool prev_cmd_dir_right = true;
       if (cmd_dir_left != prev_cmd_dir_left) {
-        analogWrite(PWM_LEFT_MOTOR, 0);
+        motor_pwm_write(PWM_LEFT_MOTOR, 0);
         currentSpeedLeftHall = 0.0f;
         integral_left = 0.0f;
         delay(5);
       }
       if (cmd_dir_right != prev_cmd_dir_right) {
-        analogWrite(PWM_RIGHT_MOTOR, 0);
+        motor_pwm_write(PWM_RIGHT_MOTOR, 0);
         currentSpeedRightHall = 0.0f;
         integral_right = 0.0f;
         delay(5);
@@ -220,31 +223,42 @@ void ros2_processCmdVel(String cmd) {
       const float INTEGRAL_MAX = (float)MAX_PWM_VALUE / (Ki_v > 0.0f ? (Ki_v * 100.0f) : 1.0f);
       integral_left  += e_left  * dt_pid;
       integral_right += e_right * dt_pid;
+
+      // ── PWM = Feedforward + correccion PID ───────────────────────────────
+      // FF compensa la asimetria fisica entre motores (izq ~35-57% mas rapido).
+      // Kp/Ki solo corrigen el residuo. v_left_raw lleva el signo de la direccion.
+      float out_left  = v_left_raw  * FF_LEFT_GAIN  + (e_left  * Kp_v + integral_left  * Ki_v) * 100.0f;
+      float out_right = v_right_raw * FF_RIGHT_GAIN + (e_right * Kp_v + integral_right * Ki_v) * 100.0f;
+
+      // ── Back-calculation anti-windup ─────────────────────────────────────
+      // PROBLEMA con INTEGRAL_MAX clasico:
+      //   INTEGRAL_MAX = 80/20 = 4.0  →  integral aporta Ki*4*100 = 80 PWM solo.
+      //   Mas FF (8.4) + Kp*e*100 (30) = 118 → siempre clampeado a MAX=80.
+      //   Resultado: motores a tope INDEPENDIENTEMENTE del feedback Hall.
+      // SOLUCION back-calculation:
+      //   Cuando la salida total supera el limite, se resta del integrador
+      //   exactamente el exceso dividido por Ki*100. El integrador queda en
+      //   el valor que produce exactamente la salida = MAX_PWM_VALUE.
+      //   Esto evita windup sin suprimir la respuesta transitoria del Kp.
+      if (Ki_v > 0.0f) {
+        const float inv_Ki100 = 1.0f / (Ki_v * 100.0f);
+        if (out_left  >  (float)MAX_PWM_VALUE) { integral_left  -= (out_left  - (float)MAX_PWM_VALUE) * inv_Ki100;  out_left  =  (float)MAX_PWM_VALUE; }
+        if (out_left  < -(float)MAX_PWM_VALUE) { integral_left  -= (out_left  + (float)MAX_PWM_VALUE) * inv_Ki100;  out_left  = -(float)MAX_PWM_VALUE; }
+        if (out_right >  (float)MAX_PWM_VALUE) { integral_right -= (out_right - (float)MAX_PWM_VALUE) * inv_Ki100;  out_right =  (float)MAX_PWM_VALUE; }
+        if (out_right < -(float)MAX_PWM_VALUE) { integral_right -= (out_right + (float)MAX_PWM_VALUE) * inv_Ki100;  out_right = -(float)MAX_PWM_VALUE; }
+      }
+
       // Anti-windup unidireccional: el integral solo acumula en la direccion del setpoint.
       // Evita que un overshoot arrastre el integral negativo y deje el motor en PWM=0.
-      if (cmd_dir_left) {
-        if (integral_left  < 0.0f) integral_left  = 0.0f;
-        if (integral_left  > INTEGRAL_MAX) integral_left  = INTEGRAL_MAX;
-      } else {
-        if (integral_left  > 0.0f) integral_left  = 0.0f;
-        if (integral_left  < -INTEGRAL_MAX) integral_left  = -INTEGRAL_MAX;
-      }
-      if (cmd_dir_right) {
-        if (integral_right < 0.0f) integral_right = 0.0f;
-        if (integral_right > INTEGRAL_MAX) integral_right = INTEGRAL_MAX;
-      } else {
-        if (integral_right > 0.0f) integral_right = 0.0f;
-        if (integral_right < -INTEGRAL_MAX) integral_right = -INTEGRAL_MAX;
-      }
+      if (cmd_dir_left)  { if (integral_left  < 0.0f) integral_left  = 0.0f; }
+      else               { if (integral_left  > 0.0f) integral_left  = 0.0f; }
+      if (cmd_dir_right) { if (integral_right < 0.0f) integral_right = 0.0f; }
+      else               { if (integral_right > 0.0f) integral_right = 0.0f; }
 
-      // ── PWM = Feedforward + corrección PID ───────────────────────────────
-      // FF compensa la asimetría física entre motores (izq ~35-57% más rápido).
-      // Kp/Ki sólo corrigen el residuo. v_left_raw lleva el signo de la dirección.
-      int pwm_left  = constrain((int)(v_left_raw  * FF_LEFT_GAIN  + (e_left  * Kp_v + integral_left  * Ki_v) * 100.0f), -MAX_PWM_VALUE, MAX_PWM_VALUE);
-      int pwm_right = constrain((int)(v_right_raw * FF_RIGHT_GAIN + (e_right * Kp_v + integral_right * Ki_v) * 100.0f), -MAX_PWM_VALUE, MAX_PWM_VALUE);
+      int pwm_left  = (int)out_left;
+      int pwm_right = (int)out_right;
 
-      // CLAMP ANTI-INVERSIÓN: evitar que la corrección PID invierta la dirección.
-      // Con FF dominante esto raramente se activa, pero es una red de seguridad.
+      // CLAMP ANTI-INVERSION: evitar que la correccion PID invierta la direccion.
       if ( cmd_dir_left  && pwm_left  < 0) pwm_left  = 0;
       if (!cmd_dir_left  && pwm_left  > 0) pwm_left  = 0;
       if ( cmd_dir_right && pwm_right < 0) pwm_right = 0;
@@ -258,8 +272,9 @@ void ros2_processCmdVel(String cmd) {
 
       // Stop-before-reverse: ZS-X11H/BTS7960 ignora cambio de DIR si PWM está activo.
       // Aplicar PWM=0 por 2ms antes de cambiar dirección para que el driver lo registre.
-      if (abs_left  > 0 && dir_left   != leftMotor.direction)  { analogWrite(PWM_LEFT_MOTOR,  0); delayMicroseconds(2000); }
-      if (abs_right > 0 && !dir_right != rightMotor.direction) { analogWrite(PWM_RIGHT_MOTOR, 0); delayMicroseconds(2000); }
+      // CRÍTICO: usar motor_pwm_write(0), NO analogWrite(0) — ver comentario sección anterior.
+      if (abs_left  > 0 && dir_left   != leftMotor.direction)  { motor_pwm_write(PWM_LEFT_MOTOR,  0); delayMicroseconds(2000); }
+      if (abs_right > 0 && !dir_right != rightMotor.direction) { motor_pwm_write(PWM_RIGHT_MOTOR, 0); delayMicroseconds(2000); }
 
       setLeftMotor(abs_left, dir_left);
       setRightMotor(abs_right, !dir_right);  // Motor derecho: DIR electrica invertida
@@ -442,22 +457,22 @@ void ros2_processCommand(String cmd) {
       // z — diagnóstico de todos los pines relevantes (estado lógico actual)
       Serial.println("z PIN_STATUS_START");
       // --- Motor Izquierdo ---
-      Serial.print("z L PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26");
+      Serial.print("z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48");
       Serial.print(" | DIR=");    Serial.print(digitalRead(DIR_LEFT_MOTOR));
       Serial.print(" BRAKE=");   Serial.print(digitalRead(BRAKE_LEFT_MOTOR));
-      Serial.print(" BRAKE_mode="); Serial.print((DDRH >> 5) & 1 ? "OUTPUT" : "INPUT");  // pin28→PH5
+      Serial.print(" BRAKE_mode="); Serial.print((DDRB >> 3) & 1 ? "OUTPUT" : "INPUT");  // pin50→PB3
       Serial.print(" STOP=");    Serial.print(digitalRead(STOP_LEFT_MOTOR));
-      Serial.print(" STOP_mode=");  Serial.print((DDRA >> 4) & 1 ? "OUTPUT" : "INPUT"); // pin26→PA4
+      Serial.print(" STOP_mode=");  Serial.print((DDRL >> 1) & 1 ? "OUTPUT" : "INPUT"); // pin48→PL1
       Serial.print(" enabled="); Serial.print(leftMotor.enabled);
       Serial.print(" braked=");  Serial.print(leftMotor.braked);
       Serial.print(" pwm=");     Serial.println(leftMotor.pwm);
       // --- Motor Derecho ---
-      Serial.print("z R PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48");
+      Serial.print("z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26");
       Serial.print(" | DIR=");    Serial.print(digitalRead(DIR_RIGHT_MOTOR));
       Serial.print(" BRAKE=");   Serial.print(digitalRead(BRAKE_RIGHT_MOTOR));
-      Serial.print(" BRAKE_mode="); Serial.print((DDRH >> 3) & 1 ? "OUTPUT" : "INPUT"); // pin50→PH3? check
+      Serial.print(" BRAKE_mode="); Serial.print((DDRH >> 5) & 1 ? "OUTPUT" : "INPUT"); // pin28→PH5? check
       Serial.print(" STOP=");    Serial.print(digitalRead(STOP_RIGHT_MOTOR));
-      Serial.print(" STOP_mode=");  Serial.print((DDRL >> 1) & 1 ? "OUTPUT" : "INPUT"); // pin48→PL1
+      Serial.print(" STOP_mode=");  Serial.print((DDRA >> 4) & 1 ? "OUTPUT" : "INPUT"); // pin26→PA4
       Serial.print(" enabled="); Serial.print(rightMotor.enabled);
       Serial.print(" braked=");  Serial.print(rightMotor.braked);
       Serial.print(" pwm=");     Serial.println(rightMotor.pwm);
@@ -677,7 +692,11 @@ void ros2_update() {
     ros2_connected = false;
     
     setLeftMotor(0, true);
-    setRightMotor(0, true);
+    setRightMotor(0, false);  // false = DIR electricamente invertido en motor derecho
+    // IMPORTANTE: setRightMotor(0, false) guarda rightMotor.direction=false.
+    // Si se usara (0, true), en el siguiente comando v>0 el stop-before-reverse
+    // dispararía motor_pwm_write(44,0) en cada ciclo hasta que la dirección
+    // se sincronice, causando una pausa visible en el arranque del motor derecho.
     pid_reset_velocity();
     pid_per_wheel_reset();
     
