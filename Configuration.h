@@ -155,7 +155,7 @@
  * - Anti-rebote en botón
  * NOTA: Requiere 3 pines analógicos/digitales
  */
-#define ENABLE_JOYSTICK               // Activar control por joystick
+//#define ENABLE_JOYSTICK               // Activar control por joystick — DESHABILITADO (control analógico físico desconectado)
 
 #ifdef ENABLE_JOYSTICK
   //#define ENABLE_JOYSTICK_DEBUG     // Debug información joystick (DESACTIVADO para ahorrar RAM)

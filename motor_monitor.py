@@ -161,7 +161,8 @@ class MotorMonitor:
             time.sleep(5)
             while self.ser.in_waiting:
                 self.ser.readline()          # descartar boot msgs
-        except serial.SerialException as e:
+        except serial.SerialEx
+        ception as e:
             print(f"[ERR] Serial: {e}")
 
         # Stadia HID

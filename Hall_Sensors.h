@@ -2,7 +2,7 @@
  * MOTOR-INTERFACE-V-13 HALL SENSORS
  * Smart Golf Trolley - Manejo de sensores Hall
  */
-
+ 
 #ifndef HALL_SENSORS_H
 #define HALL_SENSORS_H
 

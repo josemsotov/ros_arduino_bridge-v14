@@ -270,6 +270,31 @@ void ros2_processCmdVel(String cmd) {
       int  abs_left  = abs(pwm_left);
       int  abs_right = abs(pwm_right);
 
+      // ── Anti-stall + compensación de stiction ────────────────────────────────
+      // Con FF correcto el PID puede dar salida baja o negativa si el motor
+      // corre más rápido que el setpoint (overspeed por carga ligera).
+      // Garantizar PWM mínimo SIEMPRE que haya velocidad comandada:
+      //   • abs_right == 0 (PID clampeó a 0) pero v_right != 0 → motor para
+      //   • abs_right < 60 pero > 0 → motor por debajo de stiction
+      // En ambos casos elevamos al mínimo y reseteamos integral negativo.
+      bool r_moving = (fabsf(v_right_raw) > 0.01f);
+      bool l_moving = (fabsf(v_left_raw)  > 0.01f);
+
+      if (r_moving && abs_right < MIN_PWM_RIGHT_WORKING) {
+        if (abs_right > 0 && cmd_dir_left == cmd_dir_right) {
+          float boost = (float)MIN_PWM_RIGHT_WORKING / (float)abs_right;
+          if (boost < 2.5f && abs_left > 0) {
+            abs_left = constrain((int)((float)abs_left * boost), 0, MAX_PWM_VALUE);
+          }
+        }
+        abs_right = MIN_PWM_RIGHT_WORKING;
+        if (integral_right < 0.0f) integral_right = 0.0f;  // reset windup negativo
+      }
+      if (l_moving && abs_left < MIN_PWM_VALUE) {
+        abs_left = MIN_PWM_VALUE;
+        if (integral_left < 0.0f) integral_left = 0.0f;
+      }
+
       // Stop-before-reverse: ZS-X11H/BTS7960 ignora cambio de DIR si PWM está activo.
       // Aplicar PWM=0 por 2ms antes de cambiar dirección para que el driver lo registre.
       // CRÍTICO: usar motor_pwm_write(0), NO analogWrite(0) — ver comentario sección anterior.

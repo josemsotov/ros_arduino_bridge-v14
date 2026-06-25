@@ -284,11 +284,11 @@ void processSerialCommand() {
   }
   else if (cmd.startsWith("L")) {
     int pwm = extractNumber(cmd, 0);
-    setLeftMotor(pwm, true);
+    setLeftMotor(pwm, true);    // true = HIGH = adelante motor izquierdo
   }
   else if (cmd.startsWith("R")) {
     int pwm = extractNumber(cmd, 0);
-    setRightMotor(pwm, true);
+    setRightMotor(pwm, false);  // false = LOW = adelante motor derecho (DIR eléctrico invertido)
   }
   
   // ===== COMANDOS DE CONTROL AVANZADO (NO DISPONIBLES) =====

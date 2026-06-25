@@ -46,7 +46,7 @@ RobotState currentRobotState = STATE_INHABILITADO;
  */
 #define DEFAULT_PWM_FORWARD      30    // PWM por defecto para ADELANTE
 #define DEFAULT_PWM_BACKWARD     30    // PWM por defecto para ATRAS
-#define DEFAULT_PWM_TURN         20    // PWM por defecto para cruces (MODIFICADO A 20)
+#define DEFAULT_PWM_TURN         35    // PWM por defecto para cruces (subido de 20 — stiction motor der)
 #define DEFAULT_HALL_PULSES_TURN 54    // Pulsos Hall por defecto para cruces
 
 /**
@@ -214,9 +214,11 @@ void setStateBloqueado() {
 void setStateHabilitado() {
   DEBUG_PRINTLN("=== CAMBIANDO A ESTADO: HABILITADO (LAZO ABIERTO) ===");
   
-  // Detener PWM: escribir OCR directamente para NO llamar analogWrite(0)
-  // analogWrite(pin,0) llama turnOffPWM() que limpia los bits COM de TCCR5A,
-  // desconectando físicamente los pines 44/46 del timer → 0V aunque OCR=80.
+  // Reinicializar Timer5 completo: fuerza OCR=0 y COM bits correctos.
+  // Necesario si algún analogWrite() previo limpió los bits COM (TCCR5A=0x29).
+  initTimer5PWM();   // TCCR5A=0xA9, TCCR5B correcto, OCR5A=OCR5C=0
+  
+  // Asegurar PWM=0 explícitamente después del init
   motor_pwm_write(PWM_LEFT_MOTOR,  0);
   motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   

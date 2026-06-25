@@ -1,6 +1,6 @@
 # MOTOR-INTERFACE-V-13
 
-Sistema de control de motores para Smart Golf Trolley con integración ROS2.
+Sistema de control de motores para Smart Golf Trolley con in  
 
 ## 📁 Estructura del Proyecto
 

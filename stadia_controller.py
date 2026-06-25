@@ -70,8 +70,8 @@ AXIS_RANGE  = 127.0
 # Máscaras en byte[3] — confirmadas por test hardware
 # Ejecuta --test y pulsa cada botón para verificar
 BTN_A    = 0x08   # Botón A (cara inferior)   -> PARADA EMERGENCIA
-BTN_B    = 0x04   # Botón B (cara derecha)
-BTN_X    = 0x10   # Botón X (cara izquierda)
+BTN_B    = 0x04   # Botón B (cara derecha)    -> RAW PWM TEST p 40
+BTN_X    = 0x10   # Botón X (cara izquierda)  -> DIAG PINES z
 BTN_Y    = 0x20   # Botón Y (cara superior)   -> TOGGLE AUTO-BALANCEO
 BTN_MENU = 0x40   # Botón Menu (tres líneas)  -> solicitar estado
 BTN_CAP  = 0x02   # Botón Capture (círculo)   -> encoders
@@ -131,9 +131,14 @@ COM_PORT     = None      # None = auto-detectar. Forzar: "COM5"
 BAUD_RATE    = 115200
 SEND_RATE_HZ = 10
 
-MAX_LINEAR   = 0.5       # m/s  maximo
-MAX_ANGULAR  = 1.5       # rad/s maximo
-DEADZONE     = 0.12
+MAX_LINEAR       = 0.5    # m/s  máximo lineal
+MAX_ANGULAR      = 0.8    # rad/s máximo angular (reducido de 1.5 → 0.8 para mayor precisión)
+DEADZONE_LINEAR  = 0.12   # zona muerta eje Y (adelante/atrás)
+DEADZONE_ANGULAR = 0.28   # zona muerta eje X (izq/der) — mayor para no perturbar línea recta
+# Curva exponencial angular: exponente 2 = cuadrático
+# Pequeños movimientos laterales se atenúan mucho, movimientos grandes se mantienen
+# ej: 10% deflect. → 1% giro | 50% deflect. → 25% giro | 100% → 100% giro
+ANGULAR_EXPO = 2.0
 
 # ===========================================================================
 # UTILIDADES
@@ -278,6 +283,8 @@ def main():
     print(f"  Left Stick arriba/abajo  -> Lineal   (max +-{MAX_LINEAR} m/s)")
     print(f"  Left Stick izq/der       -> Angular  (max +-{MAX_ANGULAR} rad/s)")
     print(f"  Boton A  (B2=0x{BTN_A:02X}) -> PARADA DE EMERGENCIA")
+    print(f"  Boton B  (B2=0x{BTN_B:02X}) -> TEST RAW PWM=40 ambos motores")
+    print(f"  Boton X  (B2=0x{BTN_X:02X}) -> DIAGNÓSTICO DE PINES (z)")
     print(f"  Boton Y  (B2=0x{BTN_Y:02X}) -> TOGGLE AUTO-BALANCEO (arranca OFF)")
     print(f"  Boton Menu (B2=0x{BTN_MENU:02X}) -> Estado del sistema (s)")
     print(f"  Ctrl+C                   -> Salir (para motores)")
@@ -314,13 +321,20 @@ def main():
                         ang  = float(d.get('ang',  0))
                         lrpm = int(float(d.get('Lrpm', 0)))
                         rrpm = int(float(d.get('Rrpm', 0)))
+                        lpwm = int(d.get('Lpwm', 0))
+                        rpwm = int(d.get('Rpwm', 0))
+                        ld   = d.get('Ld', '?')
+                        rd   = d.get('Rd', '?')
                         lma  = float(d.get('LmA', 0.0))
                         rma  = float(d.get('RmA', 0.0))
                         bal  = "[BAL]" if balance_active else "     "
+                        # Marcar motor derecho con WARNING si PWM>0 pero RPM=0
+                        r_warn = " ⚠️DER" if (rpwm > 15 and rrpm == 0) else "      "
                         print(
                             f"\r  {bal} v={lin:+.3f} w={ang:+.3f} | "
-                            f"Lrpm={lrpm:>5} Rrpm={rrpm:>5} | "
-                            f"I L={lma:+.2f}A R={rma:+.2f}A   ",
+                            f"Lpwm={lpwm:>3}({ld}) Rpwm={rpwm:>3}({rd}) | "
+                            f"Lrpm={lrpm:>4} Rrpm={rrpm:>4} | "
+                            f"I L={lma:+.2f}A R={rma:+.2f}A{r_warn}",
                             end='', flush=True
                         )
                     elif line.startswith("B "):
@@ -371,6 +385,16 @@ def main():
                     ser.write(b"hb on\n")
                     print("\n  [Y] Auto-balanceo ACTIVADO                      ", flush=True)
 
+            # Botón X → diagnóstico de pines (z)
+            if pressed & BTN_X:
+                ser.write(b"z\n")
+                print("\n  [X] === DIAGNÓSTICO DE PINES (z) ===            ", flush=True)
+
+            # Botón B → test PWM directo ambos motores p 40 (bypass PID)
+            if pressed & BTN_B:
+                ser.write(b"p 40\n")
+                print("\n  [B] RAW PWM=40 ambos motores (2s) — bypass PID  ", flush=True)
+
             # Botón Menu → estado
             if pressed & BTN_MENU:
                 ser.write(b"s\n")
@@ -381,8 +405,14 @@ def main():
             raw_ly =  axis_normalize(s['lsy'])   # up=negative raw → invertir
             raw_lx = -axis_normalize(s['lsx'])   # left=negative raw → CCW=positivo
 
-            linear  = apply_deadzone(-raw_ly, DEADZONE) * MAX_LINEAR
-            angular = apply_deadzone( raw_lx, DEADZONE) * MAX_ANGULAR
+            linear  = apply_deadzone(-raw_ly, DEADZONE_LINEAR)  * MAX_LINEAR
+
+            # Eje angular: zona muerta amplia + curva exponencial
+            # La curva cuadrática atenúa movimientos involuntarios y hace la línea
+            # recta mucho más fácil de mantener
+            ax_raw  = apply_deadzone(raw_lx, DEADZONE_ANGULAR)
+            ax_expo = (abs(ax_raw) ** ANGULAR_EXPO) * (1.0 if ax_raw >= 0 else -1.0)
+            angular = ax_expo * MAX_ANGULAR
 
             # Enviar a la frecuencia configurada (siempre, para mantener vivo el timeout Arduino)
             if now - last_send >= interval:

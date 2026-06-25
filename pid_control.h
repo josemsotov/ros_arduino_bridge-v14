@@ -15,13 +15,16 @@
 // Feedforward calibrado con tabla PWM vs pulsos (motores en libre, 2026-06-01)
 //   Izquierdo: PWM=10 → 0.307 m/s → ganancia real ≈ 32.6 PWM/(m/s) → usar 70% para no saturar
 //   Derecho:   PWM=10 → 0.196 m/s → ganancia real ≈ 51.0 PWM/(m/s) → usar 70% para no saturar
-float FF_LEFT_GAIN  = 28.0f;  // PWM por m/s motor izquierdo (subido 22→28 para margen anti-stale Hall)
-float FF_RIGHT_GAIN = 36.0f;  // PWM por m/s motor derecho   (ajustar si va muy lento/rápido)
+// Feedforward calibrado 2026-06-25 con test_hall_direcciones:
+//   A PWM=64 → motor corre 72 RPM = 0.754 m/s → FF = 64/0.754 = 85
+//   FF alto asegura que el motor siempre recibe suficiente PWM base
+//   y el PID solo corrige el residuo pequeño.
+float FF_LEFT_GAIN  = 85.0f;  // PWM por m/s motor izquierdo (calibrado 2026-06-25)
+float FF_RIGHT_GAIN = 85.0f;  // PWM por m/s motor derecho   (calibrado 2026-06-25)
 
-// Kp alto: cubre la diferencia FF(unloaded) vs carga real del robot.
-// FF calibrado en libre = 28 PWM/(m/s). Bajo peso se necesita ~30 PWM mínimo para arrancar.
-// Con Kp=1.0 y v=0.3 stalled: PWM = 0.3*28 + 0.3*1.0*100 = 8.4+30 = 38 → arranca inmediato.
-float Kp_v = 1.0f, Ki_v = 0.2f, Kd_v = 0.0f; // Velocidad lineal — ajustado para carga 2026-06-04
+// Kp bajo (0.3): FF ya da la base, Kp solo corrige residuos pequeños.
+// Ki muy bajo (0.02): evita windup en régimen permanente con overspeed.
+float Kp_v = 0.3f, Ki_v = 0.02f, Kd_v = 0.0f; // Velocidad lineal — retuneado 2026-06-25
 float Kp_w = 1.0, Ki_w = 0.0, Kd_w = 0.0; // Velocidad angular
 // Kp_pos ajustado para generar PWM=30 en pruebas: dist_error(1.0m) * Kp_pos(0.30) * 100 = 30 PWM
 float Kp_pos = 0.30, Ki_pos = 0.0, Kd_pos = 0.0; // AJUSTADO PARA PRUEBAS: PWM~30

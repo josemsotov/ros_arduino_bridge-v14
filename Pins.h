@@ -62,10 +62,13 @@
 
 /**
  * SENSORES HALL - RETROALIMENTACIÓN VELOCIDAD
+ * ⚠️ NOTA 2026-06-25: test_hall_direcciones.py confirmó que los cables
+ * Hall están físicamente cruzados en el robot. Pin 19 mide el motor IZQ
+ * y pin 18 mide el motor DER. Se intercambian aquí en software.
  */
 #ifdef ENABLE_HALL_SENSORS
-  #define HALL_LEFT_MOTOR   18    // INT5 — Hall motor izquierdo (pin46) — ✅ verificado 2026-06-02
-  #define HALL_RIGHT_MOTOR  19    // INT4 — Hall motor derecho  (pin44) — ✅ verificado 2026-06-02
+  #define HALL_LEFT_MOTOR   19    // INT4 — Hall motor izquierdo (cable físico cruzado, confirmado 2026-06-25)
+  #define HALL_RIGHT_MOTOR  18    // INT5 — Hall motor derecho   (cable físico cruzado, confirmado 2026-06-25)
 #endif
 
 /**
@@ -146,8 +149,8 @@
  * ARDUINO MEGA 2560 - MAPEO INTERRUPCIONES
  */
 #ifdef ENABLE_HALL_SENSORS
-  #define HALL_LEFT_INTERRUPT   5   // digitalPinToInterrupt(18)
-  #define HALL_RIGHT_INTERRUPT  4   // digitalPinToInterrupt(19)
+  #define HALL_LEFT_INTERRUPT   4   // digitalPinToInterrupt(19) — cruzado 2026-06-25
+  #define HALL_RIGHT_INTERRUPT  5   // digitalPinToInterrupt(18) — cruzado 2026-06-25
 #endif
 
 #ifdef ENABLE_OPTO_ENCODERS  
