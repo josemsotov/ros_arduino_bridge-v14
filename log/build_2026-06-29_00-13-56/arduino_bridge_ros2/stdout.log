@@ -1,0 +1,39 @@
+running egg_info
+creating ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info
+writing ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/PKG-INFO
+writing dependency_links to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/dependency_links.txt
+writing entry points to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/entry_points.txt
+writing requirements to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/requires.txt
+writing top-level names to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/top_level.txt
+writing manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'
+reading manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'
+writing manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build
+creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib
+creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2
+copying arduino_bridge_ros2/__init__.py -> /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2
+copying arduino_bridge_ros2/arduino_node.py -> /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2
+running install
+running install_lib
+creating /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2
+copying /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2/__init__.py -> /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2
+copying /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2/arduino_node.py -> /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2
+byte-compiling /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2/__init__.py to __init__.cpython-312.pyc
+byte-compiling /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2/arduino_node.py to arduino_node.cpython-312.pyc
+running install_data
+creating /home/josemsotov/robot_ws/install/share
+creating /home/josemsotov/robot_ws/install/share/ament_index
+creating /home/josemsotov/robot_ws/install/share/ament_index/resource_index
+creating /home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages
+copying resource/arduino_bridge_ros2 -> /home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages
+creating /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2
+copying package.xml -> /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2
+creating /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2/launch
+copying launch/arduino_bridge.launch.py -> /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2/launch
+running install_egg_info
+Copying ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info to /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2-1.0.0-py3.12.egg-info
+running install_scripts
+Installing arduino_node script to /home/josemsotov/robot_ws/install/lib/arduino_bridge_ros2
+writing list of installed files to '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/install.log'

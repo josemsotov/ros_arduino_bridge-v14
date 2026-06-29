@@ -1,0 +1,178 @@
+[0.000000] (-) TimerEvent: {}
+[0.000119] (-) JobUnselected: {'identifier': 'arduino_bridge_ros2'}
+[0.000240] (-) JobUnselected: {'identifier': 'ldlidar_stl_ros2'}
+[0.000263] (-) JobUnselected: {'identifier': 'my_package'}
+[0.000285] (kinect_ros2) JobQueued: {'identifier': 'kinect_ros2', 'dependencies': OrderedDict()}
+[0.000704] (kinect_ros2) JobStarted: {'identifier': 'kinect_ros2'}
+[0.015850] (kinect_ros2) JobProgress: {'identifier': 'kinect_ros2', 'progress': 'cmake'}
+[0.016744] (kinect_ros2) Command: {'cmd': ['/usr/bin/cmake', '/home/josemsotov/robot_ws/src/kinect_ros2', '-DCMAKE_INSTALL_PREFIX=/home/josemsotov/robot_ws/install'], 'cwd': '/home/josemsotov/robot_ws/build/kinect_ros2', 'env': OrderedDict({'LESSOPEN': '| /usr/bin/lesspipe %s', 'GZ_SIM_RESOURCE_PATH': '/opt/ros/jazzy/share', 'USER': 'josemsotov', 'SSH_CLIENT': '192.168.40.42 3769 22', 'GZ_CONFIG_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/share/gz:/opt/ros/jazzy/opt/sdformat_vendor/share/gz:/opt/ros/jazzy/opt/gz_gui_vendor/share/gz:/opt/ros/jazzy/opt/gz_transport_vendor/share/gz:/opt/ros/jazzy/opt/gz_rendering_vendor/share/gz:/opt/ros/jazzy/opt/gz_plugin_vendor/share/gz:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/share/gz:/opt/ros/jazzy/opt/gz_msgs_vendor/share/gz:/opt/ros/jazzy/opt/gz_common_vendor/share/gz', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/lib:/opt/ros/jazzy/opt/gz_sensors_vendor/lib:/opt/ros/jazzy/opt/gz_physics_vendor/lib:/opt/ros/jazzy/opt/sdformat_vendor/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/opt/gz_gui_vendor/lib:/opt/ros/jazzy/opt/gz_transport_vendor/lib:/opt/ros/jazzy/opt/gz_rendering_vendor/lib:/opt/ros/jazzy/opt/gz_plugin_vendor/lib:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/lib:/opt/ros/jazzy/opt/gz_msgs_vendor/lib:/opt/ros/jazzy/opt/gz_common_vendor/lib:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_tools_vendor/lib:/opt/ros/jazzy/opt/gz_ogre_next_vendor/lib:/opt/ros/jazzy/opt/gz_dartsim_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/home/josemsotov', 'OLDPWD': '/home/josemsotov/robot_ws/src', 'SSH_TTY': '/dev/pts/1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'DEBUGINFOD_URLS': 'https://debuginfod.ubuntu.com', 'COLCON_PREFIX_PATH': '/home/josemsotov/robot_ws/install', 'ROS_DISTRO': 'jazzy', 'LOGNAME': 'josemsotov', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '16', 'PATH': '/home/josemsotov/.local/bin:/opt/ros/jazzy/opt/gz_msgs_vendor/bin:/opt/ros/jazzy/opt/gz_tools_vendor/bin:/opt/ros/jazzy/opt/gz_ogre_next_vendor/bin:/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'ROS_DOMAIN_ID': '0', 'AMENT_PREFIX_PATH': '/home/josemsotov/robot_ws/install:/home/josemsotov/robot_ws/install/my_package:/home/josemsotov/robot_ws/install/ldlidar_stl_ros2:/opt/ros/jazzy', 'SHELL': '/bin/bash', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/josemsotov/robot_ws/build/kinect_ros2', 'SSH_CONNECTION': '192.168.40.42 3769 192.168.40.32 22', 'XDG_DATA_DIRS': '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/josemsotov/robot_ws/install/lib/python3.12/site-packages:/home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/josemsotov/robot_ws/install:/home/josemsotov/robot_ws/install/my_package:/home/josemsotov/robot_ws/install/ldlidar_stl_ros2:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/opt/ros/jazzy'}), 'shell': False}
+[0.099700] (-) TimerEvent: {}
+[0.199933] (-) TimerEvent: {}
+[0.300202] (-) TimerEvent: {}
+[0.354056] (kinect_ros2) StdoutLine: {'line': b'-- The C compiler identification is GNU 13.3.0\n'}
+[0.400309] (-) TimerEvent: {}
+[0.500521] (-) TimerEvent: {}
+[0.582098] (kinect_ros2) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 13.3.0\n'}
+[0.600616] (-) TimerEvent: {}
+[0.619083] (kinect_ros2) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.700736] (-) TimerEvent: {}
+[0.800969] (-) TimerEvent: {}
+[0.815222] (kinect_ros2) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.830854] (kinect_ros2) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[0.831759] (kinect_ros2) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.832580] (kinect_ros2) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.849388] (kinect_ros2) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[0.901093] (-) TimerEvent: {}
+[1.001351] (-) TimerEvent: {}
+[1.062567] (kinect_ros2) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[1.078355] (kinect_ros2) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[1.078727] (kinect_ros2) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[1.079403] (kinect_ros2) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[1.086790] (kinect_ros2) StdoutLine: {'line': b'-- Found ament_cmake: 2.5.4 (/opt/ros/jazzy/share/ament_cmake/cmake)\n'}
+[1.101414] (-) TimerEvent: {}
+[1.201606] (-) TimerEvent: {}
+[1.301860] (-) TimerEvent: {}
+[1.344827] (kinect_ros2) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter \n'}
+[1.401960] (-) TimerEvent: {}
+[1.502175] (-) TimerEvent: {}
+[1.575451] (kinect_ros2) StdoutLine: {'line': b'-- Found rclcpp: 28.1.13 (/opt/ros/jazzy/share/rclcpp/cmake)\n'}
+[1.602262] (-) TimerEvent: {}
+[1.676825] (kinect_ros2) StdoutLine: {'line': b'-- Found rosidl_generator_c: 4.6.6 (/opt/ros/jazzy/share/rosidl_generator_c/cmake)\n'}
+[1.702350] (-) TimerEvent: {}
+[1.710376] (kinect_ros2) StdoutLine: {'line': b'-- Found rosidl_generator_cpp: 4.6.6 (/opt/ros/jazzy/share/rosidl_generator_cpp/cmake)\n'}
+[1.750229] (kinect_ros2) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.792551] (kinect_ros2) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[1.802433] (-) TimerEvent: {}
+[1.902591] (-) TimerEvent: {}
+[1.958591] (kinect_ros2) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 7.3.2 (/opt/ros/jazzy/share/rmw_implementation_cmake/cmake)\n'}
+[1.967601] (kinect_ros2) StdoutLine: {'line': b'-- Found rmw_fastrtps_cpp: 8.4.3 (/opt/ros/jazzy/share/rmw_fastrtps_cpp/cmake)\n'}
+[2.002693] (-) TimerEvent: {}
+[2.102904] (-) TimerEvent: {}
+[2.152321] (kinect_ros2) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/aarch64-linux-gnu/libcrypto.so (found version "3.0.13")  \n'}
+[2.184532] (kinect_ros2) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/jazzy/include (Required is at least version "2.13") \n'}
+[2.202987] (-) TimerEvent: {}
+[2.221617] (kinect_ros2) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[2.303074] (-) TimerEvent: {}
+[2.370872] (kinect_ros2) StdoutLine: {'line': b'-- Found sensor_msgs: 5.3.6 (/opt/ros/jazzy/share/sensor_msgs/cmake)\n'}
+[2.403157] (-) TimerEvent: {}
+[2.481805] (kinect_ros2) StdoutLine: {'line': b'-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1") \n'}
+[2.483358] (kinect_ros2) StdoutLine: {'line': b"-- Checking for module 'libfreenect'\n"}
+[2.503277] (-) TimerEvent: {}
+[2.515270] (kinect_ros2) StdoutLine: {'line': b'--   Found libfreenect, version 0.5\n'}
+[2.603385] (-) TimerEvent: {}
+[2.703615] (-) TimerEvent: {}
+[2.745322] (kinect_ros2) StdoutLine: {'line': b'-- Configuring done (2.7s)\n'}
+[2.763804] (kinect_ros2) StdoutLine: {'line': b'-- Generating done (0.0s)\n'}
+[2.769784] (kinect_ros2) StdoutLine: {'line': b'-- Build files have been written to: /home/josemsotov/robot_ws/build/kinect_ros2\n'}
+[2.788820] (kinect_ros2) CommandEnded: {'returncode': 0}
+[2.789543] (kinect_ros2) JobProgress: {'identifier': 'kinect_ros2', 'progress': 'build'}
+[2.790468] (kinect_ros2) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/josemsotov/robot_ws/build/kinect_ros2', '--', '-j4', '-l4'], 'cwd': '/home/josemsotov/robot_ws/build/kinect_ros2', 'env': OrderedDict({'LESSOPEN': '| /usr/bin/lesspipe %s', 'GZ_SIM_RESOURCE_PATH': '/opt/ros/jazzy/share', 'USER': 'josemsotov', 'SSH_CLIENT': '192.168.40.42 3769 22', 'GZ_CONFIG_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/share/gz:/opt/ros/jazzy/opt/sdformat_vendor/share/gz:/opt/ros/jazzy/opt/gz_gui_vendor/share/gz:/opt/ros/jazzy/opt/gz_transport_vendor/share/gz:/opt/ros/jazzy/opt/gz_rendering_vendor/share/gz:/opt/ros/jazzy/opt/gz_plugin_vendor/share/gz:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/share/gz:/opt/ros/jazzy/opt/gz_msgs_vendor/share/gz:/opt/ros/jazzy/opt/gz_common_vendor/share/gz', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/lib:/opt/ros/jazzy/opt/gz_sensors_vendor/lib:/opt/ros/jazzy/opt/gz_physics_vendor/lib:/opt/ros/jazzy/opt/sdformat_vendor/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/opt/gz_gui_vendor/lib:/opt/ros/jazzy/opt/gz_transport_vendor/lib:/opt/ros/jazzy/opt/gz_rendering_vendor/lib:/opt/ros/jazzy/opt/gz_plugin_vendor/lib:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/lib:/opt/ros/jazzy/opt/gz_msgs_vendor/lib:/opt/ros/jazzy/opt/gz_common_vendor/lib:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_tools_vendor/lib:/opt/ros/jazzy/opt/gz_ogre_next_vendor/lib:/opt/ros/jazzy/opt/gz_dartsim_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/home/josemsotov', 'OLDPWD': '/home/josemsotov/robot_ws/src', 'SSH_TTY': '/dev/pts/1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'DEBUGINFOD_URLS': 'https://debuginfod.ubuntu.com', 'COLCON_PREFIX_PATH': '/home/josemsotov/robot_ws/install', 'ROS_DISTRO': 'jazzy', 'LOGNAME': 'josemsotov', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '16', 'PATH': '/home/josemsotov/.local/bin:/opt/ros/jazzy/opt/gz_msgs_vendor/bin:/opt/ros/jazzy/opt/gz_tools_vendor/bin:/opt/ros/jazzy/opt/gz_ogre_next_vendor/bin:/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'ROS_DOMAIN_ID': '0', 'AMENT_PREFIX_PATH': '/home/josemsotov/robot_ws/install:/home/josemsotov/robot_ws/install/my_package:/home/josemsotov/robot_ws/install/ldlidar_stl_ros2:/opt/ros/jazzy', 'SHELL': '/bin/bash', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/josemsotov/robot_ws/build/kinect_ros2', 'SSH_CONNECTION': '192.168.40.42 3769 192.168.40.32 22', 'XDG_DATA_DIRS': '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/josemsotov/robot_ws/install/lib/python3.12/site-packages:/home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/josemsotov/robot_ws/install:/home/josemsotov/robot_ws/install/my_package:/home/josemsotov/robot_ws/install/ldlidar_stl_ros2:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/opt/ros/jazzy'}), 'shell': False}
+[2.803723] (-) TimerEvent: {}
+[2.896301] (kinect_ros2) StdoutLine: {'line': b'[ 50%] Building CXX object CMakeFiles/kinect_node.dir/src/kinect_node.cpp.o\n'}
+[2.903856] (-) TimerEvent: {}
+[3.004085] (-) TimerEvent: {}
+[3.104273] (-) TimerEvent: {}
+[3.204486] (-) TimerEvent: {}
+[3.304708] (-) TimerEvent: {}
+[3.404934] (-) TimerEvent: {}
+[3.505135] (-) TimerEvent: {}
+[3.605306] (-) TimerEvent: {}
+[3.705487] (-) TimerEvent: {}
+[3.805661] (-) TimerEvent: {}
+[3.905814] (-) TimerEvent: {}
+[4.005980] (-) TimerEvent: {}
+[4.106193] (-) TimerEvent: {}
+[4.206376] (-) TimerEvent: {}
+[4.306547] (-) TimerEvent: {}
+[4.406714] (-) TimerEvent: {}
+[4.506879] (-) TimerEvent: {}
+[4.607081] (-) TimerEvent: {}
+[4.707275] (-) TimerEvent: {}
+[4.807450] (-) TimerEvent: {}
+[4.907611] (-) TimerEvent: {}
+[5.007808] (-) TimerEvent: {}
+[5.108019] (-) TimerEvent: {}
+[5.208228] (-) TimerEvent: {}
+[5.308416] (-) TimerEvent: {}
+[5.408602] (-) TimerEvent: {}
+[5.508770] (-) TimerEvent: {}
+[5.608933] (-) TimerEvent: {}
+[5.709350] (-) TimerEvent: {}
+[5.809804] (-) TimerEvent: {}
+[5.909989] (-) TimerEvent: {}
+[6.010189] (-) TimerEvent: {}
+[6.110385] (-) TimerEvent: {}
+[6.210607] (-) TimerEvent: {}
+[6.310831] (-) TimerEvent: {}
+[6.411072] (-) TimerEvent: {}
+[6.511302] (-) TimerEvent: {}
+[6.611538] (-) TimerEvent: {}
+[6.711794] (-) TimerEvent: {}
+[6.812070] (-) TimerEvent: {}
+[6.912277] (-) TimerEvent: {}
+[7.012492] (-) TimerEvent: {}
+[7.112711] (-) TimerEvent: {}
+[7.212932] (-) TimerEvent: {}
+[7.313151] (-) TimerEvent: {}
+[7.413373] (-) TimerEvent: {}
+[7.513595] (-) TimerEvent: {}
+[7.613836] (-) TimerEvent: {}
+[7.714075] (-) TimerEvent: {}
+[7.814296] (-) TimerEvent: {}
+[7.914536] (-) TimerEvent: {}
+[8.014758] (-) TimerEvent: {}
+[8.114992] (-) TimerEvent: {}
+[8.215269] (-) TimerEvent: {}
+[8.315512] (-) TimerEvent: {}
+[8.415733] (-) TimerEvent: {}
+[8.515943] (-) TimerEvent: {}
+[8.616148] (-) TimerEvent: {}
+[8.716375] (-) TimerEvent: {}
+[8.816600] (-) TimerEvent: {}
+[8.916804] (-) TimerEvent: {}
+[9.016998] (-) TimerEvent: {}
+[9.117211] (-) TimerEvent: {}
+[9.217413] (-) TimerEvent: {}
+[9.317624] (-) TimerEvent: {}
+[9.417855] (-) TimerEvent: {}
+[9.518110] (-) TimerEvent: {}
+[9.618313] (-) TimerEvent: {}
+[9.718517] (-) TimerEvent: {}
+[9.818721] (-) TimerEvent: {}
+[9.918929] (-) TimerEvent: {}
+[10.019135] (-) TimerEvent: {}
+[10.119373] (-) TimerEvent: {}
+[10.219621] (-) TimerEvent: {}
+[10.319869] (-) TimerEvent: {}
+[10.354095] (kinect_ros2) StdoutLine: {'line': b'[100%] Linking CXX executable kinect_node\n'}
+[10.419990] (-) TimerEvent: {}
+[10.520233] (-) TimerEvent: {}
+[10.620458] (-) TimerEvent: {}
+[10.720701] (-) TimerEvent: {}
+[10.820926] (-) TimerEvent: {}
+[10.833745] (kinect_ros2) StdoutLine: {'line': b'[100%] Built target kinect_node\n'}
+[10.855917] (kinect_ros2) CommandEnded: {'returncode': 0}
+[10.856730] (kinect_ros2) JobProgress: {'identifier': 'kinect_ros2', 'progress': 'install'}
+[10.876760] (kinect_ros2) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/josemsotov/robot_ws/build/kinect_ros2'], 'cwd': '/home/josemsotov/robot_ws/build/kinect_ros2', 'env': OrderedDict({'LESSOPEN': '| /usr/bin/lesspipe %s', 'GZ_SIM_RESOURCE_PATH': '/opt/ros/jazzy/share', 'USER': 'josemsotov', 'SSH_CLIENT': '192.168.40.42 3769 22', 'GZ_CONFIG_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/share/gz:/opt/ros/jazzy/opt/sdformat_vendor/share/gz:/opt/ros/jazzy/opt/gz_gui_vendor/share/gz:/opt/ros/jazzy/opt/gz_transport_vendor/share/gz:/opt/ros/jazzy/opt/gz_rendering_vendor/share/gz:/opt/ros/jazzy/opt/gz_plugin_vendor/share/gz:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/share/gz:/opt/ros/jazzy/opt/gz_msgs_vendor/share/gz:/opt/ros/jazzy/opt/gz_common_vendor/share/gz', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/gz_sim_vendor/lib:/opt/ros/jazzy/opt/gz_sensors_vendor/lib:/opt/ros/jazzy/opt/gz_physics_vendor/lib:/opt/ros/jazzy/opt/sdformat_vendor/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/aarch64-linux-gnu:/opt/ros/jazzy/opt/gz_gui_vendor/lib:/opt/ros/jazzy/opt/gz_transport_vendor/lib:/opt/ros/jazzy/opt/gz_rendering_vendor/lib:/opt/ros/jazzy/opt/gz_plugin_vendor/lib:/opt/ros/jazzy/opt/gz_fuel_tools_vendor/lib:/opt/ros/jazzy/opt/gz_msgs_vendor/lib:/opt/ros/jazzy/opt/gz_common_vendor/lib:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_tools_vendor/lib:/opt/ros/jazzy/opt/gz_ogre_next_vendor/lib:/opt/ros/jazzy/opt/gz_dartsim_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/home/josemsotov', 'OLDPWD': '/home/josemsotov/robot_ws/src', 'SSH_TTY': '/dev/pts/1', 'ROS_PYTHON_VERSION': '3', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'DEBUGINFOD_URLS': 'https://debuginfod.ubuntu.com', 'COLCON_PREFIX_PATH': '/home/josemsotov/robot_ws/install', 'ROS_DISTRO': 'jazzy', 'LOGNAME': 'josemsotov', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '16', 'PATH': '/home/josemsotov/.local/bin:/opt/ros/jazzy/opt/gz_msgs_vendor/bin:/opt/ros/jazzy/opt/gz_tools_vendor/bin:/opt/ros/jazzy/opt/gz_ogre_next_vendor/bin:/opt/ros/jazzy/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'ROS_DOMAIN_ID': '0', 'AMENT_PREFIX_PATH': '/home/josemsotov/robot_ws/install:/home/josemsotov/robot_ws/install/my_package:/home/josemsotov/robot_ws/install/ldlidar_stl_ros2:/opt/ros/jazzy', 'SHELL': '/bin/bash', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'PWD': '/home/josemsotov/robot_ws/build/kinect_ros2', 'SSH_CONNECTION': '192.168.40.42 3769 192.168.40.32 22', 'XDG_DATA_DIRS': '/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/josemsotov/robot_ws/install/lib/python3.12/site-packages:/home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'CMAKE_PREFIX_PATH': '/home/josemsotov/robot_ws/install:/home/josemsotov/robot_ws/install/my_package:/home/josemsotov/robot_ws/install/ldlidar_stl_ros2:/opt/ros/jazzy/opt/gz_sim_vendor:/opt/ros/jazzy/opt/gz_sensors_vendor:/opt/ros/jazzy/opt/gz_physics_vendor:/opt/ros/jazzy/opt/sdformat_vendor:/opt/ros/jazzy/opt/gz_gui_vendor:/opt/ros/jazzy/opt/gz_transport_vendor:/opt/ros/jazzy/opt/gz_rendering_vendor:/opt/ros/jazzy/opt/gz_plugin_vendor:/opt/ros/jazzy/opt/gz_fuel_tools_vendor:/opt/ros/jazzy/opt/gz_msgs_vendor:/opt/ros/jazzy/opt/gz_common_vendor:/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_tools_vendor:/opt/ros/jazzy/opt/gz_ogre_next_vendor:/opt/ros/jazzy/opt/gz_dartsim_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/opt/ros/jazzy'}), 'shell': False}
+[10.893064] (kinect_ros2) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[10.893564] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/lib/kinect_ros2/kinect_node\n'}
+[10.896476] (kinect_ros2) StdoutLine: {'line': b'-- Set non-toolchain portion of runtime path of "/home/josemsotov/robot_ws/install/lib/kinect_ros2/kinect_node" to ""\n'}
+[10.896654] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/ament_index/resource_index/package_run_dependencies/kinect_ros2\n'}
+[10.897361] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/ament_index/resource_index/parent_prefix_path/kinect_ros2\n'}
+[10.897684] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/environment/ament_prefix_path.sh\n'}
+[10.897857] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/environment/ament_prefix_path.dsv\n'}
+[10.898013] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/environment/path.sh\n'}
+[10.898183] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/environment/path.dsv\n'}
+[10.898346] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.bash\n'}
+[10.898510] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.sh\n'}
+[10.898680] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.zsh\n'}
+[10.898834] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.dsv\n'}
+[10.898983] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/package.dsv\n'}
+[10.899161] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages/kinect_ros2\n'}
+[10.899382] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/cmake/kinect_ros2Config.cmake\n'}
+[10.899506] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/cmake/kinect_ros2Config-version.cmake\n'}
+[10.899657] (kinect_ros2) StdoutLine: {'line': b'-- Installing: /home/josemsotov/robot_ws/install/share/kinect_ros2/package.xml\n'}
+[10.902381] (kinect_ros2) CommandEnded: {'returncode': 0}
+[10.921365] (-) TimerEvent: {}
+[10.934053] (kinect_ros2) JobEnded: {'identifier': 'kinect_ros2', 'rc': 0}
+[10.934698] (-) EventReactorShutdown: {}

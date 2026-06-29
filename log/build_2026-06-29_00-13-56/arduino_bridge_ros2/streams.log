@@ -1,0 +1,41 @@
+[1.523s] Invoking command in '/home/josemsotov/robot_ws/src/arduino_bridge_ros2': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/josemsotov/robot_ws/build/arduino_bridge_ros2/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/josemsotov/robot_ws/install/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/arduino_bridge_ros2 build --build-base /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build install --record /home/josemsotov/robot_ws/build/arduino_bridge_ros2/install.log --single-version-externally-managed install_data
+[2.006s] running egg_info
+[2.006s] creating ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info
+[2.034s] writing ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/PKG-INFO
+[2.035s] writing dependency_links to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/dependency_links.txt
+[2.035s] writing entry points to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/entry_points.txt
+[2.036s] writing requirements to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/requires.txt
+[2.036s] writing top-level names to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/top_level.txt
+[2.036s] writing manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'
+[2.103s] reading manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'
+[2.104s] writing manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'
+[2.107s] running build
+[2.107s] running build_py
+[2.107s] creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build
+[2.107s] creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib
+[2.107s] creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2
+[2.107s] copying arduino_bridge_ros2/__init__.py -> /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2
+[2.107s] copying arduino_bridge_ros2/arduino_node.py -> /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2
+[2.108s] running install
+[2.115s] running install_lib
+[2.145s] creating /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2
+[2.145s] copying /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2/__init__.py -> /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2
+[2.145s] copying /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2/arduino_node.py -> /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2
+[2.146s] byte-compiling /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2/__init__.py to __init__.cpython-312.pyc
+[2.146s] byte-compiling /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2/arduino_node.py to arduino_node.cpython-312.pyc
+[2.149s] running install_data
+[2.151s] creating /home/josemsotov/robot_ws/install/share
+[2.151s] creating /home/josemsotov/robot_ws/install/share/ament_index
+[2.151s] creating /home/josemsotov/robot_ws/install/share/ament_index/resource_index
+[2.151s] creating /home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages
+[2.151s] copying resource/arduino_bridge_ros2 -> /home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages
+[2.151s] creating /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2
+[2.151s] copying package.xml -> /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2
+[2.151s] creating /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2/launch
+[2.151s] copying launch/arduino_bridge.launch.py -> /home/josemsotov/robot_ws/install/share/arduino_bridge_ros2/launch
+[2.152s] running install_egg_info
+[2.187s] Copying ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info to /home/josemsotov/robot_ws/install/lib/python3.12/site-packages/arduino_bridge_ros2-1.0.0-py3.12.egg-info
+[2.187s] running install_scripts
+[2.401s] Installing arduino_node script to /home/josemsotov/robot_ws/install/lib/arduino_bridge_ros2
+[2.401s] writing list of installed files to '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/install.log'
+[2.499s] Invoked command in '/home/josemsotov/robot_ws/src/arduino_bridge_ros2' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/josemsotov/robot_ws/build/arduino_bridge_ros2/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/josemsotov/robot_ws/install/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/arduino_bridge_ros2 build --build-base /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build install --record /home/josemsotov/robot_ws/build/arduino_bridge_ros2/install.log --single-version-externally-managed install_data

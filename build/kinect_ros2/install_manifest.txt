@@ -1,0 +1,16 @@
+/home/josemsotov/robot_ws/install/lib/kinect_ros2/kinect_node
+/home/josemsotov/robot_ws/install/share/ament_index/resource_index/package_run_dependencies/kinect_ros2
+/home/josemsotov/robot_ws/install/share/ament_index/resource_index/parent_prefix_path/kinect_ros2
+/home/josemsotov/robot_ws/install/share/kinect_ros2/environment/ament_prefix_path.sh
+/home/josemsotov/robot_ws/install/share/kinect_ros2/environment/ament_prefix_path.dsv
+/home/josemsotov/robot_ws/install/share/kinect_ros2/environment/path.sh
+/home/josemsotov/robot_ws/install/share/kinect_ros2/environment/path.dsv
+/home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.bash
+/home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.sh
+/home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.zsh
+/home/josemsotov/robot_ws/install/share/kinect_ros2/local_setup.dsv
+/home/josemsotov/robot_ws/install/share/kinect_ros2/package.dsv
+/home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages/kinect_ros2
+/home/josemsotov/robot_ws/install/share/kinect_ros2/cmake/kinect_ros2Config.cmake
+/home/josemsotov/robot_ws/install/share/kinect_ros2/cmake/kinect_ros2Config-version.cmake
+/home/josemsotov/robot_ws/install/share/kinect_ros2/package.xml
