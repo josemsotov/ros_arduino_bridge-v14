@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: arduino-bridge-ros2
+Version: 1.0.0
+Summary: ROS2 bridge para MOTOR-INTERFACE-V14 (Arduino Mega)
+Maintainer: josemsotov
+License: MIT

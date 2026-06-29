@@ -1,0 +1,64 @@
+[0.000000] (-) TimerEvent: {}
+[0.000102] (-) JobUnselected: {'identifier': 'ldlidar_stl_ros2'}
+[0.000138] (-) JobUnselected: {'identifier': 'my_package'}
+[0.000161] (arduino_bridge_ros2) JobQueued: {'identifier': 'arduino_bridge_ros2', 'dependencies': OrderedDict()}
+[0.000598] (arduino_bridge_ros2) JobStarted: {'identifier': 'arduino_bridge_ros2'}
+[0.099696] (-) TimerEvent: {}
+[0.199890] (-) TimerEvent: {}
+[0.300079] (-) TimerEvent: {}
+[0.400239] (-) TimerEvent: {}
+[0.500379] (-) TimerEvent: {}
+[0.600535] (-) TimerEvent: {}
+[0.700703] (-) TimerEvent: {}
+[0.800840] (-) TimerEvent: {}
+[0.901025] (-) TimerEvent: {}
+[0.931448] (arduino_bridge_ros2) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--uninstall', '--editable', '--build-directory', '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/build'], 'cwd': '/home/josemsotov/robot_ws/build/arduino_bridge_ros2', 'env': {'USER': 'josemsotov', 'SSH_CLIENT': '192.168.40.42 5336 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'HOME': '/home/josemsotov', 'OLDPWD': '/home/josemsotov', 'SSH_TTY': '/dev/pts/0', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'LOGNAME': 'josemsotov', '_': '/usr/bin/colcon', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '12', 'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'C.UTF-8', 'SHELL': '/bin/bash', 'PWD': '/home/josemsotov/robot_ws/build/arduino_bridge_ros2', 'SSH_CONNECTION': '192.168.40.42 5336 192.168.40.32 22', 'COLCON': '1', 'PYTHONPATH': '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages:'}, 'shell': False}
+[1.001098] (-) TimerEvent: {}
+[1.101256] (-) TimerEvent: {}
+[1.201410] (-) TimerEvent: {}
+[1.258508] (arduino_bridge_ros2) StdoutLine: {'line': b'running develop\n'}
+[1.301492] (-) TimerEvent: {}
+[1.401630] (-) TimerEvent: {}
+[1.418415] (arduino_bridge_ros2) StdoutLine: {'line': b'Removing /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino-bridge-ros2.egg-link (link to .)\n'}
+[1.501753] (-) TimerEvent: {}
+[1.503404] (arduino_bridge_ros2) CommandEnded: {'returncode': 0}
+[1.504730] (arduino_bridge_ros2) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', '../../build/arduino_bridge_ros2', 'build', '--build-base', '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/build', 'install', '--record', '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/install.log', '--single-version-externally-managed', 'install_data', '--force'], 'cwd': '/home/josemsotov/robot_ws/src/arduino_bridge_ros2', 'env': {'USER': 'josemsotov', 'SSH_CLIENT': '192.168.40.42 5336 22', 'XDG_SESSION_TYPE': 'tty', 'SHLVL': '1', 'HOME': '/home/josemsotov', 'OLDPWD': '/home/josemsotov', 'SSH_TTY': '/dev/pts/0', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'LOGNAME': 'josemsotov', '_': '/usr/bin/colcon', 'XDG_SESSION_CLASS': 'user', 'TERM': 'xterm-256color', 'XDG_SESSION_ID': '12', 'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin', 'XDG_RUNTIME_DIR': '/run/user/1000', 'LANG': 'C.UTF-8', 'SHELL': '/bin/bash', 'PWD': '/home/josemsotov/robot_ws/build/arduino_bridge_ros2', 'SSH_CONNECTION': '192.168.40.42 5336 192.168.40.32 22', 'COLCON': '1', 'PYTHONPATH': '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages:'}, 'shell': False}
+[1.601840] (-) TimerEvent: {}
+[1.702021] (-) TimerEvent: {}
+[1.773258] (arduino_bridge_ros2) StdoutLine: {'line': b'running egg_info\n'}
+[1.787663] (arduino_bridge_ros2) StdoutLine: {'line': b'writing ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/PKG-INFO\n'}
+[1.788067] (arduino_bridge_ros2) StdoutLine: {'line': b'writing dependency_links to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/dependency_links.txt\n'}
+[1.788388] (arduino_bridge_ros2) StdoutLine: {'line': b'writing entry points to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/entry_points.txt\n'}
+[1.788591] (arduino_bridge_ros2) StdoutLine: {'line': b'writing requirements to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/requires.txt\n'}
+[1.788752] (arduino_bridge_ros2) StdoutLine: {'line': b'writing top-level names to ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/top_level.txt\n'}
+[1.802076] (-) TimerEvent: {}
+[1.818609] (arduino_bridge_ros2) StdoutLine: {'line': b"reading manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'\n"}
+[1.819632] (arduino_bridge_ros2) StdoutLine: {'line': b"writing manifest file '../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info/SOURCES.txt'\n"}
+[1.819866] (arduino_bridge_ros2) StdoutLine: {'line': b'running build\n'}
+[1.819988] (arduino_bridge_ros2) StdoutLine: {'line': b'running build_py\n'}
+[1.820142] (arduino_bridge_ros2) StdoutLine: {'line': b'creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build\n'}
+[1.820268] (arduino_bridge_ros2) StdoutLine: {'line': b'creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib\n'}
+[1.820393] (arduino_bridge_ros2) StdoutLine: {'line': b'creating /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2\n'}
+[1.820515] (arduino_bridge_ros2) StdoutLine: {'line': b'copying arduino_bridge_ros2/__init__.py -> /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2\n'}
+[1.820638] (arduino_bridge_ros2) StdoutLine: {'line': b'copying arduino_bridge_ros2/arduino_node.py -> /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2\n'}
+[1.820945] (arduino_bridge_ros2) StdoutLine: {'line': b'running install\n'}
+[1.829798] (arduino_bridge_ros2) StdoutLine: {'line': b'running install_lib\n'}
+[1.845161] (arduino_bridge_ros2) StdoutLine: {'line': b'creating /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino_bridge_ros2\n'}
+[1.845310] (arduino_bridge_ros2) StdoutLine: {'line': b'copying /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2/__init__.py -> /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino_bridge_ros2\n'}
+[1.845449] (arduino_bridge_ros2) StdoutLine: {'line': b'copying /home/josemsotov/robot_ws/build/arduino_bridge_ros2/build/lib/arduino_bridge_ros2/arduino_node.py -> /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino_bridge_ros2\n'}
+[1.846212] (arduino_bridge_ros2) StdoutLine: {'line': b'byte-compiling /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino_bridge_ros2/__init__.py to __init__.cpython-312.pyc\n'}
+[1.846578] (arduino_bridge_ros2) StdoutLine: {'line': b'byte-compiling /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino_bridge_ros2/arduino_node.py to arduino_node.cpython-312.pyc\n'}
+[1.849274] (arduino_bridge_ros2) StdoutLine: {'line': b'running install_data\n'}
+[1.849411] (arduino_bridge_ros2) StdoutLine: {'line': b'copying resource/arduino_bridge_ros2 -> /home/josemsotov/robot_ws/install/arduino_bridge_ros2/share/ament_index/resource_index/packages\n'}
+[1.849643] (arduino_bridge_ros2) StdoutLine: {'line': b'copying package.xml -> /home/josemsotov/robot_ws/install/arduino_bridge_ros2/share/arduino_bridge_ros2\n'}
+[1.849839] (arduino_bridge_ros2) StdoutLine: {'line': b'copying launch/arduino_bridge.launch.py -> /home/josemsotov/robot_ws/install/arduino_bridge_ros2/share/arduino_bridge_ros2/launch\n'}
+[1.850256] (arduino_bridge_ros2) StdoutLine: {'line': b'running install_egg_info\n'}
+[1.867169] (arduino_bridge_ros2) StdoutLine: {'line': b'Copying ../../build/arduino_bridge_ros2/arduino_bridge_ros2.egg-info to /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/python3.12/site-packages/arduino_bridge_ros2-1.0.0-py3.12.egg-info\n'}
+[1.868389] (arduino_bridge_ros2) StdoutLine: {'line': b'running install_scripts\n'}
+[1.902156] (-) TimerEvent: {}
+[1.991274] (arduino_bridge_ros2) StdoutLine: {'line': b'Installing arduino_node script to /home/josemsotov/robot_ws/install/arduino_bridge_ros2/lib/arduino_bridge_ros2\n'}
+[1.991830] (arduino_bridge_ros2) StdoutLine: {'line': b"writing list of installed files to '/home/josemsotov/robot_ws/build/arduino_bridge_ros2/install.log'\n"}
+[2.002256] (-) TimerEvent: {}
+[2.067993] (arduino_bridge_ros2) CommandEnded: {'returncode': 0}
+[2.080083] (arduino_bridge_ros2) JobEnded: {'identifier': 'arduino_bridge_ros2', 'rc': 0}
+[2.080743] (-) EventReactorShutdown: {}

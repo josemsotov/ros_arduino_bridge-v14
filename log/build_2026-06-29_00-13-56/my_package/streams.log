@@ -1,0 +1,49 @@
+[0.339s] Invoking command in '/home/josemsotov/robot_ws/build/my_package': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/josemsotov/robot_ws/src/my_package -DCMAKE_INSTALL_PREFIX=/home/josemsotov/robot_ws/install
+[0.593s] -- The C compiler identification is GNU 13.3.0
+[0.730s] -- The CXX compiler identification is GNU 13.3.0
+[0.765s] -- Detecting C compiler ABI info
+[0.981s] -- Detecting C compiler ABI info - done
+[0.995s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.996s] -- Detecting C compile features
+[0.996s] -- Detecting C compile features - done
+[1.014s] -- Detecting CXX compiler ABI info
+[1.235s] -- Detecting CXX compiler ABI info - done
+[1.250s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[1.251s] -- Detecting CXX compile features
+[1.251s] -- Detecting CXX compile features - done
+[1.271s] -- Found ament_cmake: 2.5.4 (/opt/ros/jazzy/share/ament_cmake/cmake)
+[1.624s] -- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+[1.895s] -- Found ament_lint_auto: 0.17.3 (/opt/ros/jazzy/share/ament_lint_auto/cmake)
+[2.138s] -- Added test 'flake8' to check Python code syntax and style conventions
+[2.138s] -- Configured 'flake8' exclude dirs and/or files: 
+[2.141s] -- Added test 'lint_cmake' to check CMake code style
+[2.143s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[2.150s] -- Added test 'xmllint' to check XML markup files
+[2.153s] -- Configuring done (1.8s)
+[2.158s] -- Generating done (0.0s)
+[2.161s] -- Build files have been written to: /home/josemsotov/robot_ws/build/my_package
+[2.172s] Invoked command in '/home/josemsotov/robot_ws/build/my_package' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake /home/josemsotov/robot_ws/src/my_package -DCMAKE_INSTALL_PREFIX=/home/josemsotov/robot_ws/install
+[2.173s] Invoking command in '/home/josemsotov/robot_ws/build/my_package': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/josemsotov/robot_ws/build/my_package -- -j4 -l4
+[2.258s] Invoked command in '/home/josemsotov/robot_ws/build/my_package' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/josemsotov/robot_ws/build/my_package -- -j4 -l4
+[2.279s] Invoking command in '/home/josemsotov/robot_ws/build/my_package': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/josemsotov/robot_ws/build/my_package
+[2.297s] -- Install configuration: ""
+[2.297s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/launch
+[2.297s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/launch/talker.launch.py
+[2.297s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/launch/listener.launch.py
+[2.298s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/launch/ld06_test.launch.py
+[2.298s] -- Installing: /home/josemsotov/robot_ws/install/share/ament_index/resource_index/package_run_dependencies/my_package
+[2.299s] -- Installing: /home/josemsotov/robot_ws/install/share/ament_index/resource_index/parent_prefix_path/my_package
+[2.299s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/environment/ament_prefix_path.sh
+[2.300s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/environment/ament_prefix_path.dsv
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/environment/path.sh
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/environment/path.dsv
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/local_setup.bash
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/local_setup.sh
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/local_setup.zsh
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/local_setup.dsv
+[2.301s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/package.dsv
+[2.302s] -- Installing: /home/josemsotov/robot_ws/install/share/ament_index/resource_index/packages/my_package
+[2.302s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/cmake/my_packageConfig.cmake
+[2.302s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/cmake/my_packageConfig-version.cmake
+[2.302s] -- Installing: /home/josemsotov/robot_ws/install/share/my_package/package.xml
+[2.307s] Invoked command in '/home/josemsotov/robot_ws/build/my_package' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/josemsotov/robot_ws/build/my_package
