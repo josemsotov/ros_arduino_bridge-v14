@@ -301,6 +301,26 @@ void ros2_processCmdVel(String cmd) {
       if (abs_left  > 0 && dir_left   != leftMotor.direction)  { motor_pwm_write(PWM_LEFT_MOTOR,  0); delayMicroseconds(2000); }
       if (abs_right > 0 && !dir_right != rightMotor.direction) { motor_pwm_write(PWM_RIGHT_MOTOR, 0); delayMicroseconds(2000); }
 
+      // Straight-line wheel matching using Hall RPM.
+      // Positive trim means right wheel is faster: boost left and reduce right.
+      if (cmd_dir_left == cmd_dir_right &&
+          fabsf(angular) < 0.03f &&
+          l_moving && r_moving &&
+          currentSpeedLeftHall > 3.0f &&
+          currentSpeedRightHall > 3.0f) {
+        float rpm_error = currentSpeedRightHall - currentSpeedLeftHall;
+        int speed_trim = (int)constrain(
+          rpm_error * SPEED_MATCH_KP_PWM_PER_RPM,
+          -SPEED_MATCH_MAX_PWM,
+          SPEED_MATCH_MAX_PWM
+        );
+
+        abs_left = constrain(abs_left + speed_trim, MIN_PWM_VALUE, MAX_PWM_VALUE);
+        abs_right = constrain(abs_right - speed_trim,
+                              MIN_PWM_RIGHT_WORKING,
+                              MAX_PWM_VALUE);
+      }
+
       setLeftMotor(abs_left, dir_left);
       setRightMotor(abs_right, !dir_right);  // Motor derecho: DIR electrica invertida
 

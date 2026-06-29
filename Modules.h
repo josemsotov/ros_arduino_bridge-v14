@@ -56,7 +56,7 @@
  * CONTROL PID
  * Disponible siempre para ROS2 y comandos manuales
  */
-#include "PID_Control.h"
+#include "pid_control.h"
 
 /**
  * ROS2 BRIDGE
