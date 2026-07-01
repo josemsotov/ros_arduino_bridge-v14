@@ -17,6 +17,7 @@ Topics publicados:
 
 Topics suscritos:
   /cmd_vel        geometry_msgs/Twist
+  /arduino/raw_command std_msgs/String
 """
 
 import rclpy
@@ -50,20 +51,32 @@ class ArduinoNode(Node):
 
         # ── Odometría ────────────────────────────────────────────────────
         self.x = self.y = self.theta = 0.0
-        self.enc_left_prev  = 0
+        self.raw_left_prev = None
+        self.raw_right_prev = None
+        self.enc_left_filtered = 0
+        self.enc_right_filtered = 0
+        self.enc_left_prev = 0
         self.enc_right_prev = 0
         self.dist_per_pulse = (math.pi * self.wheel_dia) / self.ppr
+        self.last_cmd_linear = 0.0
+        self.last_cmd_angular = 0.0
+        self.last_left_pwm = 0
+        self.last_right_pwm = 0
+        self.last_noise_warn = 0.0
 
         # ── Publishers ───────────────────────────────────────────────────
         self.pub_odom   = self.create_publisher(Odometry, '/odom',           10)
         self.pub_status = self.create_publisher(String,   '/motor_status',   10)
         self.pub_enc    = self.create_publisher(String,   '/encoder_counts', 10)
+        self.pub_raw_rx = self.create_publisher(String,   '/arduino/raw_rx', 10)
 
         # ── TF broadcaster ───────────────────────────────────────────────
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # ── Subscriber cmd_vel ───────────────────────────────────────────
         self.sub_cmd = self.create_subscription(Twist, '/cmd_vel', self.cmd_vel_cb, 10)
+        self.sub_raw = self.create_subscription(String, '/arduino/raw_command',
+                                                self.raw_command_cb, 10)
 
         # ── Timer para solicitar encoders cada 50ms ──────────────────────
         self.create_timer(0.05, self.request_encoders)
@@ -81,6 +94,15 @@ class ArduinoNode(Node):
 
     # ── Serial ──────────────────────────────────────────────────────────
     def _open_serial(self):
+        import os
+        if not os.path.exists(self.port):
+            now = time.monotonic()
+            if not hasattr(self, '_last_port_warn') or now - self._last_port_warn > 10.0:
+                self.get_logger().warn(f'Puerto serial {self.port} no existe. Esperando dispositivo...')
+                self._last_port_warn = now
+            self.ser = None
+            return
+
         try:
             self.ser = serial.Serial(self.port, self.baud, timeout=1)
             time.sleep(2)  # esperar reset Arduino
@@ -88,7 +110,15 @@ class ArduinoNode(Node):
                 self.ser.readline()
             self.get_logger().info('Serial conectado')
         except Exception as e:
-            self.get_logger().error(f'Error serial: {e}')
+            self.get_logger().error(f'Error serial al conectar: {e}')
+            self.ser = None
+
+    def _handle_serial_disconnect(self):
+        if self.ser:
+            try:
+                self.ser.close()
+            except Exception:
+                pass
             self.ser = None
 
     def _send(self, text: str):
@@ -96,13 +126,23 @@ class ArduinoNode(Node):
             try:
                 self.ser.write((text.strip() + '\n').encode())
             except Exception as e:
-                self.get_logger().warn(f'Error write: {e}')
+                self.get_logger().warn(f'Error write: {e}. Desconectando serial para reconexión.')
+                self._handle_serial_disconnect()
 
     # ── cmd_vel → Arduino ────────────────────────────────────────────────
     def cmd_vel_cb(self, msg: Twist):
         v = msg.linear.x
         w = msg.angular.z
+        self.last_cmd_linear = v
+        self.last_cmd_angular = w
         self._send(f'v {v:.4f} {w:.4f}')
+
+    def raw_command_cb(self, msg: String):
+        cmd = msg.data.strip()
+        if not cmd or '\n' in cmd or '\r' in cmd or len(cmd) > 96:
+            self.get_logger().warn('Comando raw ignorado: formato invalido')
+            return
+        self._send(cmd)
 
     # ── Timer: pedir encoders ────────────────────────────────────────────
     def request_encoders(self):
@@ -112,18 +152,37 @@ class ArduinoNode(Node):
     def _rx_loop(self):
         while self.running:
             if not self.ser or not self.ser.is_open:
-                time.sleep(1)
+                time.sleep(2.0)
+                if self.running and (not self.ser or not self.ser.is_open):
+                    self._open_serial()
                 continue
             try:
                 line = self.ser.readline().decode('utf-8', errors='replace').strip()
                 if not line:
                     continue
+                self.pub_raw_rx.publish(String(data=line))
                 if line.startswith('T '):
+                    self._parse_motor_status(line)
                     self.pub_status.publish(String(data=line))
                 elif line.startswith('e '):
                     self._process_encoders(line)
-            except Exception:
-                pass
+            except Exception as e:
+                self.get_logger().warn(f'Error read: {e}. Desconectando serial para reconexión.')
+                self._handle_serial_disconnect()
+                time.sleep(1.0)
+
+    def _parse_motor_status(self, line: str):
+        parts = {}
+        for token in line.split()[1:]:
+            if '=' not in token:
+                continue
+            key, value = token.split('=', 1)
+            parts[key] = value
+        try:
+            self.last_left_pwm = int(float(parts.get('Lpwm', self.last_left_pwm)))
+            self.last_right_pwm = int(float(parts.get('Rpwm', self.last_right_pwm)))
+        except ValueError:
+            return
 
     # ── Odometría desde encoders ─────────────────────────────────────────
     def _process_encoders(self, line: str):
@@ -135,10 +194,37 @@ class ArduinoNode(Node):
         except Exception:
             return
 
-        dl = (l_enc - self.enc_left_prev)  * self.dist_per_pulse
-        dr = (r_enc - self.enc_right_prev) * self.dist_per_pulse
-        self.enc_left_prev  = l_enc
-        self.enc_right_prev = r_enc
+        if self.raw_left_prev is None or self.raw_right_prev is None:
+            self.raw_left_prev = l_enc
+            self.raw_right_prev = r_enc
+            self.enc_left_filtered = l_enc
+            self.enc_right_filtered = r_enc
+            self.enc_left_prev = l_enc
+            self.enc_right_prev = r_enc
+            self.pub_enc.publish(String(data=f'L={l_enc} R={r_enc}'))
+            return
+
+        raw_dl = l_enc - self.raw_left_prev
+        raw_dr = r_enc - self.raw_right_prev
+        self.raw_left_prev = l_enc
+        self.raw_right_prev = r_enc
+
+        use_dl = raw_dl
+        use_dr = raw_dr
+        if self.last_left_pwm == 0 and raw_dl != 0:
+            use_dl = 0
+            self._warn_encoder_noise('left', raw_dl, l_enc)
+        if self.last_right_pwm == 0 and raw_dr != 0:
+            use_dr = 0
+            self._warn_encoder_noise('right', raw_dr, r_enc)
+
+        self.enc_left_filtered += use_dl
+        self.enc_right_filtered += use_dr
+
+        dl = (self.enc_left_filtered - self.enc_left_prev) * self.dist_per_pulse
+        dr = (self.enc_right_filtered - self.enc_right_prev) * self.dist_per_pulse
+        self.enc_left_prev = self.enc_left_filtered
+        self.enc_right_prev = self.enc_right_filtered
 
         d_center = (dl + dr) / 2.0
         d_theta  = (dr - dl) / self.wheel_base
@@ -181,7 +267,16 @@ class ArduinoNode(Node):
         odom.twist.twist.angular.z = v_ang
         self.pub_odom.publish(odom)
 
-        self.pub_enc.publish(String(data=f'L={l_enc} R={r_enc}'))
+        self.pub_enc.publish(String(data=f'L={self.enc_left_filtered} R={self.enc_right_filtered}'))
+
+    def _warn_encoder_noise(self, side: str, delta: int, raw_count: int):
+        now = time.monotonic()
+        if now - self.last_noise_warn < 2.0:
+            return
+        self.last_noise_warn = now
+        self.get_logger().warn(
+            f'Ignoring {side} encoder delta while PWM=0: delta={delta} raw={raw_count}'
+        )
 
     def destroy_node(self):
         self.running = False
