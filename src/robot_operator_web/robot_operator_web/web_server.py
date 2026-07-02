@@ -8,6 +8,9 @@ import re
 import subprocess
 import threading
 import time
+import urllib.parse
+import urllib.request
+import uuid
 from collections import deque
 from typing import Any
 
@@ -27,6 +30,114 @@ import uvicorn
 
 
 PRINTABLE = re.compile(r"^[ -~]{1,96}$")
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+ARDUINO_PORT = "/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_85438333036351A040D0-if00"
+ARDUINO_BRIDGE_DIR = "/home/josemsotov/robot_ws/src/arduino_bridge"
+ROS_SETUP = "source /opt/ros/jazzy/setup.bash; source /home/josemsotov/robot_ws/install/setup.bash 2>/dev/null || true"
+
+
+TEST_DEFINITIONS: dict[str, dict[str, Any]] = {
+    "balance_status": {
+        "label": "Balance / MPU status",
+        "description": "Envia hb stat al Arduino. No mueve motores.",
+        "kind": "raw",
+        "command": "hb stat",
+    },
+    "balance_calibrate": {
+        "label": "Calibrar balance",
+        "description": "Envia hb cal. Robot quieto y nivelado.",
+        "kind": "raw",
+        "command": "hb cal",
+    },
+    "characterize_motors": {
+        "label": "Caracterizacion motores",
+        "description": "Barre PWM 10..80 y compara PPS de ambos motores.",
+        "kind": "command",
+        "danger": True,
+        "command": (
+            "systemctl --user stop robot-follower.service; "
+            f"cd {ARDUINO_BRIDGE_DIR}; "
+            "python3 characterize_motors.py; "
+            "status=$?; systemctl --user start robot-follower.service; exit $status"
+        ),
+    },
+    "hall_diagnostic": {
+        "label": "Sensores Hall",
+        "description": "Ejecuta prueba P5 de Hall del test_control_suite.",
+        "kind": "command",
+        "danger": True,
+        "command": (
+            "systemctl --user stop robot-follower.service; "
+            f"cd {ARDUINO_BRIDGE_DIR}; "
+            f"printf '\\n5\\nq\\nq\\n' | python3 test_control_suite.py {ARDUINO_PORT}; "
+            "status=$?; systemctl --user start robot-follower.service; exit $status"
+        ),
+    },
+    "mpu_diagnostic": {
+        "label": "MPU pitch/gyro",
+        "description": "Ejecuta prueba P7 de MPU del test_control_suite.",
+        "kind": "command",
+        "command": (
+            "systemctl --user stop robot-follower.service; "
+            f"cd {ARDUINO_BRIDGE_DIR}; "
+            f"printf '\\n7\\nq\\nq\\n' | python3 test_control_suite.py {ARDUINO_PORT}; "
+            "status=$?; systemctl --user start robot-follower.service; exit $status"
+        ),
+    },
+    "pin_status": {
+        "label": "Pines / sensores",
+        "description": "Ejecuta prueba P10 de estado de pines.",
+        "kind": "command",
+        "command": (
+            "systemctl --user stop robot-follower.service; "
+            f"cd {ARDUINO_BRIDGE_DIR}; "
+            f"printf '\\n10\\nq\\nq\\n' | python3 test_control_suite.py {ARDUINO_PORT}; "
+            "status=$?; systemctl --user start robot-follower.service; exit $status"
+        ),
+    },
+    "right_motor": {
+        "label": "Motor derecho",
+        "description": "Diagnostico dedicado del motor derecho.",
+        "kind": "command",
+        "danger": True,
+        "command": (
+            "systemctl --user stop robot-follower.service; "
+            f"cd {ARDUINO_BRIDGE_DIR}; "
+            f"python3 diag_motor_der.py {ARDUINO_PORT}; "
+            "status=$?; systemctl --user start robot-follower.service; exit $status"
+        ),
+    },
+    "lidar_status": {
+        "label": "LiDAR",
+        "description": "Mide frecuencia del topico /scan.",
+        "kind": "command",
+        "command": f"{ROS_SETUP}; timeout 6 ros2 topic hz /scan",
+    },
+    "camera_status": {
+        "label": "Camara RGB",
+        "description": "Mide frecuencia del topico /camera/rgb/image_raw.",
+        "kind": "command",
+        "command": f"{ROS_SETUP}; timeout 6 ros2 topic hz /camera/rgb/image_raw",
+    },
+}
+
+
+def default_golf_state() -> dict[str, Any]:
+    return {
+        "course": None,
+        "hole": {
+            "number": 1,
+            "par": 4,
+            "yardage": 380,
+            "front": None,
+            "center": 380,
+            "back": None,
+            "green": None,
+        },
+        "position": None,
+        "last_shot": None,
+        "updated_at": time.time(),
+    }
 
 
 def now_s() -> float:
@@ -45,6 +156,79 @@ def stamp_age(stamp: float | None) -> float | None:
     if stamp is None:
         return None
     return round(now_s() - stamp, 3)
+
+
+def haversine_yards(a: dict[str, Any], b: dict[str, Any]) -> float | None:
+    try:
+        lat1 = math.radians(float(a["lat"]))
+        lon1 = math.radians(float(a["lon"]))
+        lat2 = math.radians(float(b["lat"]))
+        lon2 = math.radians(float(b["lon"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    meters = 6371000.0 * 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h))
+    return meters * 1.0936133
+
+
+def golf_snapshot(golf: dict[str, Any]) -> dict[str, Any]:
+    out = json.loads(json.dumps(golf))
+    hole = out.get("hole") or {}
+    position = out.get("position")
+    green = hole.get("green")
+    gps_yards = haversine_yards(position, green) if position and green else None
+    if gps_yards is not None:
+        center = round(gps_yards)
+        spread = max(8, int(round(float(hole.get("green_depth") or 28) / 2)))
+        hole["center"] = center
+        hole["front"] = max(0, center - spread)
+        hole["back"] = center + spread
+    out["hole"] = hole
+    out["distance_source"] = "gps" if gps_yards is not None else "manual"
+    return out
+
+
+def search_golf_courses(query: str, lat: float | None = None, lon: float | None = None) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {
+        "format": "jsonv2",
+        "limit": 8,
+        "addressdetails": 1,
+        "extratags": 1,
+        "q": f"{query} golf course",
+    }
+    if lat is not None and lon is not None:
+        delta = 0.35
+        params["viewbox"] = f"{lon - delta},{lat + delta},{lon + delta},{lat - delta}"
+        params["bounded"] = 0
+    url = f"{NOMINATIM_URL}?{urllib.parse.urlencode(params)}"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "SmartTrolleyGolfPanel/0.1 (local robot operator)"},
+    )
+    with urllib.request.urlopen(req, timeout=6) as res:
+        payload = json.loads(res.read().decode("utf-8"))
+    results = []
+    for item in payload:
+        try:
+            lat_v = float(item["lat"])
+            lon_v = float(item["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        address = item.get("address") or {}
+        results.append(
+            {
+                "name": item.get("name") or item.get("display_name", "Golf course").split(",", 1)[0],
+                "display_name": item.get("display_name", ""),
+                "lat": lat_v,
+                "lon": lon_v,
+                "city": address.get("city") or address.get("town") or address.get("village") or "",
+                "country": address.get("country") or "",
+                "source": "openstreetmap",
+            }
+        )
+    return results
 
 
 def parse_key_values(line: str) -> dict[str, Any]:
@@ -81,6 +265,8 @@ class SharedState:
         self.follower_state: dict[str, Any] = {}
         self.gesture_status: dict[str, Any] = {}
         self.scan: dict[str, Any] = {}
+        self.golf: dict[str, Any] = default_golf_state()
+        self.test_runs: dict[str, dict[str, Any]] = {}
         self.raw_rx = deque(maxlen=80)
         self.rgb_jpeg: bytes | None = None
         self.depth_jpeg: bytes | None = None
@@ -103,6 +289,8 @@ class SharedState:
                 "follower_state": dict(self.follower_state),
                 "gesture_status": dict(self.gesture_status),
                 "scan": dict(self.scan),
+                "golf": golf_snapshot(self.golf),
+                "test_runs": dict(self.test_runs),
                 "raw_rx": list(self.raw_rx),
                 "last_cmd": dict(self.last_cmd),
                 "follower_enabled": self.follower_enabled,
@@ -319,6 +507,57 @@ def encode_depth(msg: Image) -> bytes | None:
         return None
 
 
+def start_test_run(state: SharedState, test_id: str, command: str) -> dict[str, Any]:
+    run_id = uuid.uuid4().hex[:10]
+    log_path = f"/tmp/smart_trolley_test_{run_id}.log"
+    run = {
+        "id": run_id,
+        "test_id": test_id,
+        "label": TEST_DEFINITIONS[test_id]["label"],
+        "status": "running",
+        "started_at": time.time(),
+        "finished_at": None,
+        "returncode": None,
+        "log_path": log_path,
+    }
+    with state.lock:
+        state.test_runs[run_id] = dict(run)
+
+    def worker() -> None:
+        with open(log_path, "w", encoding="utf-8", errors="replace") as log:
+            log.write(f"$ {command}\n\n")
+            log.flush()
+            proc = subprocess.Popen(
+                ["bash", "-lc", command],
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            rc = proc.wait()
+        with state.lock:
+            current = state.test_runs.get(run_id, dict(run))
+            current["status"] = "done" if rc == 0 else "failed"
+            current["finished_at"] = time.time()
+            current["returncode"] = rc
+            state.test_runs[run_id] = current
+
+    threading.Thread(target=worker, daemon=True).start()
+    return run
+
+
+def read_test_log(run: dict[str, Any], max_bytes: int = 12000) -> str:
+    path = run.get("log_path")
+    if not path or not os.path.exists(path):
+        return ""
+    with open(path, "rb") as fh:
+        try:
+            fh.seek(max(0, os.path.getsize(path) - max_bytes))
+        except OSError:
+            pass
+        data = fh.read()
+    return data.decode("utf-8", errors="replace")
+
+
 def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
     share = get_package_share_directory("robot_operator_web")
     static_dir = os.path.join(share, "static")
@@ -379,6 +618,172 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         return {"ok": True, "command": command.strip()}
+
+    @app.get("/api/tests/list")
+    def api_tests_list() -> dict[str, Any]:
+        tests = []
+        for test_id, info in TEST_DEFINITIONS.items():
+            tests.append(
+                {
+                    "id": test_id,
+                    "label": info["label"],
+                    "description": info["description"],
+                    "danger": bool(info.get("danger", False)),
+                }
+            )
+        return {"ok": True, "tests": tests}
+
+    @app.post("/api/tests/run")
+    async def api_tests_run(payload: dict[str, Any]) -> dict[str, Any]:
+        test_id = str(payload.get("id", "")).strip()
+        if test_id not in TEST_DEFINITIONS:
+            raise HTTPException(status_code=404, detail="Unknown test")
+        definition = TEST_DEFINITIONS[test_id]
+        if definition["kind"] == "raw":
+            run_id = uuid.uuid4().hex[:10]
+            log_path = f"/tmp/smart_trolley_test_{run_id}.log"
+            command = str(definition["command"])
+            try:
+                node.publish_raw_command(command)
+                status = "done"
+                log_text = f"Sent raw Arduino command: {command}\nCheck /arduino/raw_rx or the live state for the response.\n"
+                returncode = 0
+            except ValueError as exc:
+                status = "failed"
+                log_text = str(exc)
+                returncode = 1
+            with open(log_path, "w", encoding="utf-8", errors="replace") as log:
+                log.write(log_text)
+            run = {
+                "id": run_id,
+                "test_id": test_id,
+                "label": definition["label"],
+                "status": status,
+                "started_at": time.time(),
+                "finished_at": time.time(),
+                "returncode": returncode,
+                "log_path": log_path,
+            }
+            with state.lock:
+                state.test_runs[run_id] = dict(run)
+            return {"ok": returncode == 0, "run": run}
+
+        run = start_test_run(state, test_id, str(definition["command"]))
+        return {"ok": True, "run": run}
+
+    @app.get("/api/tests/run/{run_id}")
+    def api_tests_run_status(run_id: str) -> dict[str, Any]:
+        with state.lock:
+            run = dict(state.test_runs.get(run_id, {}))
+            raw_rx = list(state.raw_rx)[-24:]
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        return {"ok": True, "run": run, "log": read_test_log(run), "raw_rx": raw_rx}
+
+    @app.get("/api/golf/state")
+    def api_golf_state() -> dict[str, Any]:
+        with state.lock:
+            return {"ok": True, "golf": golf_snapshot(state.golf)}
+
+    @app.post("/api/golf/search")
+    async def api_golf_search(payload: dict[str, Any]) -> dict[str, Any]:
+        query = str(payload.get("query", "")).strip()
+        if len(query) < 2:
+            return {"ok": True, "results": []}
+        lat = payload.get("lat")
+        lon = payload.get("lon")
+        try:
+            lat_f = float(lat) if lat is not None else None
+            lon_f = float(lon) if lon is not None else None
+        except (TypeError, ValueError):
+            lat_f = lon_f = None
+        try:
+            results = await asyncio.to_thread(search_golf_courses, query, lat_f, lon_f)
+            return {"ok": True, "results": results}
+        except Exception as exc:
+            return {"ok": False, "results": [], "error": str(exc)}
+
+    @app.post("/api/golf/course")
+    async def api_golf_course(payload: dict[str, Any]) -> dict[str, Any]:
+        course = payload.get("course")
+        if not isinstance(course, dict):
+            raise HTTPException(status_code=400, detail="course must be an object")
+        safe_course = {
+            "name": str(course.get("name") or "Golf course")[:120],
+            "display_name": str(course.get("display_name") or "")[:240],
+            "lat": course.get("lat"),
+            "lon": course.get("lon"),
+            "city": str(course.get("city") or "")[:80],
+            "country": str(course.get("country") or "")[:80],
+            "source": str(course.get("source") or "manual")[:40],
+        }
+        with state.lock:
+            state.golf["course"] = safe_course
+            state.golf["updated_at"] = time.time()
+            snapshot = golf_snapshot(state.golf)
+        return {"ok": True, "golf": snapshot}
+
+    @app.post("/api/golf/hole")
+    async def api_golf_hole(payload: dict[str, Any]) -> dict[str, Any]:
+        def number(name: str, default: float | None = None) -> float | None:
+            value = payload.get(name)
+            if value in ("", None):
+                return default
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+        hole = {
+            "number": int(clamp(number("number", 1) or 1, 1, 18)),
+            "par": int(clamp(number("par", 4) or 4, 3, 6)),
+            "yardage": int(clamp(number("yardage", 0) or 0, 0, 800)),
+            "front": number("front"),
+            "center": number("center", number("yardage", 0)),
+            "back": number("back"),
+            "green_depth": number("green_depth", 28),
+            "green": payload.get("green") if isinstance(payload.get("green"), dict) else None,
+        }
+        with state.lock:
+            state.golf["hole"] = hole
+            state.golf["updated_at"] = time.time()
+            snapshot = golf_snapshot(state.golf)
+        return {"ok": True, "golf": snapshot}
+
+    @app.post("/api/golf/position")
+    async def api_golf_position(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            position = {
+                "lat": float(payload["lat"]),
+                "lon": float(payload["lon"]),
+                "accuracy": float(payload.get("accuracy", 0) or 0),
+                "source": str(payload.get("source") or "browser")[:40],
+                "timestamp": time.time(),
+            }
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="lat and lon are required")
+        with state.lock:
+            state.golf["position"] = position
+            state.golf["updated_at"] = time.time()
+            snapshot = golf_snapshot(state.golf)
+        return {"ok": True, "golf": snapshot}
+
+    @app.post("/api/golf/shot")
+    async def api_golf_shot(payload: dict[str, Any]) -> dict[str, Any]:
+        try:
+            shot = {
+                "club": str(payload.get("club") or "")[:40],
+                "yards": float(payload.get("yards", 0) or 0),
+                "result": str(payload.get("result") or "")[:120],
+                "timestamp": time.time(),
+            }
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="invalid shot")
+        with state.lock:
+            state.golf["last_shot"] = shot
+            state.golf["updated_at"] = time.time()
+            snapshot = golf_snapshot(state.golf)
+        return {"ok": True, "golf": snapshot}
 
     @app.get("/api/frame/rgb.jpg")
     def rgb_frame() -> Response:
