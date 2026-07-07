@@ -457,6 +457,8 @@ class OperatorNode(Node):
         self.pub_enable = self.create_publisher(Bool, "/follower/enable", 10)
         self.pub_raw = self.create_publisher(String, "/arduino/raw_command", 10)
         self.pub_gesture_command = self.create_publisher(String, "/gesture/command", 10)
+        self._stadia_proc = None
+        self.create_subscription(String, "/stadia/control", self._stadia_ctrl_cb, 5)
         self.create_subscription(String, "/motor_status", self.motor_status_cb, 10)
         self.create_subscription(String, "/arduino/raw_rx", self.raw_rx_cb, 10)
         self.create_subscription(String, "/encoder_counts", self.encoder_cb, 10)
@@ -559,6 +561,31 @@ class OperatorNode(Node):
         with self.state.lock:
             self.state.follower_state = parse_json_or_raw(msg.data)
             self.state.stamps["follower_state"] = now_s()
+
+    def _stadia_ctrl_cb(self, msg: String) -> None:
+        if msg.data == 'ON':
+            self._stadia_start()
+        elif msg.data == 'OFF':
+            self._stadia_stop()
+
+    def _stadia_start(self) -> None:
+        import subprocess, os
+        if self._stadia_proc and self._stadia_proc.poll() is None:
+            return
+        script = os.path.expanduser('~/robot_ws/src/arduino_bridge_ros2/stadia_pi.py')
+        self._stadia_proc = subprocess.Popen(
+            ['python3', script],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.get_logger().info('Stadia started')
+
+    def _stadia_stop(self) -> None:
+        import subprocess
+        if self._stadia_proc and self._stadia_proc.poll() is None:
+            self._stadia_proc.terminate()
+        subprocess.run(['pkill', '-f', 'stadia_pi.py'], check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self._stadia_proc = None
+        self.get_logger().info('Stadia stopped')
 
     def gesture_status_cb(self, msg: String) -> None:
         with self.state.lock:
@@ -839,6 +866,78 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
         node.publish_enable(False)
         node.publish_stop()
         return {"ok": True}
+
+
+    @app.post("/api/stadia/start")
+    async def api_stadia_start() -> dict[str, Any]:
+        node._stadia_start()
+        return {"ok": True, "stadia": "running"}
+
+    @app.post("/api/stadia/stop")
+    async def api_stadia_stop() -> dict[str, Any]:
+        node._stadia_stop()
+        return {"ok": True, "stadia": "stopped"}
+
+
+    @app.post("/api/voice/start")
+    async def api_voice_start() -> dict[str, Any]:
+        import subprocess, os
+        script = os.path.expanduser('~/robot_ws/src/arduino_bridge_ros2/voice_control.py')
+        subprocess.Popen(['python3', script, '--server'],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        import time; time.sleep(0.4)
+        try:
+            import urllib.request
+            urllib.request.urlopen('http://127.0.0.1:8765/start', data=b'', timeout=2)
+        except Exception: pass
+        return {"ok": True, "voice": "started"}
+
+    @app.post("/api/voice/stop")
+    async def api_voice_stop() -> dict[str, Any]:
+        try:
+            import urllib.request
+            urllib.request.urlopen('http://127.0.0.1:8765/stop', data=b'', timeout=2)
+        except Exception: pass
+        return {"ok": True, "voice": "stopped"}
+
+    @app.post("/api/position")
+    async def api_position(payload: dict[str, Any]) -> dict[str, Any]:
+        import math as _math, threading, time as _time
+        dist = float(payload.get("distance_m", 0.0))
+        speed = float(payload.get("speed_ms", 0.3))
+        if abs(dist) < 0.01:
+            return {"ok": False, "error": "distance_too_small"}
+        dist_per_pulse = _math.pi * 0.27 / 45  # diameter=0.27m, PPR=45
+        pulses_target = abs(dist) / dist_per_pulse
+        direction = 1.0 if dist > 0 else -1.0
+
+        def _run() -> None:
+            start_enc: tuple | None = None
+            deadline = _time.monotonic() + abs(dist) / max(abs(speed), 0.05) + 5.0
+            node.publish_cmd(direction * min(abs(speed), 0.5), 0.0, source="position_ctrl")
+            while _time.monotonic() < deadline:
+                _time.sleep(0.05)
+                with state.lock:
+                    lines = list(state.raw_rx)
+                for line in reversed(lines):
+                    if isinstance(line, str) and line.startswith("e "):
+                        parts = line.split()
+                        if len(parts) >= 3:
+                            try:
+                                l, r = int(parts[1]), int(parts[2])
+                                if start_enc is None:
+                                    start_enc = (l, r); break
+                                pulses = (abs(l - start_enc[0]) + abs(r - start_enc[1])) / 2
+                                if pulses >= pulses_target:
+                                    node.publish_stop(); return
+                            except ValueError:
+                                pass
+                        break
+            node.publish_stop()
+
+        threading.Thread(target=_run, daemon=True).start()
+        return {"ok": True, "distance_m": dist, "speed_ms": speed,
+                "est_pulses": round(pulses_target)}
 
     @app.post("/api/kiosk/exit")
     async def api_kiosk_exit(request: Request) -> dict[str, Any]:

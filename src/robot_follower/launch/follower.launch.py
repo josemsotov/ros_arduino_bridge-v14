@@ -14,6 +14,7 @@ def generate_launch_description():
     enable_arduino = LaunchConfiguration('enable_arduino')
     enable_lidar = LaunchConfiguration('enable_lidar')
     enable_kinect = LaunchConfiguration('enable_kinect')
+    enable_stadia  = LaunchConfiguration('enable_stadia')
     enable_gesture = LaunchConfiguration('enable_gesture')
     enable_follower = LaunchConfiguration('enable_follower')
     use_kinect = LaunchConfiguration('use_kinect')
@@ -27,6 +28,9 @@ def generate_launch_description():
                               description='Start LD19 LiDAR driver'),
         DeclareLaunchArgument('enable_kinect', default_value='true',
                               description='Start Kinect RGB/depth camera node'),
+        DeclareLaunchArgument('enable_stadia',
+            default_value='true',
+            description='Launch Stadia ROS2 node'),
         DeclareLaunchArgument('enable_gesture', default_value='true',
                               description='Start open-palm gesture detector'),
         DeclareLaunchArgument('enable_follower', default_value='true',
@@ -62,6 +66,10 @@ def generate_launch_description():
                           'require_raised_hand':True,
                           'max_wrist_y':0.78,
                           'publish_image':True}]),
+        Node(package='arduino_bridge_ros2', executable='stadia_node',
+             name='stadia_node', output='screen',
+             condition=IfCondition(enable_stadia),
+             parameters=[cfg]),
         Node(package='robot_follower', executable='follower_node',
              name='robot_follower', output='screen',
              condition=IfCondition(enable_follower),

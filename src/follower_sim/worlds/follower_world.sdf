@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <world name="follower_world">
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <direction>-0.5 0.1 -0.9</direction>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+    </light>
+
+    <!-- Ground -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="col"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry></collision>
+        <visual name="vis">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material><ambient>0.4 0.6 0.3 1</ambient><diffuse>0.4 0.6 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Room walls -->
+    <model name="wall_north"><static>true</static><pose>5 0 1 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.2 10 2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.2 10 2</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient></material></visual></link></model>
+    <model name="wall_south"><static>true</static><pose>-5 0 1 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.2 10 2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.2 10 2</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient></material></visual></link></model>
+    <model name="wall_east"><static>true</static><pose>0 5 1 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>10 0.2 2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>10 0.2 2</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient></material></visual></link></model>
+    <model name="wall_west"><static>true</static><pose>0 -5 1 0 0 0</pose>
+      <link name="l"><collision name="c"><geometry><box><size>10 0.2 2</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>10 0.2 2</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient></material></visual></link></model>
+
+    <!-- Target person (cylinder) - el objeto a seguir -->
+    <model name="person">
+      <pose>2 0 0.9 0 0 0</pose>
+      <link name="body">
+        <collision name="c"><geometry><cylinder><radius>0.25</radius><length>1.8</length></cylinder></geometry></collision>
+        <visual name="v">
+          <geometry><cylinder><radius>0.25</radius><length>1.8</length></cylinder></geometry>
+          <material><ambient>0.8 0.3 0.1 1</ambient><diffuse>0.8 0.3 0.1 1</diffuse></material>
+        </visual>
+        <inertial><mass value="70"/><inertia ixx="10" ixy="0" ixz="0" iyy="10" iyz="0" izz="1"/></inertial>
+      </link>
+      <plugin filename="gz-sim-apply-joint-force-system" name="gz::sim::systems::ApplyJointForce"/>
+    </model>
+
+  </world>
+</sdf>

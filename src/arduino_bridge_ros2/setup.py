@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'arduino_node = arduino_bridge_ros2.arduino_node:main',
+            'stadia_node = arduino_bridge_ros2.stadia_node:main',
         ],
     },
 )

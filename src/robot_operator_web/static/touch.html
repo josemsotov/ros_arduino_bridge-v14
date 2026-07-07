@@ -409,7 +409,18 @@
             <strong>Pruebas y Reparaciones</strong>
             <span>Balance, motores, Hall, LiDAR, camara, sensores y reparacion del tactil.</span>
           </button>
-        </div>
+        
+        <section>
+          <div class="section-head"><span>Control Externo</span><span id="extStatus">--</span></div>
+          <div class="section-body">
+            <div class="action-row">
+              <button id="btnStadiaOn" class="btn-blue">🎮 Stadia ON</button>
+              <button id="btnStadiaOff" class="btn-warn">🎮 Stadia OFF</button>
+              <button id="btnVoiceOn" class="btn-ok" title="Requiere auriculares con mic">🎤 Voz ON</button>
+              <button id="btnVoiceOff" class="btn-stop">🎤 Voz OFF</button>
+            </div>
+          </div>
+        </section></div>
       </div>
 
       <div id="golfPanel" class="mode-panel panel-layout">
@@ -582,6 +593,22 @@
           </div>
           <div class="section-body">
             <pre id="testLog">Selecciona una prueba.</pre>
+          </div>
+        </section>
+        <section id="posSection">
+          <div class="section-head"><span>Posicionamiento</span><span id="posStatus">Listo</span></div>
+          <div class="section-body">
+            <div class="action-row" style="flex-wrap:wrap;gap:8px">
+              <label style="color:var(--text-dim)">Distancia (m)</label>
+              <input id="posDistance" type="number" step="0.1" value="1.0"
+                style="width:80px;background:var(--panel2);color:var(--text);border:1px solid #444;padding:4px 8px;border-radius:4px">
+              <input id="posSpeed" type="number" step="0.05" value="0.3"
+                style="width:70px;background:var(--panel2);color:var(--text);border:1px solid #444;padding:4px 8px;border-radius:4px"
+                placeholder="m/s">
+              <button id="btnPosGo" class="btn-ok">IR →</button>
+              <button id="btnPosBack" class="btn-warn">← ATRÁS</button>
+              <button id="btnPosStop" class="btn-stop">STOP</button>
+            </div>
           </div>
         </section>
       </div>
@@ -1109,6 +1136,26 @@ loadGolf();
 loadCourseCatalog();
 loadIdentity();
 connectWs();
+
+// ── Posicionamiento ─────────────────────────────────────────────────────────
+async function goPosition(sign) {
+  const d = parseFloat($('posDistance').value || 1) * sign;
+  const s = parseFloat($('posSpeed').value || 0.3);
+  $('posStatus').textContent = 'Moviendo…';
+  const r = await postJson('/api/position', {distance_m: d, speed_ms: s});
+  $('posStatus').textContent = r.ok ? `Destino ${d}m @ ${s}m/s` : (r.error || 'Error');
+}
+$('btnPosGo')   && ($('btnPosGo').onclick   = () => goPosition(1));
+$('btnPosBack') && ($('btnPosBack').onclick  = () => goPosition(-1));
+$('btnPosStop') && ($('btnPosStop').onclick  = stopMotion);
+
+// ── Stadia ──────────────────────────────────────────────────────────────────
+$('btnStadiaOn')  && ($('btnStadiaOn').onclick  = async () => { const r = await postJson('/api/stadia/start',{}); $('extStatus').textContent = r.ok ? 'Stadia ON' : 'Error'; });
+$('btnStadiaOff') && ($('btnStadiaOff').onclick = async () => { const r = await postJson('/api/stadia/stop', {}); $('extStatus').textContent = r.ok ? 'Stadia OFF' : 'Error'; });
+
+// ── Voz (requiere voice_control.py corriendo en el Pi) ───────────────────────
+$('btnVoiceOn')  && ($('btnVoiceOn').onclick  = async () => { await postJson('/api/voice/start',{}); $('extStatus').textContent = 'Voz ON'; });
+$('btnVoiceOff') && ($('btnVoiceOff').onclick = async () => { await postJson('/api/voice/stop', {}); $('extStatus').textContent = 'Voz OFF'; });
 </script>
 </body>
 </html>

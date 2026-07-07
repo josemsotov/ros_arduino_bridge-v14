@@ -68,6 +68,7 @@ class FollowerNode(Node):
         self.pub_cmd = self.create_publisher(Twist, '/cmd_vel', 5)
         self.pub_debug = self.create_publisher(Twist, '/follower/debug', 5)
         self.pub_state = self.create_publisher(String, '/follower/state', 5)
+        self.pub_stadia = self.create_publisher(String, '/stadia/control', 5)
 
         self.create_subscription(LaserScan, '/scan', self.scan_cb, 5)
         self.create_subscription(Bool, '/follower/enable', self.enable_cb, 5)
@@ -146,6 +147,12 @@ class FollowerNode(Node):
             self.mode = 'WAITING'
             self._stop()
             self.get_logger().info('Stop/wait command received')
+        elif command == 'STADIA_ON':
+            self.pub_stadia.publish(__import__('std_msgs.msg', fromlist=['String']).String(data='ON'))
+            self.get_logger().info('Stadia ON via gesture')
+        elif command == 'STADIA_OFF':
+            self.pub_stadia.publish(__import__('std_msgs.msg', fromlist=['String']).String(data='OFF'))
+            self.get_logger().info('Stadia OFF via gesture')
         self.publish_state()
 
     def depth_cb(self, msg: Image):
