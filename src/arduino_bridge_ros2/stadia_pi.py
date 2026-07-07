@@ -17,8 +17,11 @@ SEND_RATE_HZ  = 10
 MAX_LINEAR    = 0.5     # m/s
 MAX_ANGULAR   = 0.8     # rad/s
 DEADZONE_LIN  = 0.12
-DEADZONE_ANG  = 0.28
+DEADZONE_ANG  = 0.18    # Reducida: el mando ya distingue bien izq/der
 ANGULAR_EXPO  = 2.0
+# Rotación pura: si |angular| > ROTATION_DOMINANCE × |linear|, linear=0
+# Valor 2.0 → el angular debe ser el doble del lineal para activar modo rotación
+ROTATION_DOMINANCE = 2.0
 
 # ── Ejes Stadia en Linux (ABS) ───────────────────────────────────────────────
 ABS_LX   = ecodes.ABS_X
@@ -105,6 +108,7 @@ time.sleep(7)
 while ser.in_waiting: ser.readline()
 ser.write(b"hb off\n"); time.sleep(0.2)
 ser.write(b"HABILITAR\n"); time.sleep(0.3)
+ser.write(b"k 0.25 0.04\n"); time.sleep(0.15)  # Ganancias PI suaves para control manual (anti-oscilacion)
 while ser.in_waiting: line = ser.readline().decode(errors="replace").strip(); print(f"  [INIT] {line}")
 
 print(f"\n{W}  Left Stick ↑↓ → Lineal   max ±{MAX_LINEAR} m/s")
@@ -179,9 +183,18 @@ try:
             linear  = deadzone(-ly_n, DEADZONE_LIN) * MAX_LINEAR
             ax_raw  = deadzone(-lx_n, DEADZONE_ANG)
             angular = expo(ax_raw, ANGULAR_EXPO) * MAX_ANGULAR
+
+            # ── Modo rotación pura ──────────────────────────────────────────
+            # Si el componente angular domina claramente sobre el lineal,
+            # forzar linear=0 para que el robot gire en el sitio limpiamente
+            # aunque el stick no esté perfectamente horizontal.
+            if angular != 0 and (linear == 0 or abs(angular) > ROTATION_DOMINANCE * abs(linear)):
+                linear = 0.0
+
             ser.write(f"v {linear:.3f} {angular:.3f}\n".encode())
             if linear != 0 or angular != 0:
-                print(f"  v lin={linear:+.3f} ang={angular:+.3f}    ", end="\r")
+                modo = "[ROT]" if (linear == 0 and angular != 0) else "     "
+                print(f"  {modo} v lin={linear:+.3f} ang={angular:+.3f}    ", end="\r")
             else:
                 print(f"  [en reposo]                              ", end="\r")
             last_send = now
