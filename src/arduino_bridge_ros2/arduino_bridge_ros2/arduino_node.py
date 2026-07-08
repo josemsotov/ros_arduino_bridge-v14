@@ -24,6 +24,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import NavSatFix, NavSatStatus
 from std_msgs.msg import String
 import tf2_ros
 import serial
@@ -69,6 +70,8 @@ class ArduinoNode(Node):
         self.pub_status = self.create_publisher(String,   '/motor_status',   10)
         self.pub_enc    = self.create_publisher(String,   '/encoder_counts', 10)
         self.pub_raw_rx = self.create_publisher(String,   '/arduino/raw_rx', 10)
+        self.pub_fix    = self.create_publisher(NavSatFix, '/fix',           10)
+        self.pub_gps    = self.create_publisher(String,   '/gps/status',     10)
 
         # ── TF broadcaster ───────────────────────────────────────────────
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
@@ -166,6 +169,8 @@ class ArduinoNode(Node):
                     self.pub_status.publish(String(data=line))
                 elif line.startswith('e '):
                     self._process_encoders(line)
+                elif line.startswith('G '):
+                    self._process_gps(line)
             except Exception as e:
                 self.get_logger().warn(f'Error read: {e}. Desconectando serial para reconexión.')
                 self._handle_serial_disconnect()
@@ -185,6 +190,44 @@ class ArduinoNode(Node):
             return
 
     # ── Odometría desde encoders ─────────────────────────────────────────
+    def _process_gps(self, line: str):
+        parts = {}
+        for token in line.split()[1:]:
+            if '=' not in token:
+                continue
+            key, value = token.split('=', 1)
+            parts[key] = value
+
+        self.pub_gps.publish(String(data=line))
+        fix_ok = parts.get('fix') in ('1', 'true', 'True')
+        if not fix_ok or 'lat' not in parts or 'lon' not in parts:
+            return
+
+        try:
+            lat = float(parts['lat'])
+            lon = float(parts['lon'])
+            hdop = float(parts.get('hdop', '0') or 0)
+        except ValueError:
+            return
+
+        msg = NavSatFix()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'gps_link'
+        msg.status.status = NavSatStatus.STATUS_FIX
+        msg.status.service = NavSatStatus.SERVICE_GPS
+        msg.latitude = lat
+        msg.longitude = lon
+        msg.altitude = float('nan')
+
+        variance = max(1.0, hdop * hdop) if hdop > 0 else 25.0
+        msg.position_covariance = [
+            variance, 0.0, 0.0,
+            0.0, variance, 0.0,
+            0.0, 0.0, variance * 4.0,
+        ]
+        msg.position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
+        self.pub_fix.publish(msg)
+
     def _process_encoders(self, line: str):
         # formato: e <L_total> <R_total>
         try:

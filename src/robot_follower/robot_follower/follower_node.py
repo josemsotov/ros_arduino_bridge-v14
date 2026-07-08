@@ -12,8 +12,10 @@ import json
 import math
 import struct
 
+import numpy as np
 import rclpy
 from geometry_msgs.msg import Twist
+from rclpy.duration import Duration
 from rclpy.node import Node
 from sensor_msgs.msg import Image, LaserScan
 from std_msgs.msg import Bool, String
@@ -37,16 +39,46 @@ class FollowerNode(Node):
         self.declare_parameter('approach_distance', 0.50)
         self.declare_parameter('approach_tolerance', 0.08)
         self.declare_parameter('use_kinect', False)
+        self.declare_parameter('visual_identity_enabled', True)
+        self.declare_parameter('visual_identity_required', True)
+        self.declare_parameter('visual_identity_threshold', 0.62)
+        self.declare_parameter('visual_identity_timeout', 1.2)
+        self.declare_parameter('visual_identity_samples', 4)
+        self.declare_parameter('visual_identity_verify_once', True)
+        self.declare_parameter('visual_target_fov_deg', 62.0)
+        self.declare_parameter('min_linear_vel', 0.06)
+        self.declare_parameter('linear_deadband', 0.06)
+        self.declare_parameter('angular_deadband_deg', 2.0)
+        self.declare_parameter('velocity_smoothing_alpha', 0.28)
+        self.declare_parameter('gesture_test_linear_vel', 0.14)
+        self.declare_parameter('gesture_test_angular_vel', 0.30)
+        self.declare_parameter('gesture_test_duration', 1.0)
 
         self.enabled = False
         self.mode = 'WAITING'
         self.target_dist = None
         self.target_angle = None
         self.kinect_target_x = None
+        self.identity_profile = None
+        self.identity_samples = []
+        self.identity_verified = False
+        self.identity_score = 0.0
+        self.identity_status = 'idle'
+        self.identity_description = ''
+        self.identity_last_verified = self.get_clock().now()
+        self.identity_enroll_active = False
+        self.identity_session_ok = False
+        self.gesture_test_enabled = False
+        self.gesture_test_label = ''
+        self.gesture_test_until = self.get_clock().now()
+        self.gesture_test_twist = Twist()
+        self.smoothed_linear = 0.0
+        self.smoothed_angular = 0.0
 
         self.pub_cmd = self.create_publisher(Twist, '/cmd_vel', 5)
         self.pub_debug = self.create_publisher(Twist, '/follower/debug', 5)
         self.pub_state = self.create_publisher(String, '/follower/state', 5)
+        self.pub_stadia = self.create_publisher(String, '/stadia/control', 5)
 
         self.create_subscription(LaserScan, '/scan', self.scan_cb, 5)
         self.create_subscription(Bool, '/follower/enable', self.enable_cb, 5)
@@ -54,9 +86,12 @@ class FollowerNode(Node):
 
         if self.get_parameter('use_kinect').value:
             self.create_subscription(Image, '/camera/depth/image_raw', self.depth_cb, 2)
+        if self.get_parameter('visual_identity_enabled').value:
+            self.create_subscription(Image, '/camera/rgb/image_raw', self.rgb_cb, 2)
 
         self.last_scan = self.get_clock().now()
         self.create_timer(0.1, self.safety_check)
+        self.create_timer(0.05, self._gesture_test_tick)
         self.create_timer(0.5, self.publish_state)
 
         self.get_logger().info('Robot follower ready; waiting for /follower/enable true')
@@ -64,7 +99,17 @@ class FollowerNode(Node):
     def enable_cb(self, msg: Bool):
         self.enabled = bool(msg.data)
         if self.enabled:
+            self.gesture_test_enabled = False
+            self.gesture_test_label = ''
             self.mode = 'FOLLOW'
+            self.identity_enroll_active = False
+            if self.identity_profile is None:
+                self._reset_identity()
+            else:
+                self.identity_status = 'armed'
+                self.identity_verified = True
+                self.identity_session_ok = True
+                self.identity_last_verified = self.get_clock().now()
             self.get_logger().info('Follower enabled')
         else:
             self.mode = 'WAITING'
@@ -81,19 +126,68 @@ class FollowerNode(Node):
             pass
 
         command = command.upper()
-        if command in ('APPROACH', 'COME_CLOSE', 'PALM_OPEN'):
+        if command in ('GESTURE_TEST_ON', 'GESTURE_TEST_ENABLE'):
+            self.enabled = False
+            self.mode = 'GESTURE_TEST'
+            self.gesture_test_enabled = True
+            self.gesture_test_label = 'ready'
+            self._stop()
+            self.get_logger().info('Gesture constant-speed test enabled')
+        elif command in ('GESTURE_TEST_OFF', 'GESTURE_TEST_DISABLE'):
+            self.enabled = False
+            self.mode = 'WAITING'
+            self.gesture_test_enabled = False
+            self.gesture_test_label = ''
+            self._stop()
+            self.get_logger().info('Gesture constant-speed test disabled')
+        elif self.gesture_test_enabled and command in (
+            'APPROACH', 'COME_CLOSE', 'PALM_OPEN',
+            'FOLLOW', 'FOLLOW_ME', 'RESUME',
+            'STADIA_ON', 'STADIA_OFF',
+            'STOP', 'WAIT', 'PAUSE',
+        ):
+            self._handle_gesture_test_command(command)
+        elif command in ('APPROACH', 'COME_CLOSE', 'PALM_OPEN'):
             self.enabled = True
             self.mode = 'APPROACH'
+            self.identity_enroll_active = False
+            if self.identity_profile is None:
+                self._reset_identity()
             self.get_logger().info('Open-palm command: approaching to 0.5 m')
         elif command in ('FOLLOW', 'FOLLOW_ME', 'RESUME'):
             self.enabled = True
             self.mode = 'FOLLOW'
+            self.identity_enroll_active = False
+            if self.identity_profile is None:
+                self._reset_identity()
             self.get_logger().info('Follow command received')
+        elif command in ('FACE_ID_ENROLL', 'IDENTITY_ENROLL', 'ID_ENROLL'):
+            self.enabled = False
+            self.mode = 'WAITING'
+            self._stop()
+            self._reset_identity()
+            self.identity_enroll_active = True
+            self.identity_status = 'enrolling'
+            self.get_logger().info('Face ID enrollment started')
+        elif command in ('FACE_ID_CLEAR', 'IDENTITY_CLEAR', 'ID_CLEAR'):
+            self.enabled = False
+            self.mode = 'WAITING'
+            self._stop()
+            self._reset_identity()
+            self.identity_enroll_active = False
+            self.identity_status = 'cleared'
+            self.get_logger().info('Face ID profile cleared')
         elif command in ('STOP', 'WAIT', 'PAUSE'):
             self.enabled = False
             self.mode = 'WAITING'
             self._stop()
             self.get_logger().info('Stop/wait command received')
+        elif command == 'STADIA_ON':
+            self.pub_stadia.publish(__import__('std_msgs.msg', fromlist=['String']).String(data='ON'))
+            self.get_logger().info('Stadia ON via gesture')
+        elif command == 'STADIA_OFF':
+            self.pub_stadia.publish(__import__('std_msgs.msg', fromlist=['String']).String(data='OFF'))
+            self.get_logger().info('Stadia OFF via gesture')
         self.publish_state()
 
     def depth_cb(self, msg: Image):
@@ -120,8 +214,163 @@ class FollowerNode(Node):
         except Exception:
             self.kinect_target_x = None
 
+    def rgb_cb(self, msg: Image):
+        if not (self.enabled or self.identity_enroll_active):
+            return
+        if not self.get_parameter('visual_identity_enabled').value:
+            return
+
+        image = self._image_to_rgb(msg)
+        if image is None:
+            self.identity_status = 'bad_image'
+            return
+
+        signature, description = self._visual_signature(image, self._target_x_norm())
+        if signature is None:
+            self.identity_status = 'no_visual_sample'
+            return
+
+        if self.identity_profile is None:
+            self.identity_samples.append(signature)
+            needed = max(1, int(self.get_parameter('visual_identity_samples').value))
+            self.identity_status = f'capturing {len(self.identity_samples)}/{needed}'
+            self.identity_description = description
+            if len(self.identity_samples) >= needed:
+                self.identity_profile = np.mean(np.vstack(self.identity_samples[-needed:]), axis=0)
+                self.identity_last_verified = self.get_clock().now()
+                self.identity_verified = True
+                self.identity_session_ok = True
+                self.identity_score = 1.0
+                self.identity_status = 'locked'
+                self.identity_enroll_active = False
+                self.get_logger().info(f'Visual identity locked: {description}')
+            return
+
+        score = self._identity_similarity(signature, self.identity_profile)
+        threshold = float(self.get_parameter('visual_identity_threshold').value)
+        self.identity_score = score
+        self.identity_description = description
+        if self.get_parameter('visual_identity_verify_once').value and self.identity_session_ok:
+            self.identity_verified = True
+            self.identity_status = 'session_ok' if score < threshold else 'verified'
+            if score >= threshold:
+                self.identity_last_verified = self.get_clock().now()
+            return
+        if score >= threshold:
+            self.identity_verified = True
+            self.identity_session_ok = True
+            self.identity_last_verified = self.get_clock().now()
+            self.identity_status = 'verified'
+        else:
+            self.identity_verified = False
+            self.identity_status = 'mismatch'
+
+    def _image_to_rgb(self, msg: Image):
+        try:
+            enc = msg.encoding.lower()
+            if enc in ('rgb8', 'bgr8'):
+                arr = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 3)
+                return arr.copy() if enc == 'rgb8' else arr[:, :, ::-1].copy()
+            if enc in ('rgba8', 'bgra8'):
+                arr = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 4)
+                return arr[:, :, :3].copy() if enc == 'rgba8' else arr[:, :, 2::-1].copy()
+            if enc == 'mono8':
+                mono = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width)
+                return np.repeat(mono[:, :, None], 3, axis=2)
+        except Exception:
+            return None
+        return None
+
+    def _target_x_norm(self):
+        angle = self.kinect_target_x if self.kinect_target_x is not None else self.target_angle
+        if angle is None:
+            return 0.5
+        fov = math.radians(max(10.0, float(self.get_parameter('visual_target_fov_deg').value)))
+        return max(0.05, min(0.95, 0.5 + float(angle) / fov))
+
+    def _visual_signature(self, image, x_norm):
+        h, w = image.shape[:2]
+        cx = int(max(0, min(w - 1, x_norm * (w - 1))))
+        half_w = max(16, int(w * 0.10))
+        x1 = max(0, cx - half_w)
+        x2 = min(w, cx + half_w)
+        bands = (
+            ('head', int(h * 0.18), int(h * 0.38)),
+            ('shirt', int(h * 0.42), int(h * 0.74)),
+        )
+
+        features = []
+        labels = []
+        for name, y1, y2 in bands:
+            crop = image[y1:y2, x1:x2].astype(np.float32)
+            if crop.size == 0:
+                return None, ''
+            pixels = crop.reshape(-1, 3)
+            brightness = pixels.mean(axis=1)
+            usable = pixels[brightness > 18.0]
+            if usable.size == 0:
+                usable = pixels
+            raw_mean = usable.mean(axis=0)
+            total = float(raw_mean.sum())
+            if total <= 1.0:
+                return None, ''
+            features.extend((raw_mean / total).tolist())
+            labels.append(f'{name}:{self._color_label(raw_mean)}')
+
+        return np.array(features, dtype=np.float32), ' '.join(labels)
+
+    def _color_label(self, rgb):
+        r, g, b = [float(v) for v in rgb]
+        mx = max(r, g, b)
+        mn = min(r, g, b)
+        if mx < 55:
+            return 'dark'
+        if mx - mn < 22:
+            return 'gray'
+        if r > g * 1.15 and r > b * 1.15:
+            return 'red'
+        if g > r * 1.12 and g > b * 1.12:
+            return 'green'
+        if b > r * 1.12 and b > g * 1.12:
+            return 'blue'
+        if r > 130 and g > 100 and b < 95:
+            return 'yellow'
+        return 'mixed'
+
+    def _identity_similarity(self, signature, profile):
+        dist = float(np.linalg.norm(signature - profile))
+        return max(0.0, min(1.0, 1.0 - dist / 0.65))
+
+    def _reset_identity(self):
+        if not self.get_parameter('visual_identity_enabled').value:
+            return
+        self.identity_profile = None
+        self.identity_samples = []
+        self.identity_verified = False
+        self.identity_session_ok = False
+        self.identity_score = 0.0
+        self.identity_status = 'capturing'
+        self.identity_description = ''
+        self.identity_last_verified = self.get_clock().now()
+        self._reset_motion_filter()
+
+    def _identity_allows_motion(self):
+        if not self.get_parameter('visual_identity_enabled').value:
+            return True
+        if not self.get_parameter('visual_identity_required').value:
+            return True
+        if self.identity_profile is None:
+            return False
+        if self.get_parameter('visual_identity_verify_once').value:
+            return self.identity_session_ok
+        timeout = float(self.get_parameter('visual_identity_timeout').value)
+        age = (self.get_clock().now() - self.identity_last_verified).nanoseconds / 1e9
+        return age <= timeout
+
     def scan_cb(self, msg: LaserScan):
         self.last_scan = self.get_clock().now()
+        if self.gesture_test_enabled:
+            return
         if not self.enabled:
             return
 
@@ -153,6 +402,14 @@ class FollowerNode(Node):
 
         self.target_dist = target_dist
         self.target_angle = target_angle
+        if not self._identity_allows_motion():
+            self.get_logger().warn(
+                f'Visual identity not verified ({self.identity_status}); holding position',
+                throttle_duration_sec=1,
+            )
+            self._stop()
+            self.publish_state()
+            return
         self._control(target_dist, target_angle, p)
 
     def _control(self, dist, angle, p):
@@ -160,28 +417,32 @@ class FollowerNode(Node):
             self._control_approach(dist, angle, p)
             return
 
-        twist = Twist()
         if dist < p['min_distance']:
-            twist.linear.x = -0.15
-            twist.angular.z = 0.0
+            linear = -0.15
+            angular = 0.0
             self.get_logger().warn(
                 f'Too close: {dist:.2f} m; backing up',
                 throttle_duration_sec=1,
             )
         else:
-            if dist < p['follow_min_distance']:
-                dist_error = dist - p['follow_min_distance']
-            elif dist > p['follow_max_distance']:
-                dist_error = dist - p['follow_max_distance']
+            target = (p['follow_min_distance'] + p['follow_max_distance']) * 0.5
+            half_range = max(0.05, (p['follow_max_distance'] - p['follow_min_distance']) * 0.5)
+            dist_error = dist - target
+            if abs(dist_error) <= p['linear_deadband']:
+                linear = 0.0
             else:
-                dist_error = 0.0
+                ratio = min(1.0, abs(dist_error) / half_range)
+                speed = p['min_linear_vel'] + (p['max_linear_vel'] - p['min_linear_vel']) * (ratio ** 1.25)
+                linear = math.copysign(speed, dist_error)
+                linear = max(-p['max_linear_vel'] * 0.65, min(p['max_linear_vel'], linear))
 
-            lin = p['kp_linear'] * dist_error
-            ang = -p['kp_angular'] * angle
-            twist.linear.x = max(-p['max_linear_vel'] * 0.5, min(p['max_linear_vel'], lin))
-            twist.angular.z = max(-p['max_angular_vel'], min(p['max_angular_vel'], ang))
+            if abs(angle) <= math.radians(p['angular_deadband_deg']):
+                angular = 0.0
+            else:
+                angular = -p['kp_angular'] * angle
+                angular = max(-p['max_angular_vel'], min(p['max_angular_vel'], angular))
 
-        self.pub_cmd.publish(twist)
+        self._publish_motion(linear, angular, p)
         self._publish_debug(dist, angle)
 
     def _control_approach(self, dist, angle, p):
@@ -197,13 +458,21 @@ class FollowerNode(Node):
             self.publish_state()
             return
 
-        twist = Twist()
         lin = p['kp_linear'] * (dist - target)
         ang = -p['kp_angular'] * angle
-        twist.linear.x = max(0.08, min(p['max_linear_vel'] * 0.65, lin))
-        twist.angular.z = max(-p['max_angular_vel'], min(p['max_angular_vel'], ang))
-        self.pub_cmd.publish(twist)
+        lin = max(0.08, min(p['max_linear_vel'] * 0.65, lin))
+        ang = max(-p['max_angular_vel'], min(p['max_angular_vel'], ang))
+        self._publish_motion(lin, ang, p)
         self._publish_debug(dist, angle)
+
+    def _publish_motion(self, linear, angular, p):
+        alpha = max(0.05, min(1.0, float(p['velocity_smoothing_alpha'])))
+        self.smoothed_linear += alpha * (float(linear) - self.smoothed_linear)
+        self.smoothed_angular += alpha * (float(angular) - self.smoothed_angular)
+        twist = Twist()
+        twist.linear.x = self.smoothed_linear
+        twist.angular.z = self.smoothed_angular
+        self.pub_cmd.publish(twist)
 
     def _publish_debug(self, dist, angle):
         dbg = Twist()
@@ -212,7 +481,53 @@ class FollowerNode(Node):
         self.pub_debug.publish(dbg)
 
     def _stop(self):
+        self._reset_motion_filter()
         self.pub_cmd.publish(Twist())
+
+    def _reset_motion_filter(self):
+        self.smoothed_linear = 0.0
+        self.smoothed_angular = 0.0
+
+    def _handle_gesture_test_command(self, command):
+        if command in ('STOP', 'WAIT', 'PAUSE'):
+            self.gesture_test_label = 'stop'
+            self._stop()
+            return
+
+        linear = float(self.get_parameter('gesture_test_linear_vel').value)
+        angular = float(self.get_parameter('gesture_test_angular_vel').value)
+        if command in ('APPROACH', 'COME_CLOSE', 'PALM_OPEN'):
+            self._start_gesture_test_motion(linear, 0.0, 'approach_const')
+        elif command in ('FOLLOW', 'FOLLOW_ME', 'RESUME'):
+            self._start_gesture_test_motion(linear, 0.0, 'follow_const')
+        elif command == 'STADIA_ON':
+            self._start_gesture_test_motion(0.0, angular, 'turn_left_const')
+        elif command == 'STADIA_OFF':
+            self._start_gesture_test_motion(0.0, -angular, 'turn_right_const')
+
+    def _start_gesture_test_motion(self, linear, angular, label):
+        duration = max(0.1, float(self.get_parameter('gesture_test_duration').value))
+        self.enabled = False
+        self.mode = 'GESTURE_TEST'
+        self.gesture_test_label = label
+        twist = Twist()
+        twist.linear.x = float(linear)
+        twist.angular.z = float(angular)
+        self.gesture_test_twist = twist
+        self.gesture_test_until = self.get_clock().now() + Duration(seconds=duration)
+        self.pub_cmd.publish(twist)
+
+    def _gesture_test_tick(self):
+        if not self.gesture_test_enabled:
+            return
+        if self.gesture_test_label in ('', 'ready', 'stop'):
+            return
+        if self.get_clock().now() >= self.gesture_test_until:
+            self.gesture_test_label = 'ready'
+            self._stop()
+            self.publish_state()
+            return
+        self.pub_cmd.publish(self.gesture_test_twist)
 
     def safety_check(self):
         if not self.enabled:
@@ -228,6 +543,15 @@ class FollowerNode(Node):
             'mode': self.mode,
             'target_dist': self.target_dist,
             'target_angle': self.target_angle,
+            'identity_status': self.identity_status,
+            'identity_verified': self.identity_verified,
+            'identity_score': round(float(self.identity_score), 3),
+            'identity_description': self.identity_description,
+            'identity_enroll_active': self.identity_enroll_active,
+            'identity_session_ok': self.identity_session_ok,
+            'visual_identity_verify_once': self.get_parameter('visual_identity_verify_once').value,
+            'gesture_test_enabled': self.gesture_test_enabled,
+            'gesture_test_label': self.gesture_test_label,
         }
         self.pub_state.publish(String(data=json.dumps(payload)))
 
@@ -246,6 +570,10 @@ class FollowerNode(Node):
             'kp_angular': self.get_parameter('kp_angular').value,
             'approach_distance': self.get_parameter('approach_distance').value,
             'approach_tolerance': self.get_parameter('approach_tolerance').value,
+            'min_linear_vel': self.get_parameter('min_linear_vel').value,
+            'linear_deadband': self.get_parameter('linear_deadband').value,
+            'angular_deadband_deg': self.get_parameter('angular_deadband_deg').value,
+            'velocity_smoothing_alpha': self.get_parameter('velocity_smoothing_alpha').value,
         }
 
 

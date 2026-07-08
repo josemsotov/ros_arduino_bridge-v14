@@ -12,6 +12,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from collections import deque
+from pathlib import Path
 from typing import Any
 
 import cv2
@@ -24,7 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from sensor_msgs.msg import Image, LaserScan
+from sensor_msgs.msg import Image, LaserScan, NavSatFix
 from std_msgs.msg import Bool, String
 import uvicorn
 
@@ -34,9 +35,100 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 ARDUINO_PORT = "/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_85438333036351A040D0-if00"
 ARDUINO_BRIDGE_DIR = "/home/josemsotov/robot_ws/src/arduino_bridge"
 ROS_SETUP = "source /opt/ros/jazzy/setup.bash; source /home/josemsotov/robot_ws/install/setup.bash 2>/dev/null || true"
+FACE_ID_STORE = Path(
+    os.environ.get("SMART_TROLLEY_FACE_ID_STORE", str(Path.home() / "robot_ws" / "face_id_profiles.json"))
+)
+
+
+LOCAL_GOLF_COURSES: list[dict[str, Any]] = [
+    {
+        "id": "dorado-beach-east",
+        "name": "Dorado Beach East Course",
+        "display_name": "Dorado Beach East Course, Dorado",
+        "city": "Dorado",
+        "country": "Puerto Rico",
+        "lat": 18.4747,
+        "lon": -66.4362,
+        "source": "local",
+        "hole": {"number": 1, "par": 4, "yardage": 389, "front": 375, "center": 389, "back": 403},
+    },
+    {
+        "id": "tpc-dorado-sugarcane",
+        "name": "TPC Dorado Beach Sugarcane",
+        "display_name": "TPC Dorado Beach Sugarcane Course, Dorado",
+        "city": "Dorado",
+        "country": "Puerto Rico",
+        "lat": 18.4731,
+        "lon": -66.4394,
+        "source": "local",
+        "hole": {"number": 1, "par": 4, "yardage": 410, "front": 396, "center": 410, "back": 424},
+    },
+    {
+        "id": "bahia-beach",
+        "name": "Bahia Beach Resort Golf Club",
+        "display_name": "Bahia Beach Resort Golf Club, Rio Grande",
+        "city": "Rio Grande",
+        "country": "Puerto Rico",
+        "lat": 18.4081,
+        "lon": -65.7989,
+        "source": "local",
+        "hole": {"number": 1, "par": 4, "yardage": 390, "front": 376, "center": 390, "back": 404},
+    },
+    {
+        "id": "coco-beach",
+        "name": "Coco Beach Golf Club",
+        "display_name": "Coco Beach Golf Club, Rio Grande",
+        "city": "Rio Grande",
+        "country": "Puerto Rico",
+        "lat": 18.4191,
+        "lon": -65.7864,
+        "source": "local",
+        "hole": {"number": 1, "par": 4, "yardage": 405, "front": 391, "center": 405, "back": 419},
+    },
+    {
+        "id": "royal-isabela",
+        "name": "Royal Isabela",
+        "display_name": "Royal Isabela, Isabela",
+        "city": "Isabela",
+        "country": "Puerto Rico",
+        "lat": 18.4997,
+        "lon": -67.0524,
+        "source": "local",
+        "hole": {"number": 1, "par": 4, "yardage": 395, "front": 381, "center": 395, "back": 409},
+    },
+    {
+        "id": "palmas-flamboyan",
+        "name": "Palmas Athletic Club Flamboyan",
+        "display_name": "Palmas Athletic Club Flamboyan Course, Humacao",
+        "city": "Humacao",
+        "country": "Puerto Rico",
+        "lat": 18.0864,
+        "lon": -65.7978,
+        "source": "local",
+        "hole": {"number": 1, "par": 4, "yardage": 400, "front": 386, "center": 400, "back": 414},
+    },
+]
 
 
 TEST_DEFINITIONS: dict[str, dict[str, Any]] = {
+    "peripherals_status": {
+        "label": "Perifericos",
+        "description": "Servicios, USB/serial, mando, ROS, GPS, LiDAR y camara. No mueve motores.",
+        "kind": "command",
+        "command": (
+            "echo '== SERVICES =='; "
+            "systemctl --user --no-pager --plain status robot-follower.service robot-operator-web.service | sed -n '1,80p' || true; "
+            "echo; echo '== USB =='; lsusb || true; "
+            "echo; echo '== SERIAL =='; ls -l /dev/serial/by-id /dev/ttyACM* /dev/ttyUSB* /dev/ttyAMA* 2>/dev/null || true; "
+            "echo; echo '== INPUT / GAMEPAD =='; ls -l /dev/input/js* /dev/input/event* 2>/dev/null || true; "
+            "grep -i -A5 -B2 'stadia\\|gamepad\\|controller\\|google' /proc/bus/input/devices || true; "
+            f"echo; echo '== ROS TOPICS =='; {ROS_SETUP}; ros2 topic list | sort; "
+            "echo; echo '== GPS =='; timeout 4 ros2 topic echo /gps/status --once || true; "
+            "echo; echo '== LIDAR =='; timeout 4 ros2 topic echo /scan --once >/tmp/smart_trolley_scan_once.txt && echo 'scan: OK' || echo 'scan: NO DATA'; "
+            "echo; echo '== CAMERA RGB =='; timeout 4 ros2 topic echo /camera/rgb/image_raw --once >/tmp/smart_trolley_rgb_once.txt && echo 'camera_rgb: OK' || echo 'camera_rgb: NO DATA'; "
+            "echo; echo '== ARDUINO RAW =='; timeout 4 ros2 topic echo /arduino/raw_rx --once || true"
+        ),
+    },
     "balance_status": {
         "label": "Balance / MPU status",
         "description": "Envia hb stat al Arduino. No mueve motores.",
@@ -95,6 +187,12 @@ TEST_DEFINITIONS: dict[str, dict[str, Any]] = {
             "status=$?; systemctl --user start robot-follower.service; exit $status"
         ),
     },
+    "gps_status": {
+        "label": "GPS fisico",
+        "description": "Pide estado GPS al Arduino y revisa /gps/status.",
+        "kind": "raw",
+        "command": "GPS_STATUS",
+    },
     "right_motor": {
         "label": "Motor derecho",
         "description": "Diagnostico dedicado del motor derecho.",
@@ -112,6 +210,18 @@ TEST_DEFINITIONS: dict[str, dict[str, Any]] = {
         "description": "Mide frecuencia del topico /scan.",
         "kind": "command",
         "command": f"{ROS_SETUP}; timeout 6 ros2 topic hz /scan",
+    },
+    "touch_health_check": {
+        "label": "Verificar tactil",
+        "description": "Comprueba GT911, DSI-2, kiosk y API. Sin movimiento.",
+        "kind": "command",
+        "command": "/home/josemsotov/SMART_TROLLEY_INSTALLATION/scripts/touch_health_check.sh",
+    },
+    "repair_touchscreen": {
+        "label": "Reparar tactil",
+        "description": "Fuerza rebind del driver Goodix GT911 si el tactil no responde.",
+        "kind": "command",
+        "command": "sudo /home/josemsotov/SMART_TROLLEY_INSTALLATION/scripts/repair_touchscreen.sh",
     },
     "camera_status": {
         "label": "Camara RGB",
@@ -190,6 +300,21 @@ def golf_snapshot(golf: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def local_golf_courses(query: str = "") -> list[dict[str, Any]]:
+    term = query.strip().lower()
+    courses = json.loads(json.dumps(LOCAL_GOLF_COURSES))
+    if not term:
+        return courses
+    matches = []
+    for course in courses:
+        haystack = " ".join(
+            str(course.get(key) or "") for key in ("name", "display_name", "city", "country")
+        ).lower()
+        if term in haystack:
+            matches.append(course)
+    return matches
+
+
 def search_golf_courses(query: str, lat: float | None = None, lon: float | None = None) -> list[dict[str, Any]]:
     params: dict[str, Any] = {
         "format": "jsonv2",
@@ -255,6 +380,21 @@ def parse_json_or_raw(line: str) -> dict[str, Any]:
         return {"raw": line}
 
 
+def load_face_id_profile() -> dict[str, Any]:
+    try:
+        if FACE_ID_STORE.exists():
+            payload = json.loads(FACE_ID_STORE.read_text(encoding="utf-8"))
+            return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+    return {}
+
+
+def save_face_id_profile(profile: dict[str, Any]) -> None:
+    FACE_ID_STORE.parent.mkdir(parents=True, exist_ok=True)
+    FACE_ID_STORE.write_text(json.dumps(profile, indent=2, sort_keys=True), encoding="utf-8")
+
+
 class SharedState:
     def __init__(self) -> None:
         self.lock = threading.Lock()
@@ -265,6 +405,7 @@ class SharedState:
         self.follower_state: dict[str, Any] = {}
         self.gesture_status: dict[str, Any] = {}
         self.scan: dict[str, Any] = {}
+        self.gps_status: dict[str, Any] = {}
         self.golf: dict[str, Any] = default_golf_state()
         self.test_runs: dict[str, dict[str, Any]] = {}
         self.raw_rx = deque(maxlen=80)
@@ -278,6 +419,7 @@ class SharedState:
         self.manual_control_active = False
         self.active_clients = 0
         self.last_camera_request = 0.0
+        self.face_id: dict[str, Any] = load_face_id_profile()
 
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -289,12 +431,14 @@ class SharedState:
                 "follower_state": dict(self.follower_state),
                 "gesture_status": dict(self.gesture_status),
                 "scan": dict(self.scan),
+                "gps_status": dict(self.gps_status),
                 "golf": golf_snapshot(self.golf),
                 "test_runs": dict(self.test_runs),
                 "raw_rx": list(self.raw_rx),
                 "last_cmd": dict(self.last_cmd),
                 "follower_enabled": self.follower_enabled,
                 "manual_control_active": self.manual_control_active,
+                "face_id": dict(self.face_id),
                 "ages": {name: stamp_age(stamp) for name, stamp in self.stamps.items()},
                 "camera": {
                     "rgb_age": stamp_age(self.rgb_stamp),
@@ -312,6 +456,9 @@ class OperatorNode(Node):
         self.pub_cmd = self.create_publisher(Twist, "/cmd_vel", 10)
         self.pub_enable = self.create_publisher(Bool, "/follower/enable", 10)
         self.pub_raw = self.create_publisher(String, "/arduino/raw_command", 10)
+        self.pub_gesture_command = self.create_publisher(String, "/gesture/command", 10)
+        self.pub_stadia_control = self.create_publisher(String, "/stadia/control", 10)
+        self._stadia_proc = None
         self.create_subscription(String, "/motor_status", self.motor_status_cb, 10)
         self.create_subscription(String, "/arduino/raw_rx", self.raw_rx_cb, 10)
         self.create_subscription(String, "/encoder_counts", self.encoder_cb, 10)
@@ -320,6 +467,8 @@ class OperatorNode(Node):
         self.create_subscription(String, "/follower/state", self.follower_state_cb, 10)
         self.create_subscription(String, "/gesture/status", self.gesture_status_cb, 10)
         self.create_subscription(LaserScan, "/scan", self.scan_cb, 10)
+        self.create_subscription(NavSatFix, "/fix", self.fix_cb, 10)
+        self.create_subscription(String, "/gps/status", self.gps_status_cb, 10)
         self.create_subscription(Image, "/camera/rgb/image_raw", self.rgb_cb, 2)
         self.create_subscription(Image, "/camera/depth/image_raw", self.depth_cb, 2)
         self._last_rgb_encode = 0.0
@@ -344,6 +493,8 @@ class OperatorNode(Node):
             self.state.manual_control_active = False
 
     def publish_enable(self, enabled: bool) -> None:
+        if enabled:
+            self.publish_stadia_control("FOLLOWER")
         self.pub_enable.publish(Bool(data=bool(enabled)))
         if not enabled:
             self.publish_stop()
@@ -351,6 +502,34 @@ class OperatorNode(Node):
             self.state.follower_enabled = bool(enabled)
             if enabled:
                 self.state.manual_control_active = False
+
+    def publish_stadia_control(self, command: str) -> None:
+        self.pub_stadia_control.publish(String(data=command))
+
+    def restore_robot_system(self) -> None:
+        self.publish_enable(False)
+        self.publish_stop()
+        self.publish_stadia_control("ON")
+        command = (
+            "sleep 0.8; "
+            "systemctl --user restart robot-follower.service robot-operator-web.service"
+        )
+        subprocess.Popen(
+            ["bash", "-lc", command],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    def publish_gesture_command(self, command: str, source: str = "touch") -> None:
+        payload = {
+            "command": command,
+            "source": source,
+            "stamp": time.time(),
+        }
+        self.pub_gesture_command.publish(String(data=json.dumps(payload)))
+
+    def publish_identity_command(self, command: str) -> None:
+        self.publish_gesture_command(command, source="touch_face_id")
 
     def _manual_takeover(self) -> None:
         now = now_s()
@@ -405,10 +584,53 @@ class OperatorNode(Node):
             self.state.follower_state = parse_json_or_raw(msg.data)
             self.state.stamps["follower_state"] = now_s()
 
+    def _stadia_ctrl_cb(self, msg: String) -> None:
+        if msg.data == 'ON':
+            self._stadia_start()
+        elif msg.data == 'OFF':
+            self._stadia_stop()
+
+    def _stadia_start(self) -> None:
+        self.publish_enable(False)
+        self.publish_stadia_control("ON")
+        self.get_logger().info('Stadia mode requested')
+
+    def _stadia_stop(self) -> None:
+        self.publish_enable(False)
+        self.publish_stadia_control("OFF")
+        self.get_logger().info('Stadia off requested')
+
     def gesture_status_cb(self, msg: String) -> None:
         with self.state.lock:
             self.state.gesture_status = parse_json_or_raw(msg.data)
             self.state.stamps["gesture_status"] = now_s()
+
+    def gps_status_cb(self, msg: String) -> None:
+        with self.state.lock:
+            self.state.gps_status = parse_key_values(msg.data)
+            self.state.stamps["gps_status"] = now_s()
+
+    def fix_cb(self, msg: NavSatFix) -> None:
+        if not math.isfinite(msg.latitude) or not math.isfinite(msg.longitude):
+            return
+        if msg.status.status < 0:
+            return
+        accuracy = 0.0
+        if msg.position_covariance and msg.position_covariance[0] > 0:
+            accuracy = math.sqrt(float(msg.position_covariance[0]))
+        position = {
+            "lat": round(float(msg.latitude), 7),
+            "lon": round(float(msg.longitude), 7),
+            "accuracy": round(float(accuracy), 2),
+            "source": "robot_gps",
+            "timestamp": time.time(),
+        }
+        with self.state.lock:
+            self.state.gps_status.update(position)
+            self.state.gps_status["fix"] = 1
+            self.state.golf["position"] = position
+            self.state.golf["updated_at"] = time.time()
+            self.state.stamps["fix"] = now_s()
 
     def scan_cb(self, msg: LaserScan) -> None:
         valid = []
@@ -587,6 +809,83 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
         node.publish_enable(enabled)
         return {"ok": True, "enabled": enabled}
 
+    @app.get("/api/identity")
+    def api_identity() -> dict[str, Any]:
+        with state.lock:
+            return {
+                "ok": True,
+                "face_id": dict(state.face_id),
+                "follower_state": dict(state.follower_state),
+                "camera": {
+                    "rgb_ready": state.rgb_jpeg is not None,
+                    "rgb_age": stamp_age(state.rgb_stamp),
+                },
+            }
+
+    @app.post("/api/identity/enroll")
+    async def api_identity_enroll(payload: dict[str, Any]) -> dict[str, Any]:
+        name = str(payload.get("name") or "Jugador").strip()[:40] or "Jugador"
+        node.publish_identity_command("FACE_ID_ENROLL")
+        with state.lock:
+            state.face_id = {
+                **dict(state.face_id),
+                "name": name,
+                "status": "capturing",
+                "requested_at": time.time(),
+            }
+            face_id = dict(state.face_id)
+        return {"ok": True, "face_id": face_id}
+
+    @app.post("/api/identity/save")
+    async def api_identity_save(payload: dict[str, Any]) -> dict[str, Any]:
+        name = str(payload.get("name") or "").strip()[:40]
+        with state.lock:
+            follower_state = dict(state.follower_state)
+            current_name = name or str(state.face_id.get("name") or "Jugador")
+
+        profile = {
+            "name": current_name,
+            "status": str(follower_state.get("identity_status") or "unknown"),
+            "verified": bool(follower_state.get("identity_verified", False)),
+            "score": follower_state.get("identity_score"),
+            "visual": str(follower_state.get("identity_description") or ""),
+            "updated_at": time.time(),
+        }
+        if not profile["visual"]:
+            raise HTTPException(status_code=409, detail="Face ID visual profile not ready")
+        save_face_id_profile(profile)
+        with state.lock:
+            state.face_id = dict(profile)
+        return {"ok": True, "face_id": profile}
+
+    @app.post("/api/identity/clear")
+    async def api_identity_clear() -> dict[str, Any]:
+        node.publish_identity_command("FACE_ID_CLEAR")
+        profile = {"status": "cleared", "updated_at": time.time()}
+        save_face_id_profile(profile)
+        with state.lock:
+            state.face_id = dict(profile)
+        return {"ok": True, "face_id": profile}
+
+    @app.post("/api/gesture_test/on")
+    async def api_gesture_test_on() -> dict[str, Any]:
+        node.publish_gesture_command("GESTURE_TEST_ON", source="touch_tests")
+        return {"ok": True, "gesture_test": "on"}
+
+    @app.post("/api/gesture_test/off")
+    async def api_gesture_test_off() -> dict[str, Any]:
+        node.publish_gesture_command("GESTURE_TEST_OFF", source="touch_tests")
+        return {"ok": True, "gesture_test": "off"}
+
+    @app.post("/api/gesture_test/command")
+    async def api_gesture_test_command(payload: dict[str, Any]) -> dict[str, Any]:
+        command = str(payload.get("command", "")).strip().upper()
+        allowed = {"FOLLOW", "APPROACH", "STADIA_ON", "STADIA_OFF", "STOP"}
+        if command not in allowed:
+            raise HTTPException(status_code=400, detail="Unsupported gesture test command")
+        node.publish_gesture_command(command, source="touch_tests")
+        return {"ok": True, "command": command}
+
     @app.post("/api/cmd_vel")
     async def api_cmd_vel(payload: dict[str, Any]) -> dict[str, Any]:
         linear = float(payload.get("linear", 0.0))
@@ -599,6 +898,87 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
         node.publish_enable(False)
         node.publish_stop()
         return {"ok": True}
+
+    @app.post("/api/system/restore")
+    async def api_system_restore() -> dict[str, Any]:
+        node.restore_robot_system()
+        return {
+            "ok": True,
+            "mode": "stadia",
+            "message": "Robot services restarting; Stadia will be the initial control mode.",
+        }
+
+
+    @app.post("/api/stadia/start")
+    async def api_stadia_start() -> dict[str, Any]:
+        node._stadia_start()
+        return {"ok": True, "stadia": "running"}
+
+    @app.post("/api/stadia/stop")
+    async def api_stadia_stop() -> dict[str, Any]:
+        node._stadia_stop()
+        return {"ok": True, "stadia": "stopped"}
+
+
+    @app.post("/api/voice/start")
+    async def api_voice_start() -> dict[str, Any]:
+        import subprocess, os
+        script = os.path.expanduser('~/robot_ws/src/arduino_bridge_ros2/voice_control.py')
+        subprocess.Popen(['python3', script, '--server'],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        import time; time.sleep(0.4)
+        try:
+            import urllib.request
+            urllib.request.urlopen('http://127.0.0.1:8765/start', data=b'', timeout=2)
+        except Exception: pass
+        return {"ok": True, "voice": "started"}
+
+    @app.post("/api/voice/stop")
+    async def api_voice_stop() -> dict[str, Any]:
+        try:
+            import urllib.request
+            urllib.request.urlopen('http://127.0.0.1:8765/stop', data=b'', timeout=2)
+        except Exception: pass
+        return {"ok": True, "voice": "stopped"}
+
+    @app.post("/api/position")
+    async def api_position(payload: dict[str, Any]) -> dict[str, Any]:
+        import math as _math, threading, time as _time
+        dist = float(payload.get("distance_m", 0.0))
+        speed = float(payload.get("speed_ms", 0.3))
+        if abs(dist) < 0.01:
+            return {"ok": False, "error": "distance_too_small"}
+        dist_per_pulse = _math.pi * 0.27 / 45  # diameter=0.27m, PPR=45
+        pulses_target = abs(dist) / dist_per_pulse
+        direction = 1.0 if dist > 0 else -1.0
+
+        def _run() -> None:
+            start_enc: tuple | None = None
+            deadline = _time.monotonic() + abs(dist) / max(abs(speed), 0.05) + 5.0
+            node.publish_cmd(direction * min(abs(speed), 0.5), 0.0, source="position_ctrl")
+            while _time.monotonic() < deadline:
+                _time.sleep(0.05)
+                with state.lock:
+                    lines = list(state.raw_rx)
+                for line in reversed(lines):
+                    if isinstance(line, str) and line.startswith("e "):
+                        parts = line.split()
+                        if len(parts) >= 3:
+                            try:
+                                l, r = int(parts[1]), int(parts[2])
+                                if start_enc is None:
+                                    start_enc = (l, r); break
+                                pulses = (abs(l - start_enc[0]) + abs(r - start_enc[1])) / 2
+                                if pulses >= pulses_target:
+                                    node.publish_stop(); return
+                            except ValueError:
+                                pass
+                        break
+            node.publish_stop()
+
+        threading.Thread(target=_run, daemon=True).start()
+        return {"ok": True, "distance_m": dist, "speed_ms": speed,
+                "est_pulses": round(pulses_target)}
 
     @app.post("/api/kiosk/exit")
     async def api_kiosk_exit(request: Request) -> dict[str, Any]:
@@ -699,9 +1079,23 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
             lat_f = lon_f = None
         try:
             results = await asyncio.to_thread(search_golf_courses, query, lat_f, lon_f)
+            seen = set()
+            merged = []
+            for course in local_golf_courses(query) + results:
+                key = str(course.get("id") or course.get("display_name") or course.get("name")).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(course)
+            results = merged[:10]
             return {"ok": True, "results": results}
         except Exception as exc:
-            return {"ok": False, "results": [], "error": str(exc)}
+            local_results = local_golf_courses(query)
+            return {"ok": bool(local_results), "results": local_results, "error": str(exc)}
+
+    @app.get("/api/golf/courses")
+    def api_golf_courses(q: str = "") -> dict[str, Any]:
+        return {"ok": True, "results": local_golf_courses(q)}
 
     @app.post("/api/golf/course")
     async def api_golf_course(payload: dict[str, Any]) -> dict[str, Any]:
@@ -717,8 +1111,23 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
             "country": str(course.get("country") or "")[:80],
             "source": str(course.get("source") or "manual")[:40],
         }
+        hole = course.get("hole")
         with state.lock:
             state.golf["course"] = safe_course
+            if isinstance(hole, dict):
+                current_hole = dict(state.golf.get("hole") or {})
+                current_hole.update(
+                    {
+                        "number": int(hole.get("number") or current_hole.get("number") or 1),
+                        "par": int(hole.get("par") or current_hole.get("par") or 4),
+                        "yardage": hole.get("yardage", current_hole.get("yardage")),
+                        "front": hole.get("front", current_hole.get("front")),
+                        "center": hole.get("center", current_hole.get("center")),
+                        "back": hole.get("back", current_hole.get("back")),
+                        "green": hole.get("green", current_hole.get("green")),
+                    }
+                )
+                state.golf["hole"] = current_hole
             state.golf["updated_at"] = time.time()
             snapshot = golf_snapshot(state.golf)
         return {"ok": True, "golf": snapshot}
