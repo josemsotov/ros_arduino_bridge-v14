@@ -25,6 +25,7 @@ Actualizado: 2026-07-23
 - `.codex_gesture_update/robot_follower/`: nodos y configuración del follower.
 - `.codex_gesture_update/robot_operator_web/`: interfaz web y streaming.
 - `.codex_gesture_update/start_robot_follower.sh`: arranque de la aplicación.
+- `.codex_runtime_fix/`: scripts reproducibles del fail-safe y copias exactas desplegadas el 2026-07-23.
 - `.codex_touch_mode/`, `.codex_touch_edit/`, `.codex_stadia_edit/`: copias auxiliares de cambios de interfaz y modos.
 
 Estos directorios `.codex_*` son copias de trabajo y no garantizan por sí solos que coincidan con la instalación activa del Pi. Antes de desplegar, comparar con el workspace ROS2 remoto.
@@ -40,4 +41,3 @@ Estos directorios `.codex_*` son copias de trabajo y no garantizan por sí solos
 1. `HANDOVER.md`
 2. `CODEBASE_MEMORY.md`
 3. El archivo fuente concreto indicado por ambos documentos
-

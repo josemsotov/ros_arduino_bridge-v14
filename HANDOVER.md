@@ -10,6 +10,31 @@ Actualizado: 2026-07-23
 - La aplicación actual no tiene integración confirmada con Coral Edge TPU. La inferencia observada utiliza MediaPipe/OpenCV sobre CPU; conectar el Coral no la acelera automáticamente.
 - La migración a Coral o AI HAT queda pospuesta. La prioridad acordada es seguir estabilizando el sistema actual.
 
+### Cierre operativo 2026-07-23
+
+- El Pi está accesible por Wi-Fi mediante `josemsotov@192.168.40.52`. Ethernet era `192.168.40.32`.
+- El robot quedó detenido: follower deshabilitado, estado `WAITING`, `cmd_vel=0`, PWM izquierdo/derecho `0/0` y RPM `0/0`.
+- Stadia quedó como modo predeterminado y vuelve a controlar el robot.
+- Se produjo un incidente durante pruebas: el robot continuó avanzando porque varios nodos publicaban simultáneamente en `/cmd_vel`. Stadia podía seguir publicando a 20 Hz mientras follower estaba activo, impidiendo que venciera el timeout del firmware.
+- No realizar nuevas pruebas con las ruedas apoyadas hasta validar los cuatro casos de fail-safe indicados abajo.
+
+## Fail-safes desplegados después del incidente
+
+- `robot_operator_web` ahora arbitra modos de manera exclusiva:
+  - `FOLLOWER` pausa Stadia antes de habilitar follower.
+  - `STADIA` deshabilita follower y publica STOP antes de devolver el control.
+  - `IDLE`, `GESTURE` y STOP deshabilitan follower, detienen y apagan la salida Stadia.
+- `stadia_node` publica STOP al desconectarse el mando.
+- Al volver a Stadia, se relee la posición física de los ejes para no reutilizar un valor antiguo.
+- `stadia_node` escucha `/follower/enable`: cualquier activación de follower desde interfaz, gesto o ROS pausa inmediatamente la salida Stadia.
+- `arduino_bridge` incorpora `cmd_timeout=0.50`; si deja de recibir `/cmd_vel` después de una orden no nula, envía `v 0.0 0.0`.
+- Paquetes recompilados con:
+  - `colcon build --merge-install --symlink-install --packages-select arduino_bridge_ros2 robot_operator_web`
+- Copias exactas desplegadas guardadas localmente en `.codex_runtime_fix/deployed_20260723/`.
+- Scripts reproducibles del hotfix:
+  - `.codex_runtime_fix/apply_cmd_vel_failsafe.py`
+  - `.codex_runtime_fix/apply_stadia_follower_interlock.py`
+
 ## Mejoras aplicadas en el Pi durante la sesión
 
 - Stream MJPEG persistente para RGB mediante `/api/stream/rgb.mjpg`.
@@ -40,12 +65,15 @@ Estas mejoras fueron aplicadas y probadas sobre la instalación del Pi en una se
 
 ## Próxima prueba recomendada
 
-1. Abrir la interfaz con URL versionada para evitar recursos en caché.
-2. Dejar el modo Stadia seleccionado y follower detenido.
-3. Comprobar vídeo durante 5–10 minutos.
-4. Probar avance, retroceso, giro y STOP con ruedas elevadas del suelo.
-5. Activar follower solamente después de validar STOP y el cambio de modos.
-6. Registrar CPU, RAM, swap y logs mientras se reproduce cualquier congelación.
+1. Elevar las ruedas y mantener disponible el paro físico.
+2. Validar Stadia → follower y confirmar que solo queda un productor efectivo de movimiento.
+3. Validar follower → Stadia y confirmar STOP intermedio.
+4. Validar desconexión del mando durante una orden: debe publicar cero inmediatamente.
+5. Validar el watchdog de `arduino_bridge`: una orden única debe caer a cero en menos de un segundo.
+6. Solo después, probar avance, retroceso y giro a velocidad reducida.
+7. Corregir el cliente antiguo que todavía solicita `/api/frame/rgb.jpg` y `/api/frame/depth.jpg`; esa carga puede saturar la interfaz.
+8. Implementar los endpoints `/api/identity/*` que el HTML ya intenta utilizar.
+9. Registrar CPU, RAM, swap y logs durante cualquier congelación.
 
 ## Seguridad
 
@@ -57,4 +85,6 @@ Estas mejoras fueron aplicadas y probadas sobre la instalación del Pi en una se
 
 - Respaldo final, incluyendo este índice y handover: `BACKUPS/SMART_TROLLEY_WORKSPACE_FINAL_20260723_021033.tar.gz`.
 - Respaldo previo a actualizar la documentación: `BACKUPS/SMART_TROLLEY_WORKSPACE_20260723_020932.tar.gz`.
+- Respaldo del runtime del Pi después de los fail-safes: `BACKUPS/pre_tomorrow_20260723_035630.tar.gz`.
+- SHA-256 del respaldo del Pi: `9cee5e4e3dba005eee39347ea1145a28c04faa6d929f6826781cf3c5843bba66`.
 - Cada archivo tiene su verificación SHA-256 en el archivo homónimo terminado en `.sha256`.
