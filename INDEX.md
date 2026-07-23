@@ -1,6 +1,6 @@
 # Índice del proyecto — Smart Trolley V14
 
-Actualizado: 2026-07-23
+Actualizado: 2026-07-24
 
 ## Lectura inicial
 
@@ -27,6 +27,9 @@ Actualizado: 2026-07-23
 - `.codex_runtime_fix/pi8_face_static/`: implementación y utilidades de identidad facial.
 
 Las capturas de cámara y cachés Python no forman parte del respaldo.
+
+El estado canónico más reciente es el descrito en `HANDOVER.md`: compensación angular
+cámara–LiDAR de 90°, compuerta facial y rechazo estricto de discontinuidades.
 
 ## Historial y artefactos
 

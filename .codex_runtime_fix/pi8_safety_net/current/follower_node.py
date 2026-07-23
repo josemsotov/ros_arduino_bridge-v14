@@ -53,11 +53,18 @@ class FollowerNode(Node):
         self.declare_parameter('person_min_confidence', 0.35)
         self.declare_parameter('person_track_timeout', 0.80)
         self.declare_parameter('lidar_visual_gate_deg', 14.0)
+        self.declare_parameter('lidar_camera_yaw_deg', 90.0)
         self.declare_parameter('lidar_cluster_jump_m', 0.30)
         self.declare_parameter('lidar_min_cluster_points', 3)
         self.declare_parameter('lidar_distance_smoothing_alpha', 0.25)
         self.declare_parameter('lidar_angle_smoothing_alpha', 0.35)
         self.declare_parameter('lidar_max_target_jump_m', 0.60)
+        self.declare_parameter('lidar_continuity_accept_m', 0.25)
+        self.declare_parameter('lidar_switch_confirm_scans', 3)
+        self.declare_parameter('lidar_candidate_match_m', 0.20)
+        self.declare_parameter('face_distance_scale_m', 0.185)
+        self.declare_parameter('lidar_face_distance_gate_m', 0.45)
+        self.declare_parameter('face_distance_timeout', 1.50)
         self.declare_parameter('min_linear_vel', 0.06)
         self.declare_parameter('linear_deadband', 0.06)
         self.declare_parameter('angular_deadband_deg', 2.0)
@@ -90,6 +97,9 @@ class FollowerNode(Node):
         self.lidar_raw_target_angle = None
         self.lidar_cluster_count = 0
         self.lidar_target_status = 'idle'
+        self.lidar_pending_dist = None
+        self.lidar_pending_angle = None
+        self.lidar_pending_count = 0
         self.kinect_target_x = None
         self.identity_profile = None
         self.identity_samples = []
@@ -148,6 +158,8 @@ class FollowerNode(Node):
         self.face_y = None
         self.face_width_ratio = None
         self.face_height_ratio = None
+        self.face_distance_estimate = None
+        self.face_distance_last_seen = self.get_clock().now()
         self.face_predicted_linear = 0.0
         self.face_predicted_angular = 0.0
         # Fail closed: motion is rejected until Stadia explicitly reports
@@ -207,12 +219,7 @@ class FollowerNode(Node):
             return
         self.enabled = bool(msg.data)
         if self.enabled:
-            self.target_dist = None
-            self.target_angle = None
-            self.lidar_raw_target_dist = None
-            self.lidar_raw_target_angle = None
-            self.lidar_cluster_count = 0
-            self.lidar_target_status = 'acquiring'
+            self._reset_lidar_target('acquiring')
             self.face_static_enabled = False
             self.face_identity_enroll_active = False
             self.gesture_test_enabled = False
@@ -312,6 +319,7 @@ class FollowerNode(Node):
         if command in ('FACE_STATIC_ENROLL', 'FACE_CALIBRATE_ENROLL'):
             self.enabled = False
             self.gesture_test_enabled = False
+            self._reset_lidar_target('acquiring')
             self.face_static_enabled = True
             self.face_identity_enroll_active = True
             self.face_identity_profile = None
@@ -320,6 +328,7 @@ class FollowerNode(Node):
             self.face_identity_verified = False
             self.face_identity_session_ok = False
             self.face_identity_score = 0.0
+            self.face_distance_estimate = None
             self.face_predicted_linear = 0.0
             self.face_predicted_angular = 0.0
             self.mode = 'FACE_STATIC_DRY_RUN'
@@ -331,6 +340,7 @@ class FollowerNode(Node):
         elif command in ('FACE_STATIC_ON', 'FACE_CALIBRATE_ON'):
             self.enabled = False
             self.gesture_test_enabled = False
+            self._reset_lidar_target('acquiring')
             self.face_static_enabled = True
             self.face_identity_enroll_active = False
             self.mode = 'FACE_STATIC_DRY_RUN'
@@ -579,6 +589,19 @@ class FollowerNode(Node):
         self.face_y = ((y1 + y2) * 0.5) / h
         self.face_width_ratio = (x2 - x1) / w
         self.face_height_ratio = (y2 - y1) / h
+        distance_scale = float(
+            self.get_parameter('face_distance_scale_m').value
+        )
+        measured_face_distance = distance_scale / max(
+            0.03, float(self.face_width_ratio)
+        )
+        self.face_distance_estimate = (
+            measured_face_distance
+            if self.face_distance_estimate is None
+            else 0.75 * self.face_distance_estimate
+            + 0.25 * measured_face_distance
+        )
+        self.face_distance_last_seen = self.get_clock().now()
 
         signature = self._face_signature(image[y1:y2, x1:x2])
         if signature is None:
@@ -909,14 +932,46 @@ class FollowerNode(Node):
             return
 
         p = self.get_all_params()
+        if (
+            self.get_parameter('visual_identity_enabled').value
+            and not self._person_track_is_fresh()
+        ):
+            self.lidar_pending_dist = None
+            self.lidar_pending_angle = None
+            self.lidar_pending_count = 0
+            self.lidar_target_status = 'no_person_track'
+            self._stop()
+            self.publish_state()
+            return
+        if (
+            self.target_dist is None
+            and self.get_parameter('visual_identity_enabled').value
+            and not (
+                self.face_detected
+                and self.face_identity_verified
+                and self.face_identity_session_ok
+            )
+        ):
+            self.lidar_target_status = 'awaiting_verified_face'
+            self._stop()
+            self.publish_state()
+            return
+
         search_rad = math.radians(p['search_angle_deg'])
         min_rad = math.radians(p['min_angle_deg'])
+        lidar_camera_yaw = math.radians(
+            float(self.get_parameter('lidar_camera_yaw_deg').value)
+        )
         points = []
 
         for i, r in enumerate(msg.ranges):
             if not math.isfinite(r) or r < 0.1 or r > p['max_detect_dist']:
                 continue
-            angle = msg.angle_min + i * msg.angle_increment
+            raw_angle = msg.angle_min + i * msg.angle_increment
+            angle = math.atan2(
+                math.sin(raw_angle - lidar_camera_yaw),
+                math.cos(raw_angle - lidar_camera_yaw),
+            )
             if abs(angle) < min_rad or abs(angle) > search_rad:
                 continue
             if self.visual_target_angle is not None:
@@ -977,6 +1032,36 @@ class FollowerNode(Node):
             # Prefer a wider physical return when angle and continuity agree.
             score -= min(0.08, len(cluster) * 0.004)
             candidates.append((score, distance, angle, len(cluster)))
+
+        face_distance_fresh = False
+        if self.face_distance_estimate is not None:
+            face_distance_age = (
+                self.get_clock().now() - self.face_distance_last_seen
+            ).nanoseconds / 1e9
+            face_distance_fresh = face_distance_age <= float(
+                self.get_parameter('face_distance_timeout').value
+            )
+        if face_distance_fresh:
+            face_gate = float(
+                self.get_parameter('lidar_face_distance_gate_m').value
+            )
+            compatible = [
+                candidate
+                for candidate in candidates
+                if abs(candidate[1] - self.face_distance_estimate) <= face_gate
+            ]
+            if not compatible:
+                _, raw_dist, raw_angle, _ = min(
+                    candidates, key=lambda item: item[0]
+                )
+                self.lidar_raw_target_dist = raw_dist
+                self.lidar_raw_target_angle = raw_angle
+                self.lidar_target_status = 'face_distance_mismatch'
+                self._stop()
+                self.publish_state()
+                return
+            candidates = compatible
+
         _, raw_dist, raw_angle, cluster_size = min(
             candidates, key=lambda item: item[0]
         )
@@ -995,6 +1080,25 @@ class FollowerNode(Node):
             self._stop()
             self.publish_state()
             return
+
+        continuity_limit = float(
+            self.get_parameter('lidar_continuity_accept_m').value
+        )
+        if (
+            self.target_dist is not None
+            and abs(raw_dist - self.target_dist) > continuity_limit
+        ):
+            self.lidar_pending_dist = raw_dist
+            self.lidar_pending_angle = raw_angle
+            self.lidar_pending_count = 1
+            self.lidar_target_status = 'distance_discontinuity'
+            self._stop()
+            self.publish_state()
+            return
+
+        self.lidar_pending_dist = None
+        self.lidar_pending_angle = None
+        self.lidar_pending_count = 0
 
         dist_alpha = max(
             0.05,
@@ -1124,6 +1228,17 @@ class FollowerNode(Node):
         self.smoothed_linear = 0.0
         self.smoothed_angular = 0.0
 
+    def _reset_lidar_target(self, status='idle'):
+        self.target_dist = None
+        self.target_angle = None
+        self.lidar_raw_target_dist = None
+        self.lidar_raw_target_angle = None
+        self.lidar_cluster_count = 0
+        self.lidar_pending_dist = None
+        self.lidar_pending_angle = None
+        self.lidar_pending_count = 0
+        self.lidar_target_status = status
+
     def _handle_gesture_test_command(self, command):
         if command in ('STOP', 'WAIT', 'PAUSE'):
             self.gesture_test_label = 'stop'
@@ -1211,6 +1326,10 @@ class FollowerNode(Node):
             'face_height_ratio': (
                 None if self.face_height_ratio is None
                 else round(float(self.face_height_ratio), 3)
+            ),
+            'face_distance_estimate': (
+                None if self.face_distance_estimate is None
+                else round(float(self.face_distance_estimate), 3)
             ),
             'face_identity_status': self.face_identity_status,
             'face_identity_verified': self.face_identity_verified,

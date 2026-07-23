@@ -26,6 +26,18 @@ robot_follower:
     person_min_confidence: 0.35
     person_track_timeout: 0.80
     lidar_visual_gate_deg: 14.0
+    lidar_camera_yaw_deg: 90.0
+    lidar_cluster_jump_m: 0.30
+    lidar_min_cluster_points: 3
+    lidar_distance_smoothing_alpha: 0.25
+    lidar_angle_smoothing_alpha: 0.35
+    lidar_max_target_jump_m: 0.60
+    lidar_continuity_accept_m: 0.25
+    lidar_switch_confirm_scans: 3
+    lidar_candidate_match_m: 0.20
+    face_distance_scale_m: 0.185
+    lidar_face_distance_gate_m: 0.45
+    face_distance_timeout: 1.50
     min_linear_vel: 0.06
     linear_deadband: 0.06
     angular_deadband_deg: 2.0

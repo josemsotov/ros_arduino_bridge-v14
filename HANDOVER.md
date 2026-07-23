@@ -1,95 +1,123 @@
 # Handover — Smart Trolley V14
 
-Actualizado: 2026-07-23
+Actualizado: 2026-07-24
 
-## Estado operativo actual
+## Estado de cierre
 
-- Hardware activo: Raspberry Pi 5 de 8 GB.
-- Acceso Ethernet verificado: `josemsotov@192.168.40.73`.
-- Servicios de usuario activos:
+- Raspberry Pi 5 de 8 GB: `josemsotov@192.168.40.73`.
+- Interfaz: `http://192.168.40.73:8080`.
+- Servicios activos:
   - `robot-follower.service`
   - `robot-operator-web.service`
-- Interfaz/API: `http://192.168.40.73:8080`.
-- El modo seguro predeterminado es `STADIA`.
-- Estado al cerrar: follower deshabilitado, `/cmd_vel=0`, PWM `0/0` y RPM `0/0`.
-- El robot permanece suspendido durante las pruebas de ruedas.
+- Estado seguro verificado:
+  - modo `STADIA`
+  - follower deshabilitado
+  - `/cmd_vel = 0 / 0`
+  - PWM `0/0`
+  - RPM `0/0`
+- No se realizó ninguna prueba con movimiento real.
+- Mantener el robot suspendido para las próximas pruebas.
 
-## Funcionalidad desplegada
+## Safety net vigente
 
-### Arbitraje y safety net
-
-- Stadia toma el control automáticamente al conectarse por Bluetooth.
-- El mando debe observarse con las palancas centradas antes de quedar armado.
-- Stadia, OFF o desconexión cancelan cualquier autorización anterior del follower.
-- Solo `/follower/authorized_enable` puede autorizar el follower después de seleccionar
-  intencionalmente ese modo.
-- Órdenes directas, gestos y `/follower/enable` se rechazan mientras STADIA/OFF tenga prioridad.
-- El follower exige una sesión facial válida antes de arrancar.
-- Al detener el follower se restaura Stadia y se publica STOP.
-- El firmware dispone de watchdog de órdenes con `cmd_timeout=0.5`.
-- Paro de emergencia reproducible:
+- Stadia es el modo predeterminado y toma control al conectarse por Bluetooth.
+- El mando exige palancas centradas antes de armarse.
+- Solo `/follower/authorized_enable` puede habilitar intencionalmente FOLLOWER.
+- Stadia, OFF, desconexión y STOP cancelan autorizaciones anteriores.
+- El follower exige una sesión facial válida para arrancar.
+- Watchdog Arduino: `cmd_timeout=0.5`.
+- Paro reproducible:
   `.codex_runtime_fix/pi8_safety_net/emergency_stadia_stop.sh`.
 
-### Identidad, cuerpo y LiDAR
+## Cambios desplegados el 2026-07-24
 
-- La prueba facial estática detecta, enrola y verifica el rostro sin mover motores.
-- El cuerpo se sigue con el detector/track de la aplicación follower.
-- La asociación cuerpo–LiDAR agrupa puntos contiguos y selecciona el clúster usando
-  alineación visual, continuidad de distancia y tamaño.
-- Se rechazan saltos de objetivo mayores de `0.60 m`.
-- Distancia y ángulo aceptados se suavizan.
-- Telemetría añadida:
-  - `lidar_raw_target_dist`
-  - `lidar_raw_target_angle`
-  - `lidar_cluster_count`
-  - `lidar_target_status`
-- El modo `FACE_STATIC_DRY_RUN` calcula las órdenes previstas, pero fuerza movimiento real cero.
+En `follower_node.py` y `follower_params.yaml`:
 
-### Interfaz y telemetría
+- Agrupación de puntos LiDAR contiguos y selección por alineación visual,
+  continuidad de distancia y tamaño.
+- Telemetría de distancia/ángulo crudos, cantidad de clústeres y estado.
+- Procesamiento body–LiDAR disponible en `FACE_STATIC_DRY_RUN`, siempre con salida cero.
+- Sin body track fresco:
+  - estado `no_person_track`
+  - STOP
+  - no se crea un objetivo nuevo.
+- Un objetivo inicial exige rostro visible, sesión válida e identidad verificada.
+- Cada enrolamiento reinicia completamente la referencia LiDAR heredada.
+- Se conserva la última referencia durante pérdidas visuales breves.
+- Compuerta de distancia facial:
+  - escala inicial `face_distance_scale_m=0.185`
+  - margen `lidar_face_distance_gate_m=0.45`
+  - timeout `1.50 s`
+  - estado de rechazo `face_distance_mismatch`.
+- Compensación de montaje cámara–LiDAR:
+  - `lidar_camera_yaw_deg=90.0`
+  - ángulos normalizados a `[-π, π]`.
+- Política final de continuidad:
+  - cambios mayores de `0.25 m` durante la misma sesión se rechazan
+  - estado `distance_discontinuity`
+  - STOP y conservación de la última distancia válida
+  - ya no se acepta otro objeto después de varios barridos.
 
-- `robot_operator_web` escucha el `/cmd_vel` real del bus ROS.
-- La API expone sus valores y antigüedad.
-- La interfaz muestra comando real, objetivo LiDAR crudo/filtrado, clústeres y estado.
+## Resultados observados
 
-## Última prueba: cluster dry-run
+### Aprobado
 
-Resultado: aprobado, sin movimiento.
+- Rostro frontal:
+  - `face_x=0.526–0.532`
+  - identidad verificada.
+- Body track aproximadamente `0.94`.
+- Después de compensar `90°`, adquisición corporal estable:
+  - distancia `1.23–1.29 m`
+  - clúster `16–22` puntos
+  - ángulo aproximado `0.05 rad`.
+- En todas las muestras:
+  - `/cmd_vel=0`
+  - PWM/RPM en cero.
 
-- Identidad facial verificada: puntuación `0.826`.
-- Tracking corporal activo: confianza `0.884`.
-- Objetivo LiDAR: aproximadamente `2.426 m`, clúster de 14 puntos.
-- En la muestra completa, la distancia cruda permaneció entre `2.4095–2.495 m`.
-- No hubo rechazos por salto; el estado permaneció `tracking`.
-- Orden prevista del follower: `0.069 m/s`, `-0.081 rad/s`.
-- `/cmd_vel` real: `0.000 m/s`, `0.000 rad/s`.
-- PWM y RPM: cero.
+### Falló de forma segura
 
-Una lectura inicial mostró `no_face` porque el rostro estaba girado/inclinado. Al mirar
-hacia la cámara, la verificación se completó automáticamente. La cámara, el tracking
-corporal y el LiDAR sí funcionaban.
+- En la prueba lateral, al salir parcialmente del cuadro el selector migró desde
+  `≈1.27 m` hacia un objeto de `≈0.72–0.76 m`.
+- La sesión facial y el body track se perdieron temporalmente.
+- No hubo movimiento porque el modo era dry-run.
+- La causa fue la política anterior que aceptaba una discontinuidad después de tres
+  barridos consistentes.
+- Esa política fue eliminada y sustituida por rechazo estricto de cambios `>0.25 m`.
 
-## Fuente respaldada
+### Pendiente de validar
 
-- Follower activo: `.codex_runtime_fix/pi8_safety_net/current/follower_node.py`
-- Stadia activo: `.codex_runtime_fix/pi8_safety_net/current/stadia_node.py`
-- Bridge activo: `.codex_runtime_fix/pi8_safety_net/current/arduino_node.py`
-- Parámetros: `.codex_runtime_fix/pi8_safety_net/current/follower_params.yaml`
-- Servidor web: `.codex_runtime_fix/pi8_safety_net/web_current/web_server.py`
-- Interfaz: `.codex_runtime_fix/pi8_safety_net/web_current/index.html`
-- Scripts de prueba y paro: `.codex_runtime_fix/pi8_safety_net/`
-- Desarrollo de prueba facial: `.codex_runtime_fix/pi8_face_static/`
+La nueva política `distance_discontinuity` fue desplegada, compilada y el servicio quedó
+activo, pero todavía no se repitió la adquisición central ni la prueba lateral después
+de este último cambio.
 
-Las capturas de cámara y los archivos `__pycache__` se excluyen del respaldo GitHub.
+## Reanudación recomendada
 
-## Próximo paso
+1. Confirmar robot suspendido y paro físico accesible.
+2. Abrir `http://192.168.40.73:8080`.
+3. Colocarse a aproximadamente `1.3 m`, torso centrado y rostro mirando al lente.
+4. Iniciar `FACE_STATIC_ENROLL`.
+5. Aprobar adquisición central solo si:
+   - identidad y sesión válidas
+   - body track fresco
+   - LiDAR `≈1.2–1.4 m`
+   - clúster corporal consistente
+   - `/cmd_vel`, PWM y RPM en cero.
+6. Repetir desplazamiento lateral en dry-run.
+7. Confirmar que un objeto a `≈0.72 m` produzca `distance_discontinuity` y que la
+   referencia corporal no cambie.
+8. Regresar al centro y confirmar recuperación a `≈1.2–1.4 m`.
+9. Solo después evaluar una prueba muy limitada con ruedas suspendidas.
+10. No apoyar las ruedas hasta validar STOP, pérdida de persona y takeover de Stadia.
 
-1. Mantener el robot suspendido y el paro físico accesible.
-2. Repetir una prueba corta con rostro frontal y confirmar identidad + clúster estable.
-3. Seleccionar FOLLOWER intencionalmente desde Stadia.
-4. Autorizar una prueba de ruedas limitada, vigilando simultáneamente:
-   `/cmd_vel`, PWM, RPM, identidad, body track y LiDAR.
-5. Confirmar parada por pérdida de rostro, pérdida de objetivo, STOP y takeover de Stadia.
-6. No apoyar las ruedas hasta aprobar todos los casos anteriores.
+## Fuente activa respaldada
+
+- `.codex_runtime_fix/pi8_safety_net/current/follower_node.py`
+- `.codex_runtime_fix/pi8_safety_net/current/follower_params.yaml`
+- `.codex_runtime_fix/pi8_safety_net/current/stadia_node.py`
+- `.codex_runtime_fix/pi8_safety_net/current/arduino_node.py`
+- `.codex_runtime_fix/pi8_safety_net/web_current/`
+
+Las capturas de cámara y cachés Python permanecen excluidas de GitHub.
 
 ## Comandos útiles
 
