@@ -23,6 +23,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Local robot camera diagnostics (may contain personal images)
+.codex_runtime_fix/pi8_face_static/*.jpg
+.codex_runtime_fix/pi8_safety_net/*.jpg
+
 # VS Code
 .vscode/
 

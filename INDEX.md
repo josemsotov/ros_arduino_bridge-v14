@@ -2,42 +2,36 @@
 
 Actualizado: 2026-07-23
 
-## Documentos principales
+## Lectura inicial
 
-- `CODEBASE_MEMORY.md`: mapa canónico de arquitectura, módulos y reglas de desarrollo.
-- `HANDOVER.md`: estado operativo, cambios recientes, pruebas realizadas y próximos pasos.
-- `README.md`: descripción general del firmware y uso básico.
-- `GEMINI.md`: reglas de navegación y mantenimiento de contexto del repositorio.
+1. `HANDOVER.md`: estado operativo, seguridad, última prueba y próximo paso.
+2. `CODEBASE_MEMORY.md`: arquitectura y reglas del repositorio.
+3. `README.md`: firmware y uso general.
 
-## Código activo local
+## Código principal
 
-- `MOTOR-INTERFACE-V14.ino`: entrada principal del firmware Arduino Mega 2560.
-- `Configuration.h`: funciones habilitadas y parámetros globales.
-- `Modules.h`: composición y orden de módulos.
-- `Motor_Control.h`: actuación y seguridad de motores.
-- `Robot_States.h`: modos, estados y maniobras.
-- `ROS2_Bridge.h`: protocolo serie con el Raspberry Pi.
-- `Serial_Command_Processor.h`: comandos locales y despacho.
-- `stadia_controller.py`: utilidad local para el mando Stadia.
+- `MOTOR-INTERFACE-V14.ino`: firmware Arduino Mega 2560.
+- `Configuration.h`: configuración global.
+- `Modules.h`: composición de módulos.
+- `Motor_Control.h`: motores y seguridad.
+- `Robot_States.h`: modos y estados.
+- `ROS2_Bridge.h`: protocolo serie Raspberry Pi–Arduino.
+- `Serial_Command_Processor.h`: comandos locales.
+- `stadia_controller.py`: utilidad del mando.
 
-## Aplicación Raspberry Pi conservada en el workspace
+## Snapshot activo del Raspberry Pi
 
-- `.codex_gesture_update/robot_follower/`: nodos y configuración del follower.
-- `.codex_gesture_update/robot_operator_web/`: interfaz web y streaming.
-- `.codex_gesture_update/start_robot_follower.sh`: arranque de la aplicación.
-- `.codex_runtime_fix/`: scripts reproducibles del fail-safe y copias exactas desplegadas el 2026-07-23.
-- `.codex_touch_mode/`, `.codex_touch_edit/`, `.codex_stadia_edit/`: copias auxiliares de cambios de interfaz y modos.
+- `.codex_runtime_fix/pi8_safety_net/current/`: follower, Stadia, bridge y parámetros.
+- `.codex_runtime_fix/pi8_safety_net/web_current/`: servidor e interfaz web.
+- `.codex_runtime_fix/pi8_safety_net/`: pruebas, límites y paro de emergencia.
+- `.codex_runtime_fix/pi8_face_static/`: implementación y utilidades de identidad facial.
 
-Estos directorios `.codex_*` son copias de trabajo y no garantizan por sí solos que coincidan con la instalación activa del Pi. Antes de desplegar, comparar con el workspace ROS2 remoto.
+Las capturas de cámara y cachés Python no forman parte del respaldo.
 
-## Respaldo y artefactos
+## Historial y artefactos
 
-- `BACKUPS/`: respaldos fechados del PC y del Pi.
-- `build_output/`: binarios generados; no es fuente canónica.
-- `MOTOR-INTERFACE-V-13/`: versión histórica; no editar para cambios de V14.
-
-## Orden recomendado de lectura
-
-1. `HANDOVER.md`
-2. `CODEBASE_MEMORY.md`
-3. El archivo fuente concreto indicado por ambos documentos
+- `.codex_runtime_fix/deployed_20260723/`: copias de despliegues anteriores.
+- `.codex_gesture_update/`: follower e interfaz de una etapa anterior.
+- `.codex_touch_mode/`, `.codex_touch_edit/`, `.codex_stadia_edit/`: cambios históricos.
+- `BACKUPS/`: archivos de respaldo fechados.
+- `MOTOR-INTERFACE-V-13/`: versión histórica, no editar para V14.

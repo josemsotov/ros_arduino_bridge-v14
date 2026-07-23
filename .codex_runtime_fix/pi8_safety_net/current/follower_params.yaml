@@ -1,0 +1,48 @@
+robot_follower:
+  ros__parameters:
+    follow_distance: 2.50
+    follow_min_distance: 2.00
+    follow_max_distance: 3.00
+    min_distance: 0.50
+    max_detect_dist: 5.00
+    min_angle_deg: 0.0
+    search_angle_deg: 60.0
+    max_linear_vel: 0.35
+    max_angular_vel: 0.60
+    kp_linear: 0.70
+    kp_angular: 1.00
+    approach_distance: 0.50
+    approach_tolerance: 0.08
+    use_kinect: false
+    visual_identity_enabled: true
+    visual_identity_required: true
+    visual_identity_threshold: 0.62
+    visual_identity_timeout: 1.20
+    visual_identity_samples: 4
+    visual_identity_verify_once: true
+    visual_target_fov_deg: 62.0
+    person_detection_width: 384
+    person_detection_stride: 3
+    person_min_confidence: 0.35
+    person_track_timeout: 0.80
+    lidar_visual_gate_deg: 14.0
+    min_linear_vel: 0.06
+    linear_deadband: 0.06
+    angular_deadband_deg: 2.0
+    velocity_smoothing_alpha: 0.28
+    gesture_test_linear_vel: 0.14
+    gesture_test_angular_vel: 0.30
+    gesture_test_duration: 1.00
+
+stadia_node:
+  ros__parameters:
+    max_linear_vel:      0.40   # m/s — velocidad lineal máxima
+    max_angular_vel:     0.70   # rad/s — velocidad angular máxima
+    deadzone_lin:        0.12   # zona muerta palanca lineal (0-1)
+    deadzone_ang:        0.15   # zona muerta palanca angular (0-1)
+    angular_expo:        2.0    # exponente angular (1=lineal, 2=cuadrático)
+    smoothing_alpha:     0.35   # suavizado (0=lento, 1=instantáneo)
+    send_rate_hz:        20.0   # Hz de publicación en /cmd_vel
+    rotation_dominance:  2.0    # ratio para activar modo rotación pura
+    takeover_on_connect: true   # Bluetooth conectado toma control y detiene follower
+    require_neutral_to_arm: true # exige palancas centradas antes de permitir movimiento

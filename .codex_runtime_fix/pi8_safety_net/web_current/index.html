@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Trolley Operator</title>
+  <style>
+    :root {
+      --bg: #101113;
+      --panel: #17191d;
+      --panel-2: #20232a;
+      --line: #30343d;
+      --text: #eef1f5;
+      --muted: #8f98a8;
+      --ok: #42d392;
+      --warn: #f4bd50;
+      --bad: #ff6b6b;
+      --blue: #65a8ff;
+      --cyan: #5ed6d1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      font-size: 14px;
+    }
+    button, input {
+      font: inherit;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: 54px 1fr;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: #14161a;
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 6px;
+      background: var(--bad);
+    }
+    .dot.ok { background: var(--ok); }
+    main {
+      display: grid;
+      grid-template-columns: 330px minmax(420px, 1fr) 380px;
+      gap: 10px;
+      padding: 10px;
+      min-height: 0;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-width: 0;
+    }
+    .panel-title {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    .panel-body { padding: 12px; }
+    .stack { display: grid; gap: 10px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .metric {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      min-height: 64px;
+    }
+    .metric label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .metric strong {
+      font-size: 21px;
+      line-height: 1;
+    }
+    .wide { grid-column: 1 / -1; }
+    .controls {
+      display: grid;
+      gap: 8px;
+    }
+    .btn {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--text);
+      background: #242832;
+      cursor: pointer;
+    }
+    .btn:hover { border-color: #566070; }
+    .btn.primary { background: #173a2b; border-color: #236a4a; color: #bbf7d0; }
+    .btn.warn { background: #3d2f14; border-color: #7a5a1c; color: #ffe3a3; }
+    .btn.danger { background: #451d23; border-color: #8a303a; color: #ffd0d4; }
+    .drive-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .drive-pad .btn {
+      aspect-ratio: 1.25;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .drive-pad .empty { visibility: hidden; }
+    .controller-card {
+      display: grid;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #13161b;
+      padding: 10px;
+    }
+    .controller-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .controller-head b { color: var(--bad); }
+    .controller-head b.ok { color: var(--ok); }
+    .controller-readout {
+      min-height: 28px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: 74px 1fr 54px;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+    }
+    input[type="range"] { width: 100%; }
+    .raw {
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      gap: 8px;
+    }
+    .raw input {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #0e1014;
+      color: var(--text);
+      padding: 0 10px;
+    }
+    .media {
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+    .image-wrap {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 34px 1fr;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .image-wrap h2 {
+      margin: 0;
+      padding: 9px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      border-bottom: 1px solid var(--line);
+    }
+    .image-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #050607;
+      min-height: 220px;
+    }
+    #lidar {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #050607;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    pre {
+      margin: 0;
+      min-height: 142px;
+      max-height: 220px;
+      overflow: auto;
+      background: #0e1014;
+      color: #cbd5e1;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+    .fresh { color: var(--ok); }
+    .stale { color: var(--warn); }
+    .dead { color: var(--bad); }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 320px 1fr; }
+      .right { grid-column: 1 / -1; }
+      .media { grid-template-columns: 1fr 1fr; grid-template-rows: none; }
+    }
+    @media (max-width: 760px) {
+      header { align-items: flex-start; flex-direction: column; height: auto; padding: 10px 12px; gap: 8px; }
+      main { grid-template-columns: 1fr; }
+      .media { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Smart Trolley Operator</h1>
+    <div class="status-row">
+      <span><span id="wsDot" class="dot"></span><span id="wsText">connecting</span></span>
+      <span>LiDAR <b id="scanAge">--</b></span>
+      <span>RGB <b id="rgbAge">--</b></span>
+      <span>Depth <b id="depthAge">--</b></span>
+      <span>Gesture <b id="gestureAge">--</b></span>
+    </div>
+  </header>
+  <main>
+    <section>
+      <div class="panel-title">Control</div>
+      <div class="panel-body stack">
+        <div class="grid2">
+          <button class="btn primary" id="followOn">Follow ON</button>
+          <button class="btn warn" id="followOff">Follow OFF</button>
+          <button class="btn danger wide" id="stop">STOP</button>
+        </div>
+        <div class="slider-row">
+          <span>Linear</span>
+          <input id="linearMax" type="range" min="0.05" max="0.50" step="0.05" value="0.20">
+          <b id="linearMaxVal">0.20</b>
+        </div>
+        <div class="slider-row">
+          <span>Angular</span>
+          <input id="angularMax" type="range" min="0.10" max="1.00" step="0.10" value="0.40">
+          <b id="angularMaxVal">0.40</b>
+        </div>
+        <div class="drive-pad">
+          <button class="btn empty"></button>
+          <button class="btn" data-drive="fwd">UP</button>
+          <button class="btn empty"></button>
+          <button class="btn" data-drive="left">LEFT</button>
+          <button class="btn danger" data-drive="halt">STOP</button>
+          <button class="btn" data-drive="right">RIGHT</button>
+          <button class="btn empty"></button>
+          <button class="btn" data-drive="back">DOWN</button>
+          <button class="btn empty"></button>
+        </div>
+        <div class="controller-card">
+          <div class="controller-head">
+            <span>Stadia Remote</span>
+            <b id="gamepadStatus">OFF</b>
+          </div>
+          <div class="grid2">
+            <button class="btn primary" id="gamepadToggle">Enable</button>
+            <button class="btn danger" id="gamepadStop">A STOP</button>
+          </div>
+          <div id="gamepadReadout" class="controller-readout">Connect controller and press any button.</div>
+        </div>
+        <div class="grid2">
+          <button class="btn" data-raw="hb on">Balance ON</button>
+          <button class="btn" data-raw="hb off">Balance OFF</button>
+          <button class="btn" data-raw="hb stat">Balance STAT</button>
+          <button class="btn" data-raw="hb cal">Cal neutral</button>
+          <button class="btn" data-raw="hb cal front">Cal front</button>
+          <button class="btn" data-raw="hb cal rear">Cal rear</button>
+          <button class="btn" data-raw="z">Pin diag</button>
+          <button class="btn" data-raw="s">Status</button>
+        </div>
+        <div class="raw">
+          <input id="rawInput" placeholder="raw command, e.g. hb kp 0.025">
+          <button class="btn" id="sendRaw">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="media">
+      <div class="image-wrap">
+        <h2>RGB camera</h2>
+        <img id="rgb" alt="RGB camera">
+      </div>
+      <div class="image-wrap">
+        <h2>Depth camera</h2>
+        <img id="depth" alt="Depth camera">
+      </div>
+    </div>
+
+    <section class="right">
+      <div class="panel-title">Telemetry</div>
+      <div class="panel-body stack">
+        <div class="grid2">
+          <div class="metric"><label>Follower</label><strong id="followState">OFF</strong></div>
+          <div class="metric"><label>Mode</label><strong id="followMode">--</strong></div>
+          <div class="metric"><label>Gesture</label><strong id="gestureState">--</strong></div>
+          <div class="metric"><label>Front min</label><strong id="frontMin">--</strong></div>
+          <div class="metric"><label>Linear cmd</label><strong id="linCmd">0.00</strong></div>
+          <div class="metric"><label>Angular cmd</label><strong id="angCmd">0.00</strong></div>
+          <div class="metric"><label>Left RPM</label><strong id="lrpm">--</strong></div>
+          <div class="metric"><label>Right RPM</label><strong id="rrpm">--</strong></div>
+          <div class="metric"><label>Left A</label><strong id="lma">--</strong></div>
+          <div class="metric"><label>Right A</label><strong id="rma">--</strong></div>
+        </div>
+        <canvas id="lidar" width="340" height="340"></canvas>
+        <pre id="rawLog">Waiting for telemetry...</pre>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let state = null;
+let driveTimer = null;
+let gamepadEnabled = false;
+let gamepadIndex = null;
+let gamepadManualActive = false;
+let gamepadLastSent = 0;
+let gamepadPrevButtons = [];
+let gamepadLoop = null;
+
+function fmt(v, digits = 2, suffix = '') {
+  return (v === null || v === undefined || Number.isNaN(v)) ? '--' : Number(v).toFixed(digits) + suffix;
+}
+
+function ageClass(age) {
+  if (age === null || age === undefined) return 'dead';
+  if (age < 1.0) return 'fresh';
+  if (age < 3.0) return 'stale';
+  return 'dead';
+}
+
+function setAge(id, age) {
+  const el = $(id);
+  el.textContent = age === null || age === undefined ? '--' : age.toFixed(1) + 's';
+  el.className = ageClass(age);
+}
+
+async function postJson(url, payload = {}) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function sendCmd(linear, angular) {
+  return postJson('/api/cmd_vel', {linear, angular}).catch(console.error);
+}
+
+function stopMotion() {
+  clearInterval(driveTimer);
+  driveTimer = null;
+  gamepadManualActive = false;
+  return postJson('/api/stop').catch(console.error);
+}
+
+function startDrive(mode) {
+  clearInterval(driveTimer);
+  const lmax = Number($('linearMax').value);
+  const amax = Number($('angularMax').value);
+  let linear = 0, angular = 0;
+  if (mode === 'fwd') linear = lmax;
+  if (mode === 'back') linear = -lmax;
+  if (mode === 'left') angular = amax;
+  if (mode === 'right') angular = -amax;
+  if (mode === 'halt') { stopMotion(); return; }
+  sendCmd(linear, angular);
+  driveTimer = setInterval(() => sendCmd(linear, angular), 140);
+}
+
+function axisWithDeadzone(value, deadzone = 0.14) {
+  const v = Math.abs(value) < deadzone ? 0 : value;
+  return Math.max(-1, Math.min(1, v));
+}
+
+function findGamepad() {
+  const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()) : [];
+  const connected = pads.filter(Boolean);
+  return connected.find(p => /stadia/i.test(p.id)) || connected[0] || null;
+}
+
+function setGamepadUi(status, readout = '', ok = false) {
+  $('gamepadStatus').textContent = status;
+  $('gamepadStatus').className = ok ? 'ok' : '';
+  $('gamepadReadout').textContent = readout;
+  $('gamepadToggle').textContent = gamepadEnabled ? 'Disable' : 'Enable';
+}
+
+function handleGamepadButton(buttons, index, callback) {
+  const pressed = Boolean(buttons[index] && buttons[index].pressed);
+  if (pressed && !gamepadPrevButtons[index]) callback();
+  gamepadPrevButtons[index] = pressed;
+}
+
+function processGamepad() {
+  if (!gamepadEnabled) return;
+  const pad = gamepadIndex !== null && navigator.getGamepads
+    ? navigator.getGamepads()[gamepadIndex]
+    : findGamepad();
+  if (!pad) {
+    gamepadIndex = null;
+    setGamepadUi('PAIR', 'Connect controller and press any button.');
+    gamepadLoop = requestAnimationFrame(processGamepad);
+    return;
+  }
+  gamepadIndex = pad.index;
+
+  handleGamepadButton(pad.buttons, 0, stopMotion);
+  handleGamepadButton(pad.buttons, 1, () => postJson('/api/follower', {enabled: false}).then(() => sendCmd(0, 0)).catch(console.error));
+  handleGamepadButton(pad.buttons, 3, () => postJson('/api/follower', {enabled: true}).catch(console.error));
+
+  const linear = axisWithDeadzone(-(pad.axes[1] || 0)) * Number($('linearMax').value);
+  const angular = axisWithDeadzone(-(pad.axes[2] || 0)) * Number($('angularMax').value);
+  const moving = Math.abs(linear) > 0.001 || Math.abs(angular) > 0.001;
+  const now = performance.now();
+  if (moving && now - gamepadLastSent > 90) {
+    if (!gamepadManualActive) postJson('/api/follower', {enabled: false}).catch(console.error);
+    sendCmd(linear, angular);
+    gamepadManualActive = true;
+    gamepadLastSent = now;
+  } else if (!moving && gamepadManualActive && now - gamepadLastSent > 90) {
+    sendCmd(0, 0);
+    gamepadManualActive = false;
+    gamepadLastSent = now;
+  }
+  setGamepadUi('ON', `${pad.id} | L ${linear.toFixed(2)} R ${angular.toFixed(2)} | A stop, B wait, Y follow`, true);
+  gamepadLoop = requestAnimationFrame(processGamepad);
+}
+
+function setGamepadEnabled(enabled) {
+  gamepadEnabled = enabled && Boolean(navigator.getGamepads);
+  gamepadPrevButtons = [];
+  if (!gamepadEnabled) {
+    if (gamepadLoop) cancelAnimationFrame(gamepadLoop);
+    gamepadLoop = null;
+    gamepadIndex = null;
+    if (gamepadManualActive) sendCmd(0, 0);
+    gamepadManualActive = false;
+    setGamepadUi('OFF', navigator.getGamepads ? 'Controller disabled.' : 'Gamepad API not available.');
+    return;
+  }
+  if (gamepadLoop) cancelAnimationFrame(gamepadLoop);
+  gamepadLoop = null;
+  processGamepad();
+}
+
+function drawLidar(scan) {
+  const canvas = $('lidar');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#050607';
+  ctx.fillRect(0, 0, w, h);
+  const cx = w / 2, cy = h * 0.72;
+  const scale = w / 7.0;
+  ctx.strokeStyle = '#242a33';
+  ctx.lineWidth = 1;
+  for (let r = 1; r <= 3; r++) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * scale, Math.PI, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#3a4250';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx, cy - 3 * scale);
+  ctx.stroke();
+  if (!scan || !scan.points) return;
+  ctx.fillStyle = '#65a8ff';
+  for (const [a, r] of scan.points) {
+    if (r > 3.5) continue;
+    const x = cx + Math.sin(a) * r * scale;
+    const y = cy - Math.cos(a) * r * scale;
+    ctx.fillRect(x - 1, y - 1, 2, 2);
+  }
+  ctx.fillStyle = '#42d392';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 10);
+  ctx.lineTo(cx - 8, cy + 8);
+  ctx.lineTo(cx + 8, cy + 8);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function update(s) {
+  state = s;
+  setAge('scanAge', s.ages.scan);
+  setAge('rgbAge', s.camera.rgb_age);
+  setAge('depthAge', s.camera.depth_age);
+  setAge('gestureAge', s.ages.gesture_status);
+  const followerMode = (s.follower_state && s.follower_state.mode) || '--';
+  const followerEnabled = s.follower_state && typeof s.follower_state.enabled === 'boolean'
+    ? s.follower_state.enabled
+    : s.follower_enabled;
+  $('followState').textContent = followerEnabled ? 'ON' : 'OFF';
+  $('followMode').textContent = followerMode;
+  $('gestureState').textContent = (s.gesture_status && s.gesture_status.state) || '--';
+  $('frontMin').textContent = fmt(s.scan.front_min, 2, ' m');
+  const actualCmd = s.cmd_vel || s.last_cmd || {};
+  $('linCmd').textContent = fmt(actualCmd.linear, 2);
+  $('angCmd').textContent = fmt(actualCmd.angular, 2);
+  $('lrpm').textContent = fmt(s.motor_status.Lrpm, 0);
+  $('rrpm').textContent = fmt(s.motor_status.Rrpm, 0);
+  $('lma').textContent = fmt(s.motor_status.LmA, 2);
+  $('rma').textContent = fmt(s.motor_status.RmA, 2);
+  $('rawLog').textContent = [
+    'motor: ' + (s.motor_status.raw || '--'),
+    'encoders: ' + (s.encoder_counts || '--'),
+    'odom: x=' + fmt(s.odom.x, 3) + ' y=' + fmt(s.odom.y, 3) + ' v=' + fmt(s.odom.linear, 3) + ' w=' + fmt(s.odom.angular, 3),
+    'follower: mode=' + followerMode + ' enabled=' + followerEnabled,
+    'cmd_vel actual: v=' + fmt(actualCmd.linear, 4) + ' w=' + fmt(actualCmd.angular, 4) + ' age=' + fmt(s.ages.cmd_vel, 3, 's'),
+    'gesture: ' + ((s.gesture_status && (s.gesture_status.state + ' ' + (s.gesture_status.detail || ''))) || '--'),
+    'target: dist=' + fmt(s.follower_debug.target_dist, 3) + ' angle=' + fmt(s.follower_debug.target_angle, 3)
+      + ' raw=' + fmt(s.follower_state.lidar_raw_target_dist, 3)
+      + ' clusters=' + (s.follower_state.lidar_cluster_count ?? 0)
+      + ' status=' + (s.follower_state.lidar_target_status || '--'),
+    'scan: valid=' + (s.scan.valid_count || 0) + ' min=' + fmt(s.scan.min, 2) + ' front=' + fmt(s.scan.front_min, 2),
+    '',
+    'serial:',
+    ...(s.raw_rx || []).slice(-12)
+  ].join('\n');
+  drawLidar(s.scan);
+}
+
+function connectWs() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => {
+    $('wsDot').className = 'dot ok';
+    $('wsText').textContent = 'connected';
+  };
+  ws.onmessage = (event) => update(JSON.parse(event.data));
+  ws.onclose = () => {
+    $('wsDot').className = 'dot';
+    $('wsText').textContent = 'reconnecting';
+    setTimeout(connectWs, 1000);
+  };
+}
+
+$('followOn').onclick = () => postJson('/api/follower', {enabled: true}).catch(console.error);
+$('followOff').onclick = () => postJson('/api/follower', {enabled: false}).catch(console.error);
+$('stop').onclick = stopMotion;
+$('gamepadToggle').onclick = () => setGamepadEnabled(!gamepadEnabled);
+$('gamepadStop').onclick = stopMotion;
+window.addEventListener('gamepadconnected', (ev) => {
+  if (gamepadEnabled) {
+    gamepadIndex = ev.gamepad.index;
+    if (gamepadLoop) cancelAnimationFrame(gamepadLoop);
+    gamepadLoop = null;
+    processGamepad();
+  }
+  setGamepadUi(gamepadEnabled ? 'ON' : 'READY', ev.gamepad.id, gamepadEnabled);
+});
+window.addEventListener('gamepaddisconnected', () => {
+  gamepadIndex = null;
+  if (gamepadManualActive) sendCmd(0, 0);
+  gamepadManualActive = false;
+  setGamepadUi(gamepadEnabled ? 'PAIR' : 'OFF', 'Controller disconnected.');
+});
+$('sendRaw').onclick = () => {
+  const command = $('rawInput').value.trim();
+  if (command) postJson('/api/raw_command', {command}).catch(console.error);
+};
+$('rawInput').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') $('sendRaw').click();
+});
+document.querySelectorAll('[data-raw]').forEach(btn => {
+  btn.onclick = () => postJson('/api/raw_command', {command: btn.dataset.raw}).catch(console.error);
+});
+document.querySelectorAll('[data-drive]').forEach(btn => {
+  btn.addEventListener('pointerdown', () => startDrive(btn.dataset.drive));
+  btn.addEventListener('pointerup', stopMotion);
+  btn.addEventListener('pointerleave', () => { if (driveTimer) stopMotion(); });
+});
+$('linearMax').oninput = () => $('linearMaxVal').textContent = Number($('linearMax').value).toFixed(2);
+$('angularMax').oninput = () => $('angularMaxVal').textContent = Number($('angularMax').value).toFixed(2);
+window.addEventListener('keydown', (ev) => {
+  if (ev.repeat) return;
+  if (ev.key === ' ') stopMotion();
+  if (ev.key === 'ArrowUp' || ev.key.toLowerCase() === 'w') startDrive('fwd');
+  if (ev.key === 'ArrowDown' || ev.key.toLowerCase() === 's') startDrive('back');
+  if (ev.key === 'ArrowLeft' || ev.key.toLowerCase() === 'a') startDrive('left');
+  if (ev.key === 'ArrowRight' || ev.key.toLowerCase() === 'd') startDrive('right');
+});
+window.addEventListener('keyup', (ev) => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d',' '].includes(ev.key)) stopMotion();
+});
+
+setInterval(() => {
+  $('rgb').src = '/api/frame/rgb.jpg?t=' + Date.now();
+  $('depth').src = '/api/frame/depth.jpg?t=' + Date.now();
+}, 350);
+connectWs();
+</script>
+</body>
+</html>
