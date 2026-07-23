@@ -70,7 +70,7 @@ RobotState currentRobotState = STATE_INHABILITADO;
  * del robot girando sobre su eje central.
  */
 #define WHEEL_BASE_DISTANCE_M    0.82    // Distancia entre ruedas en metros
-#define WHEEL_DIAMETER_M         0.20    // Diámetro de rueda en metros  
+#define WHEEL_DIAMETER_M         0.27    // Diámetro de rueda en metros (medido 2026-07-07)
 #define PULSES_PER_REVOLUTION    45.0    // Pulsos por revolución (PPR)
 
 // Cálculo de pulsos por grado de rotación del robot
@@ -283,18 +283,14 @@ void moveForwardState(int pwm) {
   pinMode(BRAKE_RIGHT_MOTOR, INPUT);  // FLOAT = Sin freno
   
   // Configurar dirección ADELANTE
-  digitalWrite(DIR_LEFT_MOTOR, DIR_FORWARD_LEFT);
-  digitalWrite(DIR_RIGHT_MOTOR, DIR_FORWARD_RIGHT);
-  
-  // Aplicar PWM
-  analogWrite(PWM_LEFT_MOTOR, pwm);
-  analogWrite(PWM_RIGHT_MOTOR, pwm);
+  setLeftMotor(pwm, DIR_FORWARD_LEFT == HIGH);
+  setRightMotor(pwm, DIR_FORWARD_RIGHT == HIGH);
   
   // Actualizar estados
   leftMotor.pwm = pwm;
   rightMotor.pwm = pwm;
-  leftMotor.direction = true;
-  rightMotor.direction = true;
+  leftMotor.direction = (DIR_FORWARD_LEFT == HIGH);
+  rightMotor.direction = (DIR_FORWARD_RIGHT == HIGH);
   
   DEBUG_PRINTLN("✓ Moviendo ADELANTE");
   
@@ -330,18 +326,14 @@ void moveBackwardState(int pwm) {
   pinMode(BRAKE_RIGHT_MOTOR, INPUT);  // FLOAT = Sin freno
   
   // Configurar dirección ATRÁS
-  digitalWrite(DIR_LEFT_MOTOR, DIR_BACKWARD_LEFT);
-  digitalWrite(DIR_RIGHT_MOTOR, DIR_BACKWARD_RIGHT);
-  
-  // Aplicar PWM
-  analogWrite(PWM_LEFT_MOTOR, pwm);
-  analogWrite(PWM_RIGHT_MOTOR, pwm);
+  setLeftMotor(pwm, DIR_BACKWARD_LEFT == HIGH);
+  setRightMotor(pwm, DIR_BACKWARD_RIGHT == HIGH);
   
   // Actualizar estados
   leftMotor.pwm = pwm;
   rightMotor.pwm = pwm;
-  leftMotor.direction = false;
-  rightMotor.direction = false;
+  leftMotor.direction = (DIR_BACKWARD_LEFT == HIGH);
+  rightMotor.direction = (DIR_BACKWARD_RIGHT == HIGH);
   
   DEBUG_PRINTLN("✓ Moviendo ATRÁS");
   
@@ -463,7 +455,7 @@ void executeCruceDerecha(int pwm, uint16_t pulses) {
   digitalWrite(STOP_RIGHT_MOTOR, LOW);  // DISABLE
   pinMode(BRAKE_RIGHT_MOTOR, OUTPUT);
   digitalWrite(BRAKE_RIGHT_MOTOR, HIGH);  // BRAKE ACTIVO
-  analogWrite(PWM_RIGHT_MOTOR, 0);
+  motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   
   // MOVER RUEDA IZQUIERDA ADELANTE
   pinMode(STOP_LEFT_MOTOR, INPUT);  // ENABLE (FLOAT)
@@ -492,7 +484,7 @@ void executeCruceDerecha(int pwm, uint16_t pulses) {
   DEBUG_PRINTLN(F(" pulsos)"));
   
   // Aplicar PWM
-  analogWrite(PWM_LEFT_MOTOR, pwm);
+  setLeftMotor(pwm, DIR_FORWARD_LEFT == HIGH);
   
   DEBUG_PRINTLN(F("⏳ Esperando alcanzar objetivo..."));
 }
@@ -527,7 +519,7 @@ void executeCruceIzquierda(int pwm, uint16_t pulses) {
   digitalWrite(STOP_LEFT_MOTOR, LOW);  // DISABLE
   pinMode(BRAKE_LEFT_MOTOR, OUTPUT);
   digitalWrite(BRAKE_LEFT_MOTOR, HIGH);  // BRAKE ACTIVO
-  analogWrite(PWM_LEFT_MOTOR, 0);
+  motor_pwm_write(PWM_LEFT_MOTOR, 0);
   
   // MOVER RUEDA DERECHA ADELANTE
   pinMode(STOP_RIGHT_MOTOR, INPUT);  // ENABLE (FLOAT)
@@ -556,7 +548,7 @@ void executeCruceIzquierda(int pwm, uint16_t pulses) {
   DEBUG_PRINTLN(F(" pulsos)"));
   
   // Aplicar PWM
-  analogWrite(PWM_RIGHT_MOTOR, pwm);
+  setRightMotor(pwm, DIR_FORWARD_RIGHT == HIGH);
   
   DEBUG_PRINTLN(F("⏳ Esperando alcanzar objetivo..."));
 }
@@ -612,8 +604,8 @@ void updateCrossing() {
       DEBUG_PRINTLN(F(")"));
       
       // DETENER AMBOS MOTORES - PWM=0
-      analogWrite(PWM_LEFT_MOTOR, 0);
-      analogWrite(PWM_RIGHT_MOTOR, 0);
+      motor_pwm_write(PWM_LEFT_MOTOR, 0);
+      motor_pwm_write(PWM_RIGHT_MOTOR, 0);
       delayMicroseconds(100);  // Pausa micro para que el PWM llegue a 0
       
       // LIBERAR AMBAS RUEDAS - STOP=FLOAT, BRAKE=FLOAT
@@ -647,8 +639,8 @@ void updateCrossing() {
       DEBUG_PRINTLN(crossingTargetPulses);
       
       // Detener motores
-      analogWrite(PWM_LEFT_MOTOR, 0);
-      analogWrite(PWM_RIGHT_MOTOR, 0);
+      motor_pwm_write(PWM_LEFT_MOTOR, 0);
+      motor_pwm_write(PWM_RIGHT_MOTOR, 0);
       
       // Liberar ruedas
       pinMode(STOP_LEFT_MOTOR, INPUT);

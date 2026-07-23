@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Smart Trolley Touch
+Comment=Open the Smart Trolley touch interface
+Exec=firefox --new-window http://127.0.0.1:8080/static/touch.html
+Terminal=false
+Icon=firefox

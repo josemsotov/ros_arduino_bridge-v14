@@ -56,10 +56,10 @@ MotorState rightMotor = {0, false, true, true, false};  // direction=false: DIR 
  * LÍMITES DE SEGURIDAD
  */
 #define MIN_PWM_VALUE          10    // PWM mínimo ambos motores
-#define MAX_PWM_VALUE          40    // PWM máximo permitido (full stick = mitad, 2026-07-07)
-// Motor derecho: umbral re-calibrado 2026-07-07 con ruedas 0.27m.
-// Caracterización confirmó motor gira desde PWM=20. Umbral 25 = margen seguro.
-#define MIN_PWM_RIGHT_WORKING  25    // Motor derecho: PWM mínimo garantizado (re-calibrado 2026-07-07)
+#define MAX_PWM_VALUE          80    // PWM máximo permitido
+// Motor derecho tiene stiction severa confirmada en tests 2026-06-24:
+// RPM=0 a Rpwm<64, funciona bien a Rpwm≥64. Umbral empírico = 60.
+#define MIN_PWM_RIGHT_WORKING  60    // Motor derecho: PWM mínimo garantizado (stiction confirmada)
 #define EMERGENCY_STOP_TIME  300000  // Tiempo máximo sin comando (ms) - 5 minutos
 
 // ── Timer5 PWM directo ───────────────────────────────────────────────────
@@ -343,7 +343,7 @@ void enableLeftMotor(bool enable) {
   leftMotor.enabled = enable;
   
   if (!enable) {
-    motor_pwm_write(PWM_LEFT_MOTOR, 0);
+    analogWrite(PWM_LEFT_MOTOR, 0);
     pinMode(STOP_LEFT_MOTOR, OUTPUT);
     digitalWrite(STOP_LEFT_MOTOR, LOW); // LOW = DISABLE motor
   } else {
@@ -361,11 +361,8 @@ void enableRightMotor(bool enable) {
   rightMotor.enabled = enable;
   
   if (!enable) {
-    motor_pwm_write(PWM_RIGHT_MOTOR, 0);
-    pinMode(STOP_RIGHT_MOTOR, OUTPUT);
+    analogWrite(PWM_RIGHT_MOTOR, 0);
     digitalWrite(STOP_RIGHT_MOTOR, LOW); // LOW = DISABLE motor
-  } else {
-    pinMode(STOP_RIGHT_MOTOR, INPUT);    // FLOAT = ENABLE motor
   }
   
   DEBUG_PRINT("Motor derecho ");
@@ -389,7 +386,7 @@ void brakeLeftMotor(bool brake) {
   if (brake) {
     pinMode(BRAKE_LEFT_MOTOR, OUTPUT);
     digitalWrite(BRAKE_LEFT_MOTOR, HIGH);  // HIGH = BRAKE ACTIVO
-    motor_pwm_write(PWM_LEFT_MOTOR, 0);
+    analogWrite(PWM_LEFT_MOTOR, 0);
   } else {
     pinMode(BRAKE_LEFT_MOTOR, INPUT);      // FLOAT = BRAKE DESACTIVADO
   }
@@ -407,7 +404,7 @@ void brakeRightMotor(bool brake) {
   if (brake) {
     pinMode(BRAKE_RIGHT_MOTOR, OUTPUT);
     digitalWrite(BRAKE_RIGHT_MOTOR, HIGH);  // HIGH = BRAKE ACTIVO
-    motor_pwm_write(PWM_RIGHT_MOTOR, 0);
+    analogWrite(PWM_RIGHT_MOTOR, 0);
   } else {
     pinMode(BRAKE_RIGHT_MOTOR, INPUT);      // FLOAT = BRAKE DESACTIVADO
   }
@@ -433,7 +430,7 @@ void brakeAllMotors(bool brake) {
  */
 void moveForward(int speed) {
   speed = constrain(speed, 0, MAX_PWM_VALUE);
-  setBothMotors(speed, true, speed, false);
+  setBothMotors(speed, true, speed, true);
   DEBUG_PRINT("Avanzando a velocidad: ");
   DEBUG_PRINTLN(speed);
 }
@@ -443,7 +440,7 @@ void moveForward(int speed) {
  */
 void moveBackward(int speed) {
   speed = constrain(speed, 0, MAX_PWM_VALUE);
-  setBothMotors(speed, false, speed, true);
+  setBothMotors(speed, false, speed, false);
   DEBUG_PRINT("Retrocediendo a velocidad: ");
   DEBUG_PRINTLN(speed);
 }
@@ -455,7 +452,7 @@ void turnLeft(int leftSpeed, int rightSpeed) {
   leftSpeed = constrain(leftSpeed, 0, MAX_PWM_VALUE);
   rightSpeed = constrain(rightSpeed, 0, MAX_PWM_VALUE);
   
-  setBothMotors(leftSpeed, true, rightSpeed, false);
+  setBothMotors(leftSpeed, true, rightSpeed, true);
   
   DEBUG_PRINT("Girando izquierda - IZQ:");
   DEBUG_PRINT(leftSpeed);
@@ -470,7 +467,7 @@ void turnRight(int leftSpeed, int rightSpeed) {
   leftSpeed = constrain(leftSpeed, 0, MAX_PWM_VALUE);
   rightSpeed = constrain(rightSpeed, 0, MAX_PWM_VALUE);
   
-  setBothMotors(leftSpeed, true, rightSpeed, false);
+  setBothMotors(leftSpeed, true, rightSpeed, true);
   
   DEBUG_PRINT("Girando derecha - IZQ:");
   DEBUG_PRINT(leftSpeed);

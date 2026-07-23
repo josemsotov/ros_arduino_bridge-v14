@@ -126,8 +126,8 @@ void initializeSystem() {
  */
 void emergencyStop() {
   // Detener PWM
-  analogWrite(PWM_LEFT_MOTOR, 0);
-  analogWrite(PWM_RIGHT_MOTOR, 0);
+  motor_pwm_write(PWM_LEFT_MOTOR, 0);
+  motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   
   // ACTIVAR frenos: BRAKE pins en HIGH
   pinMode(BRAKE_LEFT_MOTOR, OUTPUT);

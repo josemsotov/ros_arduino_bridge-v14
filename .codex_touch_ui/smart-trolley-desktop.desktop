@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Smart Trolley
+Comment=Open the Smart Trolley operator interface
+Exec=firefox --new-window http://127.0.0.1:8080
+Terminal=false
+Icon=firefox

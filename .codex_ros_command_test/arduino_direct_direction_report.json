@@ -1,0 +1,398 @@
+{
+  "mode": "arduino_direction_direct",
+  "tests": [
+    {
+      "label": "raw_p_forward_dir_right_false",
+      "command": "p 60",
+      "duration_s": 0.908,
+      "ack": [
+        "B err=-0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.00 RmA=0.01",
+        "p OK pwm=60",
+        "B err=-0.04 gy=-0.4 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.04 RmA=-0.00"
+      ],
+      "encoder_delta": [
+        2,
+        0
+      ],
+      "speed_mps": [
+        0.0308,
+        0.0
+      ],
+      "position_m": [
+        0.0279,
+        0.0
+      ],
+      "z_before": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.02 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.04 RmA=0.01"
+      ],
+      "z_after": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=2 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.01 gy=-0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=0.02"
+      ],
+      "stop": [
+        "B err=0.03 gy=0.2 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.02 RmA=0.01",
+        "B err=-0.02 gy=-0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.01 RmA=-0.00",
+        "p STOP",
+        "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+        "B err=0.02 gy=0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=0.01",
+        "B err=0.01 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.03 RmA=0.01"
+      ],
+      "samples": [
+        [
+          0.105,
+          2,
+          0
+        ],
+        [
+          0.334,
+          2,
+          0
+        ],
+        [
+          0.559,
+          2,
+          0
+        ],
+        [
+          0.788,
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "label": "high_level_forward_moveForward",
+      "command": "AD60",
+      "duration_s": 0.905,
+      "ack": [
+        "B err=-0.00 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=-0.01"
+      ],
+      "encoder_delta": [
+        0,
+        0
+      ],
+      "speed_mps": [
+        0.0,
+        0.0
+      ],
+      "position_m": [
+        0.0,
+        0.0
+      ],
+      "z_before": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=-0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.00 RmA=0.01",
+        "B err=-0.02 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.04 RmA=0.01"
+      ],
+      "z_after": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.01 RmA=-0.01",
+        "B err=0.03 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.01 RmA=-0.02"
+      ],
+      "stop": [
+        "B err=-0.01 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.03 RmA=0.02",
+        "p STOP",
+        "B err=0.00 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=0.02",
+        "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+        "B err=0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.02 RmA=-0.02",
+        "B err=-0.01 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.00 RmA=-0.00"
+      ],
+      "samples": [
+        [
+          0.102,
+          0,
+          0
+        ],
+        [
+          0.327,
+          0,
+          0
+        ],
+        [
+          0.558,
+          0,
+          0
+        ],
+        [
+          0.785,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "label": "high_level_backward_moveBackward",
+      "command": "AT60",
+      "duration_s": 1.128,
+      "ack": [
+        "B err=-0.04 gy=0.3 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.01 RmA=0.04"
+      ],
+      "encoder_delta": [
+        1,
+        9
+      ],
+      "speed_mps": [
+        0.0124,
+        0.1114
+      ],
+      "position_m": [
+        0.014,
+        0.1257
+      ],
+      "z_before": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.01 RmA=0.02",
+        "B err=-0.01 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.01 RmA=0.00"
+      ],
+      "z_after": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=1 R_total=9 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.00 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.05 RmA=0.02",
+        "B err=0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.03 RmA=0.02"
+      ],
+      "stop": [
+        "B err=0.00 gy=-0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.02 RmA=0.01",
+        "p STOP",
+        "B err=0.00 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.01 RmA=0.00",
+        "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+        "B err=0.00 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=0.02",
+        "B err=0.00 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.02 RmA=0.02"
+      ],
+      "samples": [
+        [
+          0.106,
+          1,
+          9
+        ],
+        [
+          0.33,
+          1,
+          9
+        ],
+        [
+          0.554,
+          1,
+          9
+        ],
+        [
+          0.779,
+          1,
+          9
+        ],
+        [
+          1.008,
+          1,
+          9
+        ]
+      ]
+    },
+    {
+      "label": "cmdvel_forward",
+      "command": "v 0.06 0",
+      "duration_s": 1.128,
+      "ack": [
+        "T lin=0.060 ang=0.000 Lpwm=10 Rpwm=60 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.02 RmA=0.02",
+        "B err=0.00 gy=0.0 cor=0.000 base=0.060 fin=0.060 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.01 RmA=0.03",
+        "B err=0.05 gy=0.0 cor=0.000 base=0.060 fin=0.060 fl=35.0 rl=35.0 Lrpm=13 Rrpm=0 LmA=0.02 RmA=0.00"
+      ],
+      "encoder_delta": [
+        21,
+        0
+      ],
+      "speed_mps": [
+        0.26,
+        0.0
+      ],
+      "position_m": [
+        0.2932,
+        0.0
+      ],
+      "z_before": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=-0.00 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.00 RmA=-0.01",
+        "B err=0.00 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=-0.02"
+      ],
+      "z_after": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=21 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.01 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=0.01",
+        "B err=0.05 gy=0.2 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.02 RmA=-0.01"
+      ],
+      "stop": [
+        "B err=-0.00 gy=-0.1 cor=0.000 base=0.060 fin=0.060 fl=35.0 rl=35.0 Lrpm=12 Rrpm=0 LmA=-0.00 RmA=0.01",
+        "B err=0.01 gy=0.0 cor=0.000 base=0.060 fin=0.060 fl=35.0 rl=35.0 Lrpm=25 Rrpm=0 LmA=0.01 RmA=0.04",
+        "p STOP",
+        "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+        "B err=-0.00 gy=-0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.00 RmA=0.02",
+        "B err=0.03 gy=0.2 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.02 RmA=0.01"
+      ],
+      "samples": [
+        [
+          0.106,
+          2,
+          0
+        ],
+        [
+          0.331,
+          6,
+          0
+        ],
+        [
+          0.556,
+          9,
+          0
+        ],
+        [
+          0.78,
+          12,
+          0
+        ],
+        [
+          1.008,
+          16,
+          0
+        ]
+      ]
+    },
+    {
+      "label": "cmdvel_backward",
+      "command": "v -0.06 0",
+      "duration_s": 0.901,
+      "ack": [
+        "T lin=-0.060 ang=0.000 Lpwm=10 Rpwm=60 Lrpm=0 Rrpm=0 Ld=B Rd=B LmA=0.01 RmA=0.01",
+        "B err=0.01 gy=-0.0 cor=0.000 base=-0.060 fin=-0.060 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.03 RmA=0.02"
+      ],
+      "encoder_delta": [
+        27,
+        27
+      ],
+      "speed_mps": [
+        0.4184,
+        0.4184
+      ],
+      "position_m": [
+        0.377,
+        0.377
+      ],
+      "z_before": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.01 gy=-0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.00 RmA=0.01",
+        "B err=-0.02 gy=-0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.00 RmA=-0.01"
+      ],
+      "z_after": [
+        "z PIN_STATUS_START",
+        "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+        "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=27 R_total=27 L_rpm=0.0 R_rpm=0.0",
+        "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+        "z PIN_STATUS_END",
+        "B err=0.04 gy=0.1 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.02 RmA=-0.00",
+        "B err=0.07 gy=0.0 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.00 RmA=-0.01"
+      ],
+      "stop": [
+        "B err=0.01 gy=0.1 cor=0.000 base=-0.060 fin=-0.060 fl=35.0 rl=35.0 Lrpm=39 Rrpm=13 LmA=0.01 RmA=-0.00",
+        "p STOP",
+        "B err=0.02 gy=-0.0 cor=0.000 base=-0.060 fin=-0.060 fl=35.0 rl=35.0 Lrpm=26 Rrpm=66 LmA=0.01 RmA=0.05",
+        "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+        "B err=0.07 gy=0.4 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=-0.00 RmA=-0.01",
+        "B err=0.00 gy=-0.3 cor=0.000 base=0.000 fin=0.000 fl=35.0 rl=35.0 Lrpm=0 Rrpm=0 LmA=0.03 RmA=0.01"
+      ],
+      "samples": [
+        [
+          0.102,
+          1,
+          7
+        ],
+        [
+          0.329,
+          7,
+          8
+        ],
+        [
+          0.556,
+          13,
+          15
+        ],
+        [
+          0.781,
+          17,
+          21
+        ]
+      ]
+    }
+  ],
+  "service": [
+    {
+      "cmd": "systemctl --user stop robot-follower.service",
+      "rc": 0,
+      "stderr": ""
+    },
+    {
+      "cmd": "systemctl --user start robot-follower.service",
+      "rc": 0,
+      "stderr": ""
+    }
+  ],
+  "port": "/dev/ttyACM0",
+  "port_candidates": [
+    [
+      8,
+      "/dev/ttyACM0",
+      "Arduino Mega"
+    ],
+    [
+      3,
+      "/dev/ttyUSB0",
+      "CP2102 USB to UART Bridge Controller - CP2102 USB to UART Bridge Controller"
+    ],
+    [
+      0,
+      "/dev/ttyAMA10",
+      "n/a"
+    ]
+  ]
+}

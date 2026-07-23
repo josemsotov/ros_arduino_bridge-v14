@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Smart Trolley Touch</title>
+  <style>
+    :root {
+      --bg: #08090b;
+      --panel: #14171c;
+      --panel2: #1d222a;
+      --line: #343b48;
+      --text: #f3f6fb;
+      --muted: #9aa5b5;
+      --ok: #35d08b;
+      --warn: #f3b84c;
+      --bad: #ff5d66;
+      --blue: #67a7ff;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      overflow: auto;
+      user-select: none;
+    }
+    .screen {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: 56px minmax(420px, 1fr) 252px;
+      gap: 8px;
+      padding: 8px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+    .brand {
+      min-width: 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      font-size: 18px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pill {
+      min-width: 86px;
+      min-height: 46px;
+      display: grid;
+      place-items: center;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .pill.ok { color: #b7f7d8; border-color: #247a53; background: #10251d; }
+    .pill.warn { color: #ffe2a0; border-color: #74551b; background: #2b2110; }
+    .pill.bad { color: #ffd2d6; border-color: #84313b; background: #35171c; }
+    main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+    }
+    .camera {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 156px;
+      gap: 8px;
+    }
+    .view {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #020304;
+    }
+    .view img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .metric {
+      min-width: 0;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .metric label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .metric strong {
+      display: block;
+      font-size: 21px;
+      line-height: 1.05;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .side {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 78px 78px 56px 1fr;
+      gap: 8px;
+    }
+    button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel2);
+      color: var(--text);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    button:active { transform: translateY(1px); filter: brightness(1.16); }
+    .btn-primary { background: #103123; border-color: #247a53; color: #bcf7d8; }
+    .btn-warn { background: #342811; border-color: #785817; color: #ffe0a0; }
+    .btn-exit { background: #1c2530; border-color: #526476; color: #dce9f5; }
+    .btn-exit.armed { background: #5b1f12; border-color: #c65c32; color: #ffe1d4; }
+    .btn-stop {
+      background: #651923;
+      border-color: #b63743;
+      color: #ffe1e4;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    .follow-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .drive {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .drive button { font-size: 20px; }
+    .empty { visibility: hidden; }
+    footer {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .footer-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 8px;
+    }
+    .footer-card label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 8px;
+    }
+    input[type="range"] { width: 100%; height: 34px; }
+    .small-row {
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      gap: 8px;
+      align-items: center;
+    }
+    .value { font-size: 20px; font-weight: 900; text-align: right; }
+    @media (max-width: 760px), (max-height: 720px) {
+      .screen { grid-template-rows: 50px minmax(0, 1fr) 104px; padding: 6px; gap: 6px; }
+      main { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+      .camera { grid-template-rows: minmax(0, 1fr) 142px; }
+      .side { grid-template-rows: 68px 64px 52px 1fr; gap: 6px; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+      .metric strong { font-size: 18px; }
+      .drive { gap: 6px; }
+      footer { gap: 6px; }
+      .brand { font-size: 16px; }
+      .pill { min-width: 70px; min-height: 42px; font-size: 12px; }
+      .btn-stop { font-size: 24px; }
+    }
+    @media (min-width: 900px) and (orientation: landscape) {
+      .screen { max-width: 620px; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="screen">
+    <header>
+      <div class="brand">Smart Trolley</div>
+      <div id="conn" class="pill bad">OFFLINE</div>
+      <div id="mode" class="pill">WAIT</div>
+    </header>
+
+    <main>
+      <section class="camera">
+        <div class="view"><img id="rgb" alt="RGB"></div>
+        <div class="metrics">
+          <div class="metric"><label>Target</label><strong id="target">--</strong></div>
+          <div class="metric"><label>Front</label><strong id="front">--</strong></div>
+          <div class="metric"><label>Left RPM</label><strong id="lrpm">--</strong></div>
+          <div class="metric"><label>Right RPM</label><strong id="rrpm">--</strong></div>
+        </div>
+      </section>
+
+      <section class="side">
+        <button id="stop" class="btn-stop">STOP</button>
+        <div class="follow-row">
+          <button id="followOn" class="btn-primary">FOLLOW</button>
+          <button id="followOff" class="btn-warn">WAIT</button>
+        </div>
+        <button id="exitKiosk" class="btn-exit">SALIR</button>
+        <div class="drive">
+          <button class="empty"></button>
+          <button data-drive="fwd">UP</button>
+          <button class="empty"></button>
+          <button data-drive="left">LEFT</button>
+          <button data-drive="halt" class="btn-stop">STOP</button>
+          <button data-drive="right">RIGHT</button>
+          <button class="empty"></button>
+          <button data-drive="back">DOWN</button>
+          <button class="empty"></button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-card">
+        <label>Linear</label>
+        <div class="small-row">
+          <input id="linearMax" type="range" min="0.05" max="0.45" step="0.05" value="0.15">
+          <div id="linearMaxVal" class="value">0.15</div>
+        </div>
+      </div>
+      <div class="footer-card">
+        <label>Angular</label>
+        <div class="small-row">
+          <input id="angularMax" type="range" min="0.10" max="0.90" step="0.10" value="0.30">
+          <div id="angularMaxVal" class="value">0.30</div>
+        </div>
+      </div>
+      <div class="footer-card">
+        <label>Gesture</label>
+        <div id="gesture" class="value" style="text-align:left">--</div>
+      </div>
+    </footer>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let driveTimer = null;
+let lastState = null;
+let exitArmed = false;
+let exitTimer = null;
+
+function fmt(v, d = 2, suffix = '') {
+  return (v === null || v === undefined || Number.isNaN(Number(v))) ? '--' : Number(v).toFixed(d) + suffix;
+}
+async function postJson(url, payload = {}) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+function sendCmd(linear, angular) {
+  return postJson('/api/cmd_vel', {linear, angular}).catch(console.error);
+}
+function stopMotion() {
+  clearInterval(driveTimer);
+  driveTimer = null;
+  return postJson('/api/stop').catch(console.error);
+}
+function exitKiosk() {
+  if (!exitArmed) {
+    exitArmed = true;
+    $('exitKiosk').textContent = 'CONFIRMAR';
+    $('exitKiosk').classList.add('armed');
+    clearTimeout(exitTimer);
+    exitTimer = setTimeout(() => {
+      exitArmed = false;
+      $('exitKiosk').textContent = 'SALIR';
+      $('exitKiosk').classList.remove('armed');
+    }, 3500);
+    return;
+  }
+  stopMotion();
+  postJson('/api/kiosk/exit')
+    .catch(() => {
+      window.close();
+      location.href = 'about:blank';
+    });
+}
+function startDrive(mode) {
+  clearInterval(driveTimer);
+  const lmax = Number($('linearMax').value);
+  const amax = Number($('angularMax').value);
+  let linear = 0, angular = 0;
+  if (mode === 'fwd') linear = lmax;
+  if (mode === 'back') linear = -lmax;
+  if (mode === 'left') angular = amax;
+  if (mode === 'right') angular = -amax;
+  if (mode === 'halt') { stopMotion(); return; }
+  sendCmd(linear, angular);
+  driveTimer = setInterval(() => sendCmd(linear, angular), 140);
+}
+function setConn(ok) {
+  $('conn').textContent = ok ? 'ONLINE' : 'OFFLINE';
+  $('conn').className = ok ? 'pill ok' : 'pill bad';
+}
+function setMode(text, enabled) {
+  $('mode').textContent = text || '--';
+  $('mode').className = enabled ? 'pill ok' : text === 'WAITING' ? 'pill warn' : 'pill';
+}
+function update(s) {
+  lastState = s;
+  setConn(true);
+  const mode = (s.follower_state && s.follower_state.mode) || (s.follower_enabled ? 'FOLLOW' : 'WAITING');
+  const enabled = s.follower_state && typeof s.follower_state.enabled === 'boolean'
+    ? s.follower_state.enabled
+    : s.follower_enabled;
+  setMode(mode, enabled);
+  $('target').textContent = fmt(s.follower_debug.target_dist, 2, ' m');
+  $('front').textContent = fmt(s.scan.front_min, 2, ' m');
+  $('lrpm').textContent = fmt(s.motor_status.Lrpm, 0);
+  $('rrpm').textContent = fmt(s.motor_status.Rrpm, 0);
+  $('gesture').textContent = (s.gesture_status && s.gesture_status.state) || '--';
+}
+function connectWs() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => setConn(true);
+  ws.onmessage = (event) => update(JSON.parse(event.data));
+  ws.onclose = () => { setConn(false); setTimeout(connectWs, 1000); };
+}
+
+$('followOn').onclick = () => postJson('/api/follower', {enabled: true}).catch(console.error);
+$('followOff').onclick = () => postJson('/api/follower', {enabled: false}).catch(console.error);
+$('stop').onclick = stopMotion;
+$('exitKiosk').onclick = exitKiosk;
+document.querySelectorAll('[data-drive]').forEach(btn => {
+  btn.addEventListener('pointerdown', () => startDrive(btn.dataset.drive));
+  btn.addEventListener('pointerup', stopMotion);
+  btn.addEventListener('pointercancel', stopMotion);
+  btn.addEventListener('pointerleave', () => { if (driveTimer) stopMotion(); });
+});
+$('linearMax').oninput = () => $('linearMaxVal').textContent = Number($('linearMax').value).toFixed(2);
+$('angularMax').oninput = () => $('angularMaxVal').textContent = Number($('angularMax').value).toFixed(2);
+
+setInterval(() => {
+  $('rgb').src = '/api/frame/rgb.jpg?t=' + Date.now();
+}, 300);
+connectWs();
+</script>
+</body>
+</html>

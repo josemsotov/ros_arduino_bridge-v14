@@ -642,15 +642,15 @@ void forceStopPinsHighImpedance() {
   // Configurar direcciones
   pinMode(DIR_LEFT_MOTOR, OUTPUT);
   pinMode(DIR_RIGHT_MOTOR, OUTPUT);
-  digitalWrite(DIR_LEFT_MOTOR, HIGH);
-  digitalWrite(DIR_RIGHT_MOTOR, HIGH);
-  Serial.println("✓ Direcciones configuradas (DIR pins = HIGH = ADELANTE)");
+  digitalWrite(DIR_LEFT_MOTOR, DIR_FORWARD_LEFT);
+  digitalWrite(DIR_RIGHT_MOTOR, DIR_FORWARD_RIGHT);
+  Serial.println("✓ Direcciones configuradas para ADELANTE");
   
   // Configurar PWM
   pinMode(PWM_LEFT_MOTOR, OUTPUT);
   pinMode(PWM_RIGHT_MOTOR, OUTPUT);
-  analogWrite(PWM_LEFT_MOTOR, 0);
-  analogWrite(PWM_RIGHT_MOTOR, 0);
+  motor_pwm_write(PWM_LEFT_MOTOR, 0);
+  motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   Serial.println("✓ PWM configurado (PWM pins = 0 = PARADO)");
   
   Serial.println("");
@@ -658,7 +658,7 @@ void forceStopPinsHighImpedance() {
   Serial.println("Los motores ahora deberían estar HABILITADOS");
   Serial.println("- STOP pins: HIGH IMPEDANCE (ENABLE)");
   Serial.println("- BRAKE pins: HIGH IMPEDANCE (SIN FRENO)");
-  Serial.println("- DIR pins: HIGH (ADELANTE)");
+  Serial.println("- DIR pins: ADELANTE (izq=HIGH, der=LOW)");
   Serial.println("- PWM pins: 0 (PARADO)");
   Serial.println("");
   Serial.println("Prueba con comandos como:");
@@ -673,13 +673,13 @@ void forceStopPinsHighImpedance() {
   leftMotor.braked = false;
   leftMotor.stopped = true;
   leftMotor.pwm = 0;
-  leftMotor.direction = true;
+  leftMotor.direction = (DIR_FORWARD_LEFT == HIGH);
   
   rightMotor.enabled = true;
   rightMotor.braked = false;
   rightMotor.stopped = true;
   rightMotor.pwm = 0;
-  rightMotor.direction = true;
+  rightMotor.direction = (DIR_FORWARD_RIGHT == HIGH);
   
   Serial.println("Estados internos de motores actualizados.");
 }

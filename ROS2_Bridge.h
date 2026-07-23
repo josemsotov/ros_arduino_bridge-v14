@@ -198,127 +198,44 @@ void ros2_processCmdVel(String cmd) {
       prev_cmd_dir_left  = cmd_dir_left;
       prev_cmd_dir_right = cmd_dir_right;
 
-      // ── PID INDEPENDIENTE POR RUEDA con feedback Hall ─────────────────────
-      // El PID acoplado v/w provoca saturación cuando una rueda es mucho más
-      // rápida que la otra: la corrección angular w_out se dispara y envía la
-      // rueda lenta en reversa. El PID por rueda evita este acoplamiento.
-      //
-      // e_left  = v_left_ref  - v_left_meas  →  pwm_left  = Kp_v * e * 100
-      // e_right = v_right_ref - v_right_meas →  pwm_right = Kp_v * e * 100
-      // CLAMP: no cruzar cero (dirección) cuando el setpoint es unidireccional.
-      const float rpm_to_ms = PI * WHEEL_DIAMETER_M / 60.0f;
-      float v_left_meas  = currentSpeedLeftHall  * rpm_to_ms * (cmd_dir_left  ? 1.0f : -1.0f);
-      float v_right_meas = currentSpeedRightHall * rpm_to_ms * (cmd_dir_right ? 1.0f : -1.0f);
+      // ── CONTROL FF PURO POR MOTOR + SPEED-MATCHING ───────────────────────
+      // 2026-07-07: Reemplaza PI+anti-stall que oscilaba porque
+      //   MIN_PWM_RIGHT_WORKING(60) > FF*v para todo el rango operativo (0-0.5 m/s).
+      // Nuevo diseño:
+      //   1. FF por motor y direccion (calibrado con comandos x/xl/ff)
+      //   2. Direccion tomada de cmd_dir (no de signo PI — arreglaba backward erratico)
+      //   3. Speed-matching suave cuando ambas ruedas tienen datos Hall validos
 
-      float e_left  = v_left_raw  - v_left_meas;
-      float e_right = v_right_raw - v_right_meas;
+      // Ganancias FF por direccion (calibradas; se actualizan con comando ff)
+      float ff_l = cmd_dir_left  ? FF_LEFT_GAIN  : FF_LEFT_BWD;
+      float ff_r = cmd_dir_right ? FF_RIGHT_GAIN : FF_RIGHT_BWD;
 
-      // ── INTEGRAL con anti-windup ──────────────────────────────────────────
-      unsigned long now_pid = millis();
-      if (pid_per_wheel_last_time == 0) pid_per_wheel_last_time = now_pid;
-      float dt_pid = (now_pid - pid_per_wheel_last_time) / 1000.0f;
-      if (dt_pid <= 0.0f || dt_pid > 2.0f) dt_pid = 0.05f;
-      pid_per_wheel_last_time = now_pid;
-
-      const float INTEGRAL_MAX = (float)MAX_PWM_VALUE / (Ki_v > 0.0f ? (Ki_v * 100.0f) : 1.0f);
-      integral_left  += e_left  * dt_pid;
-      integral_right += e_right * dt_pid;
-
-      // ── PWM = Feedforward + correccion PID ───────────────────────────────
-      // FF compensa la asimetria fisica entre motores (izq ~35-57% mas rapido).
-      // Kp/Ki solo corrigen el residuo. v_left_raw lleva el signo de la direccion.
-      float out_left  = v_left_raw  * FF_LEFT_GAIN  + (e_left  * Kp_v + integral_left  * Ki_v) * 100.0f;
-      float out_right = v_right_raw * FF_RIGHT_GAIN + (e_right * Kp_v + integral_right * Ki_v) * 100.0f;
-
-      // ── Back-calculation anti-windup ─────────────────────────────────────
-      // PROBLEMA con INTEGRAL_MAX clasico:
-      //   INTEGRAL_MAX = 80/20 = 4.0  →  integral aporta Ki*4*100 = 80 PWM solo.
-      //   Mas FF (8.4) + Kp*e*100 (30) = 118 → siempre clampeado a MAX=80.
-      //   Resultado: motores a tope INDEPENDIENTEMENTE del feedback Hall.
-      // SOLUCION back-calculation:
-      //   Cuando la salida total supera el limite, se resta del integrador
-      //   exactamente el exceso dividido por Ki*100. El integrador queda en
-      //   el valor que produce exactamente la salida = MAX_PWM_VALUE.
-      //   Esto evita windup sin suprimir la respuesta transitoria del Kp.
-      if (Ki_v > 0.0f) {
-        const float inv_Ki100 = 1.0f / (Ki_v * 100.0f);
-        if (out_left  >  (float)MAX_PWM_VALUE) { integral_left  -= (out_left  - (float)MAX_PWM_VALUE) * inv_Ki100;  out_left  =  (float)MAX_PWM_VALUE; }
-        if (out_left  < -(float)MAX_PWM_VALUE) { integral_left  -= (out_left  + (float)MAX_PWM_VALUE) * inv_Ki100;  out_left  = -(float)MAX_PWM_VALUE; }
-        if (out_right >  (float)MAX_PWM_VALUE) { integral_right -= (out_right - (float)MAX_PWM_VALUE) * inv_Ki100;  out_right =  (float)MAX_PWM_VALUE; }
-        if (out_right < -(float)MAX_PWM_VALUE) { integral_right -= (out_right + (float)MAX_PWM_VALUE) * inv_Ki100;  out_right = -(float)MAX_PWM_VALUE; }
-      }
-
-      // Anti-windup unidireccional: el integral solo acumula en la direccion del setpoint.
-      // Evita que un overshoot arrastre el integral negativo y deje el motor en PWM=0.
-      if (cmd_dir_left)  { if (integral_left  < 0.0f) integral_left  = 0.0f; }
-      else               { if (integral_left  > 0.0f) integral_left  = 0.0f; }
-      if (cmd_dir_right) { if (integral_right < 0.0f) integral_right = 0.0f; }
-      else               { if (integral_right > 0.0f) integral_right = 0.0f; }
-
-      int pwm_left  = (int)out_left;
-      int pwm_right = (int)out_right;
-
-      // CLAMP ANTI-INVERSION: evitar que la correccion PID invierta la direccion.
-      if ( cmd_dir_left  && pwm_left  < 0) pwm_left  = 0;
-      if (!cmd_dir_left  && pwm_left  > 0) pwm_left  = 0;
-      if ( cmd_dir_right && pwm_right < 0) pwm_right = 0;
-      if (!cmd_dir_right && pwm_right > 0) pwm_right = 0;
-
-      // Extraer magnitud y direccion del OUTPUT del PID
-      bool dir_left  = (pwm_left  >= 0);
-      bool dir_right = (pwm_right >= 0);
-      int  abs_left  = abs(pwm_left);
-      int  abs_right = abs(pwm_right);
-
-      // ── Anti-stall + compensación de stiction ────────────────────────────────
-      // Con FF correcto el PID puede dar salida baja o negativa si el motor
-      // corre más rápido que el setpoint (overspeed por carga ligera).
-      // Garantizar PWM mínimo SIEMPRE que haya velocidad comandada:
-      //   • abs_right == 0 (PID clampeó a 0) pero v_right != 0 → motor para
-      //   • abs_right < 60 pero > 0 → motor por debajo de stiction
-      // En ambos casos elevamos al mínimo y reseteamos integral negativo.
-      bool r_moving = (fabsf(v_right_raw) > 0.01f);
       bool l_moving = (fabsf(v_left_raw)  > 0.01f);
+      bool r_moving = (fabsf(v_right_raw) > 0.01f);
 
-      if (r_moving && abs_right < MIN_PWM_RIGHT_WORKING) {
-        if (abs_right > 0 && cmd_dir_left == cmd_dir_right) {
-          float boost = (float)MIN_PWM_RIGHT_WORKING / (float)abs_right;
-          if (boost < 2.5f && abs_left > 0) {
-            abs_left = constrain((int)((float)abs_left * boost), 0, MAX_PWM_VALUE);
-          }
-        }
-        abs_right = MIN_PWM_RIGHT_WORKING;
-        if (integral_right < 0.0f) integral_right = 0.0f;  // reset windup negativo
-      }
-      if (l_moving && abs_left < MIN_PWM_VALUE) {
-        abs_left = MIN_PWM_VALUE;
-        if (integral_left < 0.0f) integral_left = 0.0f;
-      }
+      int abs_left  = l_moving ? constrain((int)(fabsf(v_left_raw)  * ff_l), MIN_PWM_RIGHT_WORKING, MAX_PWM_VALUE) : 0;
+      int abs_right = r_moving ? constrain((int)(fabsf(v_right_raw) * ff_r), MIN_PWM_RIGHT_WORKING, MAX_PWM_VALUE) : 0;
 
-      // Stop-before-reverse: ZS-X11H/BTS7960 ignora cambio de DIR si PWM está activo.
-      // Aplicar PWM=0 por 2ms antes de cambiar dirección para que el driver lo registre.
-      // CRÍTICO: usar motor_pwm_write(0), NO analogWrite(0) — ver comentario sección anterior.
+      // Direccion directa de cinematica (evita ambiguedad de signo del PID)
+      bool dir_left  = cmd_dir_left;
+      bool dir_right = cmd_dir_right;
+
+      // Stop-before-reverse
       if (abs_left  > 0 && dir_left   != leftMotor.direction)  { motor_pwm_write(PWM_LEFT_MOTOR,  0); delayMicroseconds(2000); }
       if (abs_right > 0 && !dir_right != rightMotor.direction) { motor_pwm_write(PWM_RIGHT_MOTOR, 0); delayMicroseconds(2000); }
 
-      // Straight-line wheel matching using Hall RPM.
-      // Positive trim means right wheel is faster: boost left and reduce right.
+      // Speed-matching Hall: corrige asimetria RPM en linea recta
       if (cmd_dir_left == cmd_dir_right &&
-          fabsf(angular) < 0.03f &&
+          fabsf(angular) < 0.05f &&
           l_moving && r_moving &&
-          currentSpeedLeftHall > 3.0f &&
+          currentSpeedLeftHall  > 3.0f &&
           currentSpeedRightHall > 3.0f) {
         float rpm_error = currentSpeedRightHall - currentSpeedLeftHall;
         int speed_trim = (int)constrain(
           rpm_error * SPEED_MATCH_KP_PWM_PER_RPM,
-          -SPEED_MATCH_MAX_PWM,
-          SPEED_MATCH_MAX_PWM
-        );
-
-        abs_left = constrain(abs_left + speed_trim, MIN_PWM_VALUE, MAX_PWM_VALUE);
-        abs_right = constrain(abs_right - speed_trim,
-                              MIN_PWM_RIGHT_WORKING,
-                              MAX_PWM_VALUE);
+          -SPEED_MATCH_MAX_PWM, SPEED_MATCH_MAX_PWM);
+        abs_left  = constrain(abs_left  + speed_trim, MIN_PWM_VALUE,         MAX_PWM_VALUE);
+        abs_right = constrain(abs_right - speed_trim, MIN_PWM_RIGHT_WORKING, MAX_PWM_VALUE);
       }
 
       setLeftMotor(abs_left, dir_left);
@@ -594,6 +511,147 @@ void ros2_processCommand(String cmd) {
       }
 
       Serial.println("x SWEEP_RIGHT_END");
+      // Reinicializar Timer5 para PWM normal
+      initTimer5PWM();
+      break;
+    }
+
+    case 'X': {
+      // X — sweep PWM solo motor IZQUIERDO (mirror de 'x' para el derecho)
+      Serial.println("X SWEEP_LEFT_START");
+
+      pinMode(STOP_LEFT_MOTOR,  INPUT);
+      pinMode(BRAKE_LEFT_MOTOR, INPUT);
+      leftMotor.enabled = true;  leftMotor.braked = false;
+      currentRobotState = STATE_HABILITADO;
+      analogWrite(PWM_RIGHT_MOTOR, 0);
+      delay(100);
+
+      // DIR izquierdo FWD = HIGH (ver Motor_Control.h: DIR_LEFT setHIGH=FWD)
+      digitalWrite(DIR_LEFT_MOTOR, HIGH);
+
+      const uint8_t levelsL[] = {20, 40, 60, 80, 100, 150, 200};
+      const uint8_t nLevelsL  = sizeof(levelsL);
+
+      for (uint8_t i = 0; i < nLevelsL; i++) {
+        uint8_t pwm = levelsL[i];
+        noInterrupts();
+        uint32_t l0 = leftHallTotal;
+        interrupts();
+
+        analogWrite(PWM_LEFT_MOTOR, pwm);
+        Serial.print("X PWM="); Serial.print(pwm);
+        Serial.print(" OCR5C="); Serial.print(OCR5C);
+        Serial.print(" TCCR5A=0x"); Serial.print(TCCR5A, HEX);
+        Serial.print(" ...");
+
+        uint8_t xprev = 2;
+        uint16_t transitions = 0;
+        unsigned long xt0 = millis();
+        while (millis() - xt0 < 1500) {
+          uint8_t xl = digitalRead(HALL_LEFT_MOTOR);
+          if (xl != xprev && xprev != 2) transitions++;
+          xprev = xl;
+          delay(1);
+        }
+
+        analogWrite(PWM_LEFT_MOTOR, 0);
+        noInterrupts();
+        uint32_t l1 = leftHallTotal;
+        interrupts();
+
+        Serial.print(" pulses="); Serial.print(l1 - l0);
+        Serial.print(" trans=");  Serial.println(transitions);
+        delay(300);
+      }
+
+      Serial.println("X SWEEP_LEFT_END");
+      initTimer5PWM();
+      break;
+    }
+
+    case 'f': {
+      // f — auto-calibracion FF: barre ambos motores (secuencial),
+      // mide pulsos Hall a PWM=60 y 80, calcula FF_*_GAIN y FF_*_BWD,
+      // los aplica en RAM y los imprime para copiar a pid_control.h.
+      // Uso: enviar 'f' con el robot en marcha libre o suelo.
+      Serial.println("f AUTOCAL_FF_START");
+      const float PPR_F  = (float)PPR_HALL_SENSORS;
+      const float DIAM_F = (float)WHEEL_DIAMETER_M;
+      const float MS_PER_WINDOW = 1500.0f;
+      // Funcion local: mide RPM a un PWM dado en la rueda indicada
+      // (0=izq FWD, 1=der FWD, 2=izq BWD, 3=der BWD)
+      auto measureRPM = [&](uint8_t side, uint8_t pwm) -> float {
+        noInterrupts();
+        uint32_t t0 = (side < 2) ? leftHallTotal : rightHallTotal;
+        interrupts();
+        if (side == 0) { // izq FWD
+          digitalWrite(DIR_LEFT_MOTOR, HIGH);
+          analogWrite(PWM_LEFT_MOTOR, pwm);
+          analogWrite(PWM_RIGHT_MOTOR, 0);
+        } else if (side == 1) { // der FWD
+          digitalWrite(DIR_RIGHT_MOTOR, LOW);
+          analogWrite(PWM_RIGHT_MOTOR, pwm);
+          analogWrite(PWM_LEFT_MOTOR, 0);
+        } else if (side == 2) { // izq BWD
+          digitalWrite(DIR_LEFT_MOTOR, LOW);
+          analogWrite(PWM_LEFT_MOTOR, pwm);
+          analogWrite(PWM_RIGHT_MOTOR, 0);
+        } else { // der BWD
+          digitalWrite(DIR_RIGHT_MOTOR, HIGH);
+          analogWrite(PWM_RIGHT_MOTOR, pwm);
+          analogWrite(PWM_LEFT_MOTOR, 0);
+        }
+        delay((unsigned long)MS_PER_WINDOW);
+        analogWrite(PWM_LEFT_MOTOR, 0);
+        analogWrite(PWM_RIGHT_MOTOR, 0);
+        noInterrupts();
+        uint32_t t1 = (side < 2) ? leftHallTotal : rightHallTotal;
+        interrupts();
+        uint32_t pulses = t1 - t0;
+        float rpm = (pulses / PPR_F) * (60000.0f / MS_PER_WINDOW);
+        return rpm;
+      };
+
+      if (currentRobotState != STATE_HABILITADO) { setStateHabilitado(); delay(50); }
+      // Disable STOP/BRAKE for direct analogWrite
+      pinMode(STOP_LEFT_MOTOR,  INPUT); pinMode(STOP_RIGHT_MOTOR,  INPUT);
+      pinMode(BRAKE_LEFT_MOTOR, INPUT); pinMode(BRAKE_RIGHT_MOTOR, INPUT);
+      leftMotor.enabled  = rightMotor.enabled  = true;
+      leftMotor.braked   = rightMotor.braked   = false;
+      delay(200);
+
+      const uint8_t CAL_PWM = 60;
+      float rpm_lf = measureRPM(0, CAL_PWM); delay(500);
+      float rpm_rf = measureRPM(1, CAL_PWM); delay(500);
+      float rpm_lb = measureRPM(2, CAL_PWM); delay(500);
+      float rpm_rb = measureRPM(3, CAL_PWM); delay(500);
+
+      // v = rpm * pi * D / 60
+      const float K = PI * DIAM_F / 60.0f;
+      float v_lf = rpm_lf * K;
+      float v_rf = rpm_rf * K;
+      float v_lb = rpm_lb * K;
+      float v_rb = rpm_rb * K;
+
+      // FF = PWM / v  (con proteccion division por cero)
+      if (v_lf > 0.01f) FF_LEFT_GAIN  = (float)CAL_PWM / v_lf;
+      if (v_rf > 0.01f) FF_RIGHT_GAIN = (float)CAL_PWM / v_rf;
+      if (v_lb > 0.01f) FF_LEFT_BWD   = (float)CAL_PWM / v_lb;
+      if (v_rb > 0.01f) FF_RIGHT_BWD  = (float)CAL_PWM / v_rb;
+
+      Serial.println("f AUTOCAL_FF_END");
+      Serial.print("f PWM="); Serial.print(CAL_PWM);
+      Serial.print(" LF_rpm="); Serial.print(rpm_lf,1);
+      Serial.print(" RF_rpm="); Serial.print(rpm_rf,1);
+      Serial.print(" LB_rpm="); Serial.print(rpm_lb,1);
+      Serial.print(" RB_rpm="); Serial.println(rpm_rb,1);
+      Serial.print("f FF_LEFT_GAIN=");  Serial.print(FF_LEFT_GAIN,2);
+      Serial.print(" FF_RIGHT_GAIN="); Serial.print(FF_RIGHT_GAIN,2);
+      Serial.print(" FF_LEFT_BWD=");   Serial.print(FF_LEFT_BWD,2);
+      Serial.print(" FF_RIGHT_BWD=");  Serial.println(FF_RIGHT_BWD,2);
+      Serial.println("f (copia estos valores a pid_control.h y reflashea para persistir)");
+      initTimer5PWM();
       break;
     }
 

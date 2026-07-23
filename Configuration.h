@@ -26,7 +26,7 @@
  * SISTEMA PID
  * Control automático de velocidad con retroalimentación
  * NOTA: Si PID_CONTROL está desactivado, todas las opciones PID se desactivan automáticamente
- */
+ */          
 //#define ENABLE_PID_CONTROL             // Activar control PID
 
 #ifdef ENABLE_PID_CONTROL

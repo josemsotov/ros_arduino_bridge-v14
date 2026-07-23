@@ -3,8 +3,16 @@
 
 # Arduino build output
 build/
+build_output/
 MOTOR-INTERFACE-V-13/build/
 MOTOR-INTERFACE-V-13/slprj/
+
+# Local backups and credentials
+BACKUPS/
+.env
+*.env
+!.env.example
+!*.env.example
 
 # Arduino IDE / ArduinoIDE project files
 *.prj
