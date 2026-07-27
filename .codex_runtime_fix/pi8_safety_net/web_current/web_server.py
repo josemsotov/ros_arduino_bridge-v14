@@ -86,7 +86,11 @@ class SharedState:
         self.last_cmd: dict[str, float] = {"linear": 0.0, "angular": 0.0}
         self.cmd_vel: dict[str, float] = {"linear": 0.0, "angular": 0.0}
         self.follower_enabled = False
-        self.robot_mode: str = "STADIA"  # Default until another exclusive mode is selected
+        self.robot_mode: str = "IDLE"
+        self.stadia_state: dict[str, Any] = {
+            "stadia": "disconnected",
+            "mode": "off",
+        }
 
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -103,6 +107,7 @@ class SharedState:
                 "cmd_vel": dict(self.cmd_vel),
                 "follower_enabled": self.follower_enabled,
                 "robot_mode": self.robot_mode,
+                "stadia_state": dict(self.stadia_state),
                 "ages": {name: stamp_age(stamp) for name, stamp in self.stamps.items()},
                 "camera": {
                     "rgb_age": stamp_age(self.rgb_stamp),
@@ -120,6 +125,9 @@ class OperatorNode(Node):
         self.pub_cmd = self.create_publisher(Twist, "/cmd_vel", 10)
         self.pub_enable = self.create_publisher(Bool, "/follower/enable", 10)
         self.pub_stadia = self.create_publisher(String, "/stadia/control", 10)
+        self.pub_follower_request = self.create_publisher(
+            Bool, "/operator/follower_request", 10
+        )
         self.pub_raw = self.create_publisher(String, "/arduino/raw_command", 10)
         self.create_subscription(String, "/motor_status", self.motor_status_cb, 10)
         self.create_subscription(String, "/arduino/raw_rx", self.raw_rx_cb, 10)
@@ -128,6 +136,7 @@ class OperatorNode(Node):
         self.create_subscription(Twist, "/follower/debug", self.follower_debug_cb, 10)
         self.create_subscription(Twist, "/cmd_vel", self.cmd_vel_cb, 20)
         self.create_subscription(String, "/follower/state", self.follower_state_cb, 10)
+        self.create_subscription(String, "/stadia/state", self.stadia_state_cb, 10)
         self.create_subscription(String, "/gesture/status", self.gesture_status_cb, 10)
         self.create_subscription(LaserScan, "/scan", self.scan_cb, 10)
         self.create_subscription(Image, "/camera/rgb/image_raw", self.rgb_cb, 2)
@@ -165,21 +174,49 @@ class OperatorNode(Node):
         if mode not in ("IDLE", "FOLLOWER", "STADIA", "GESTURE"):
             raise ValueError(f"Unknown mode: {mode}")
         if mode == "FOLLOWER":
-            # Pause Stadia first so it cannot overwrite follower /cmd_vel.
-            self.pub_stadia.publish(String(data="FOLLOWER"))
+            with self.state.lock:
+                stadia_connected = (
+                    self.state.stadia_state.get("stadia") == "connected"
+                )
+            if not stadia_connected:
+                self.pub_enable.publish(Bool(data=False))
+                self.publish_stop()
+                self.pub_stadia.publish(String(data="OFF"))
+                raise ValueError(
+                    "FOLLOWER requires a physically connected Stadia controller"
+                )
+            # StadiaNode is the only component allowed to authorize FOLLOWER.
+            self.pub_follower_request.publish(Bool(data=True))
             self.publish_stop()
-            self.pub_enable.publish(Bool(data=True))
         elif mode == "STADIA":
+            self.pub_follower_request.publish(Bool(data=False))
             self.pub_enable.publish(Bool(data=False))
             self.publish_stop()
             self.pub_stadia.publish(String(data="STADIA"))
         else:
+            self.pub_follower_request.publish(Bool(data=False))
             self.pub_enable.publish(Bool(data=False))
             self.publish_stop()
             self.pub_stadia.publish(String(data="OFF"))
         with self.state.lock:
             self.state.follower_enabled = (mode == "FOLLOWER")
             self.state.robot_mode = mode
+
+    def stadia_state_cb(self, msg: String) -> None:
+        try:
+            payload = json.loads(msg.data)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return
+        with self.state.lock:
+            self.state.stadia_state = dict(payload)
+            if payload.get("stadia") != "connected":
+                self.state.follower_enabled = False
+                self.state.robot_mode = "IDLE"
+            elif payload.get("mode") in ("stadia", "off"):
+                self.state.follower_enabled = False
+                self.state.robot_mode = (
+                    "STADIA" if payload.get("mode") == "stadia" else "IDLE"
+                )
 
     def motor_status_cb(self, msg: String) -> None:
         with self.state.lock:
@@ -345,7 +382,10 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
     @app.post("/api/follower")
     async def api_follower(payload: dict[str, Any]) -> dict[str, Any]:
         enabled = bool(payload.get("enabled", False))
-        node.set_robot_mode("FOLLOWER" if enabled else "IDLE")
+        try:
+            node.set_robot_mode("FOLLOWER" if enabled else "IDLE")
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         return {"ok": True, "enabled": enabled}
 
     @app.post("/api/cmd_vel")

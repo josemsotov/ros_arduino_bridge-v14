@@ -28,6 +28,7 @@ class StadiaNode(Node):
         self.declare_parameter('rotation_speed_scale', 0.5)
         self.declare_parameter('stadia_mac',      'C1:B8:D3:D6:E9:D5')
         self.declare_parameter('takeover_on_connect', True)
+        self.declare_parameter('takeover_axis_threshold', 0.25)
         self.declare_parameter('require_neutral_to_arm', True)
 
         # ── Publicadores ────────────────────────────────────────────────────────
@@ -39,6 +40,12 @@ class StadiaNode(Node):
         )
         self.pub_status = self.create_publisher(String, '/stadia/state', 5)
         self.create_subscription(String, '/stadia/control', self._control_cb, 5)
+        self.create_subscription(
+            Bool,
+            '/operator/follower_request',
+            self._operator_follower_request_cb,
+            5,
+        )
         self.create_subscription(Bool, '/follower/enable', self._follower_enable_cb, 5)
 
         # ── Estado ──────────────────────────────────────────────────────────────
@@ -46,7 +53,9 @@ class StadiaNode(Node):
         self.smooth_ang = 0.0
         self.axis = {}   # evdev raw axis values
         self.balance_on = False
-        self.control_mode = 'stadia'
+        # Fail closed at startup. A StadiaNode process is not evidence that
+        # the physical controller is connected.
+        self.control_mode = 'off'
         self._dev = None
         self._running = True
         self._neutral_armed = False
@@ -54,6 +63,7 @@ class StadiaNode(Node):
         # ── Timer de publicación ─────────────────────────────────────────────────
         hz = self.get_parameter('send_rate_hz').value
         self.create_timer(1.0 / hz, self._publish_cb)
+        self.create_timer(0.5, self._connection_safety_tick)
 
         # ── Hilo de lectura evdev ────────────────────────────────────────────────
         self._thread = threading.Thread(target=self._read_loop, daemon=True)
@@ -127,6 +137,14 @@ class StadiaNode(Node):
                 for ev in self._dev.read_loop():
                     if ev.type == EV_ABS:
                         self.axis[ev.code] = ev.value
+                        if (
+                            self.control_mode == 'follower'
+                            and ev.code in (ABS_LX, ABS_LY)
+                            and self._manual_axis_takeover_requested(
+                                ABS_LX, ABS_LY
+                            )
+                        ):
+                            self._takeover_from_stick()
                     elif ev.type == EV_KEY and ev.value == 1:
                         self._handle_button(ev.code,
                                             BTN_A, BTN_B, BTN_X, BTN_Y, BTN_MENU)
@@ -142,15 +160,47 @@ class StadiaNode(Node):
                 self.pub_enable.publish(Bool(data=False))
                 self.axis.clear()
                 self._neutral_armed = False
+                self.control_mode = 'off'
                 self._dev = None
                 self._publish_status('disconnected')
+
+    def _manual_axis_takeover_requested(self, abs_lx, abs_ly):
+        if abs_lx not in self.axis or abs_ly not in self.axis:
+            return False
+        threshold = max(
+            0.0,
+            min(
+                1.0,
+                float(self.get_parameter('takeover_axis_threshold').value),
+            ),
+        )
+        lx_n = self._normalize(self.axis[abs_lx])
+        ly_n = self._normalize(self.axis[abs_ly])
+        return abs(lx_n) >= threshold or abs(ly_n) >= threshold
+
+    def _takeover_from_stick(self):
+        # A deliberate stick movement is an emergency/manual override. Revoke
+        # autonomous motion first; the regular timer publishes manual velocity
+        # only after this zero command.
+        self.control_mode = 'stadia'
+        self.pub_authorized_enable.publish(Bool(data=False))
+        self.pub_enable.publish(Bool(data=False))
+        self._send_stop()
+        self._neutral_armed = True
+        self._publish_status('connected')
+        self.get_logger().warn(
+            'Manual Stadia takeover: FOLLOWER cancelled by stick movement'
+        )
 
     # ── Gestión de botones ────────────────────────────────────────────────────────
     def _handle_button(self, code, BTN_A, BTN_B, BTN_X, BTN_Y, BTN_MENU):
         if code == BTN_A:                          # Volver a control Stadia
             self._set_stadia_mode()
-        elif code == BTN_B:                        # Cambiar a follower
-            self._set_follower_mode()
+        elif code == BTN_B:
+            self._send_stop()
+            self.get_logger().warn(
+                'Boton B ignored: FOLLOWER must be selected from the interface'
+            )
         elif code == BTN_Y:                        # Toggle balance
             cmd = 'hb off' if self.balance_on else 'hb on'
             self.pub_raw.publish(String(data=cmd))
@@ -179,9 +229,24 @@ class StadiaNode(Node):
         if command in ('ON', 'STADIA_ON', 'STADIA'):
             self._set_stadia_mode()
         elif command in ('FOLLOWER', 'FOLLOW', 'FOLLOWER_ON'):
-            self._set_follower_mode()
+            self._send_stop()
+            self.get_logger().warn(
+                'FOLLOWER control command rejected: use operator interface request'
+            )
         elif command in ('OFF', 'STADIA_OFF'):
             self._set_off_mode()
+
+    def _operator_follower_request_cb(self, msg: Bool):
+        if bool(msg.data):
+            self._set_follower_mode()
+            return
+        # Leaving FOLLOWER from the interface must revoke motion immediately,
+        # regardless of whether the safety controller remains connected.
+        self.pub_authorized_enable.publish(Bool(data=False))
+        self.pub_enable.publish(Bool(data=False))
+        self._send_stop()
+        if self._dev is None:
+            self.control_mode = 'off'
 
     def _send_stop(self, log=True):
         self.smooth_lin = 0.0; self.smooth_ang = 0.0
@@ -217,12 +282,25 @@ class StadiaNode(Node):
         self.get_logger().info('[A] Control Stadia activo')
 
     def _set_follower_mode(self):
+        if self._dev is None:
+            self.control_mode = 'off'
+            self._neutral_armed = False
+            self.pub_authorized_enable.publish(Bool(data=False))
+            self.pub_enable.publish(Bool(data=False))
+            self._send_stop()
+            self._publish_status('disconnected')
+            self.get_logger().warn(
+                'FOLLOWER rejected: physical Stadia controller is not connected'
+            )
+            return
         self.control_mode = 'follower'
         self._neutral_armed = False
         self._send_stop()
         self._publish_status('connected')
         self.pub_authorized_enable.publish(Bool(data=True))
-        self.get_logger().info('[B] Follower activo; joystick Stadia pausado')
+        self.get_logger().info(
+            'Follower activo por interfaz; joystick Stadia listo para takeover'
+        )
 
     def _set_off_mode(self):
         self.control_mode = 'off'
@@ -295,14 +373,28 @@ class StadiaNode(Node):
         t.angular.z = float(self.smooth_ang)
         self.pub_cmd.publish(t)
 
+    def _connection_safety_tick(self):
+        if self._dev is None:
+            self.control_mode = 'off'
+            self._neutral_armed = False
+            self.pub_authorized_enable.publish(Bool(data=False))
+            self.pub_enable.publish(Bool(data=False))
+            self._send_stop(log=False)
+            self._publish_status('disconnected')
+            return
+        self._publish_status('connected')
+
     def _publish_status(self, state: str):
         self.pub_status.publish(String(data=json.dumps({
             'stadia': state,
             'mode': self.control_mode,
             'neutral_armed': self._neutral_armed,
             'takeover_on_connect': self.get_parameter('takeover_on_connect').value,
+            'takeover_axis_threshold': self.get_parameter(
+                'takeover_axis_threshold'
+            ).value,
             'rotation_speed_scale': self.get_parameter('rotation_speed_scale').value,
-            'buttons': {'A': 'stadia', 'B': 'follower', 'menu': 'stop'},
+            'buttons': {'A': 'stadia_takeover', 'B': 'ignored', 'menu': 'stop'},
         })))
 
     def destroy_node(self):

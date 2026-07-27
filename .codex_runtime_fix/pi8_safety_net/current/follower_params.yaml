@@ -38,6 +38,8 @@ robot_follower:
     face_distance_scale_m: 0.185
     lidar_face_distance_gate_m: 0.45
     face_distance_timeout: 1.50
+    lidar_initial_distance_hint_m: 1.30
+    lidar_initial_distance_gate_m: 0.35
     min_linear_vel: 0.06
     linear_deadband: 0.06
     angular_deadband_deg: 2.0
@@ -57,4 +59,5 @@ stadia_node:
     send_rate_hz:        20.0   # Hz de publicación en /cmd_vel
     rotation_dominance:  2.0    # ratio para activar modo rotación pura
     takeover_on_connect: true   # Bluetooth conectado toma control y detiene follower
+    takeover_axis_threshold: 0.25 # movimiento deliberado cancela follower y toma control
     require_neutral_to_arm: true # exige palancas centradas antes de permitir movimiento

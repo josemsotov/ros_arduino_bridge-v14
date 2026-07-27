@@ -65,6 +65,8 @@ class FollowerNode(Node):
         self.declare_parameter('face_distance_scale_m', 0.185)
         self.declare_parameter('lidar_face_distance_gate_m', 0.45)
         self.declare_parameter('face_distance_timeout', 1.50)
+        self.declare_parameter('lidar_initial_distance_hint_m', 1.30)
+        self.declare_parameter('lidar_initial_distance_gate_m', 0.35)
         self.declare_parameter('min_linear_vel', 0.06)
         self.declare_parameter('linear_deadband', 0.06)
         self.declare_parameter('angular_deadband_deg', 2.0)
@@ -159,6 +161,7 @@ class FollowerNode(Node):
         self.face_width_ratio = None
         self.face_height_ratio = None
         self.face_distance_estimate = None
+        self.face_lidar_distance_offset = None
         self.face_distance_last_seen = self.get_clock().now()
         self.face_predicted_linear = 0.0
         self.face_predicted_angular = 0.0
@@ -241,7 +244,11 @@ class FollowerNode(Node):
             self.identity_enroll_active = False
             self.get_logger().info('Follower disabled; motors stopped')
             self._stop()
-            self.pub_stadia.publish(String(data='STADIA'))
+            # Do not echo STADIA here. StadiaNode publishes /follower/enable
+            # False while entering manual/off mode; replying on
+            # /stadia/control would re-enter _set_stadia_mode(), which emits
+            # another False and creates an unbounded control feedback loop.
+            # Explicit STOP/FACE_STATIC_OFF paths restore Stadia themselves.
         self.publish_state()
 
     def authorized_enable_cb(self, msg: Bool):
@@ -329,6 +336,7 @@ class FollowerNode(Node):
             self.face_identity_session_ok = False
             self.face_identity_score = 0.0
             self.face_distance_estimate = None
+            self.face_lidar_distance_offset = None
             self.face_predicted_linear = 0.0
             self.face_predicted_angular = 0.0
             self.mode = 'FACE_STATIC_DRY_RUN'
@@ -1041,14 +1049,17 @@ class FollowerNode(Node):
             face_distance_fresh = face_distance_age <= float(
                 self.get_parameter('face_distance_timeout').value
             )
-        if face_distance_fresh:
+        if face_distance_fresh and self.target_dist is not None:
             face_gate = float(
                 self.get_parameter('lidar_face_distance_gate_m').value
             )
+            expected_lidar_distance = self.face_distance_estimate
+            if self.face_lidar_distance_offset is not None:
+                expected_lidar_distance += self.face_lidar_distance_offset
             compatible = [
                 candidate
                 for candidate in candidates
-                if abs(candidate[1] - self.face_distance_estimate) <= face_gate
+                if abs(candidate[1] - expected_lidar_distance) <= face_gate
             ]
             if not compatible:
                 _, raw_dist, raw_angle, _ = min(
@@ -1062,11 +1073,43 @@ class FollowerNode(Node):
                 return
             candidates = compatible
 
+        initial_hint = float(
+            self.get_parameter('lidar_initial_distance_hint_m').value
+        )
+        if self.target_dist is None and initial_hint > 0.0:
+            initial_gate = float(
+                self.get_parameter('lidar_initial_distance_gate_m').value
+            )
+            initial_candidates = [
+                candidate
+                for candidate in candidates
+                if abs(candidate[1] - initial_hint) <= initial_gate
+            ]
+            if not initial_candidates:
+                _, raw_dist, raw_angle, _ = min(
+                    candidates, key=lambda item: item[0]
+                )
+                self.lidar_raw_target_dist = raw_dist
+                self.lidar_raw_target_angle = raw_angle
+                self.lidar_target_status = 'initial_distance_mismatch'
+                self._stop()
+                self.publish_state()
+                return
+            candidates = initial_candidates
+
         _, raw_dist, raw_angle, cluster_size = min(
             candidates, key=lambda item: item[0]
         )
         self.lidar_raw_target_dist = raw_dist
         self.lidar_raw_target_angle = raw_angle
+        if (
+            self.target_dist is None
+            and face_distance_fresh
+            and self.face_distance_estimate is not None
+        ):
+            self.face_lidar_distance_offset = (
+                raw_dist - self.face_distance_estimate
+            )
 
         if (
             self.target_dist is not None
@@ -1238,6 +1281,7 @@ class FollowerNode(Node):
         self.lidar_pending_angle = None
         self.lidar_pending_count = 0
         self.lidar_target_status = status
+        self.face_lidar_distance_offset = None
 
     def _handle_gesture_test_command(self, command):
         if command in ('STOP', 'WAIT', 'PAUSE'):
@@ -1330,6 +1374,10 @@ class FollowerNode(Node):
             'face_distance_estimate': (
                 None if self.face_distance_estimate is None
                 else round(float(self.face_distance_estimate), 3)
+            ),
+            'face_lidar_distance_offset': (
+                None if self.face_lidar_distance_offset is None
+                else round(float(self.face_lidar_distance_offset), 3)
             ),
             'face_identity_status': self.face_identity_status,
             'face_identity_verified': self.face_identity_verified,
