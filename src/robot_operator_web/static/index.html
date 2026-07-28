@@ -106,6 +106,19 @@
       font-size: 21px;
       line-height: 1;
     }
+    .metric.battery {
+      min-height: 86px;
+      border-left: 5px solid var(--muted);
+    }
+    .metric.battery.ok { border-left-color: var(--ok); }
+    .metric.battery.warn { border-left-color: var(--warn); }
+    .metric.battery.bad { border-left-color: var(--bad); }
+    .metric.battery small {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
     .wide { grid-column: 1 / -1; }
     .controls {
       display: grid;
@@ -298,6 +311,32 @@
           </div>
           <div id="gamepadReadout" class="controller-readout">Connect controller and press any button.</div>
         </div>
+        <div class="controller-card">
+          <div class="controller-head">
+            <span>Prueba de cuerpo entero</span>
+            <b id="bodyFieldStatus">DESARMADA</b>
+          </div>
+          <div class="grid2">
+            <button class="btn primary" id="bodyFieldArm">ARMAR CUERPO</button>
+            <button class="btn danger" id="bodyFieldDisarm">DETENER CUERPO</button>
+          </div>
+          <div id="bodyFieldReadout" class="controller-readout">
+            Verifica rostro; indice inicia seguimiento corporal; palma detiene.
+          </div>
+        </div>
+        <div class="controller-card">
+          <div class="controller-head">
+            <span>Calibración de ángulo Kinect</span>
+            <b id="tiltCalibrationStatus">DESARMADA</b>
+          </div>
+          <div class="grid2">
+            <button class="btn primary" id="tiltCalibrationArm">CALIBRAR ÁNGULO</button>
+            <button class="btn danger" id="tiltCalibrationDisarm">CANCELAR</button>
+          </div>
+          <div id="tiltCalibrationReadout" class="controller-readout">
+            Índice arriba: sigue la mano. Palma abierta: detiene y guarda el centro.
+          </div>
+        </div>
         <div class="grid2">
           <button class="btn" data-raw="hb on">Balance ON</button>
           <button class="btn" data-raw="hb off">Balance OFF</button>
@@ -312,6 +351,20 @@
           <input id="rawInput" placeholder="raw command, e.g. hb kp 0.025">
           <button class="btn" id="sendRaw">Send</button>
         </div>
+        <div class="controller-card">
+          <div class="controller-head">
+            <span>Prueba de mano a escala</span>
+            <b id="handFieldStatus">DESARMADA</b>
+          </div>
+          <div class="grid2">
+            <button class="btn primary" id="handFieldArm">ARMAR</button>
+            <button class="btn danger" id="handFieldDisarm">DETENER Y DESARMAR</button>
+          </div>
+          <div id="handFieldReadout" class="controller-readout">
+            Indice arriba inicia o reanuda; palma abierta pausa. DETENER Y DESARMAR exige pulsar ARMAR otra vez.
+          </div>
+        </div>
+        <button class="btn danger wide" id="rebootSystem">REINICIAR SISTEMA</button>
       </div>
     </section>
 
@@ -330,6 +383,16 @@
       <div class="panel-title">Telemetry</div>
       <div class="panel-body stack">
         <div class="grid2">
+          <div class="metric battery wide" id="piBatteryCard">
+            <label>BAT PI · X1202</label>
+            <strong id="piBatteryValue">--</strong>
+            <small id="piBatteryDetail">Esperando lectura</small>
+          </div>
+          <div class="metric battery wide" id="robotBatteryCard">
+            <label>BAT ROBOT · SIMULADA</label>
+            <strong id="robotBatteryValue">--</strong>
+            <small id="robotBatteryDetail">Dummy; sensor real pendiente</small>
+          </div>
           <div class="metric"><label>Follower</label><strong id="followState">OFF</strong></div>
           <div class="metric"><label>Mode</label><strong id="followMode">--</strong></div>
           <div class="metric"><label>Gesture</label><strong id="gestureState">--</strong></div>
@@ -370,6 +433,32 @@ function ageClass(age) {
   return 'dead';
 }
 
+function updateBatteryCard(prefix, status) {
+  const card = $(`${prefix}BatteryCard`);
+  const value = $(`${prefix}BatteryValue`);
+  const detail = $(`${prefix}BatteryDetail`);
+  if (!card || !value || !detail) return;
+  if (!status || !status.present) {
+    card.className = 'metric battery wide bad';
+    value.textContent = '--';
+    detail.textContent = (status && status.error) || 'Sensor no disponible';
+    return;
+  }
+  const percent = Number(status.percent);
+  const voltage = Number(status.voltage);
+  const validPercent = Number.isFinite(percent);
+  const validVoltage = Number.isFinite(voltage);
+  value.textContent =
+    `${validPercent ? Math.round(percent) + '%' : '--'}` +
+    `${validVoltage ? ' · ' + voltage.toFixed(prefix === 'pi' ? 2 : 1) + ' V' : ''}`;
+  card.className = `metric battery wide ${
+    status.status === 'ok' ? 'ok' : status.status === 'warn' ? 'warn' : 'bad'
+  }`;
+  detail.textContent = status.dummy
+    ? 'DATO SIMULADO · sensor real pendiente'
+    : `${status.source || 'sensor'} · actualización automática`;
+}
+
 function setAge(id, age) {
   const el = $(id);
   el.textContent = age === null || age === undefined ? '--' : age.toFixed(1) + 's';
@@ -395,6 +484,71 @@ function stopMotion() {
   driveTimer = null;
   gamepadManualActive = false;
   return postJson('/api/stop').catch(console.error);
+}
+
+async function rebootSystem() {
+  const accepted = window.confirm(
+    '¿Reiniciar completamente el Raspberry Pi?\n\n' +
+    'El robot se detendrá y la interfaz estará desconectada durante el arranque.'
+  );
+  if (!accepted) return;
+
+  const button = $('rebootSystem');
+  button.disabled = true;
+  button.textContent = 'REINICIANDO...';
+  try {
+    await postJson('/api/system/reboot', {confirm: 'REBOOT'});
+    $('wsText').textContent = 'rebooting';
+  } catch (error) {
+    console.error(error);
+    button.disabled = false;
+    button.textContent = 'REINICIAR SISTEMA';
+    window.alert('No se pudo reiniciar el sistema: ' + error.message);
+  }
+}
+
+async function setHandFieldArmed(armed) {
+  if (armed) {
+    const accepted = window.confirm(
+      'Armar la prueba de mano con movimiento real de ruedas?\n\n' +
+      'El robot debe permanecer suspendido y el Stadia conectado.'
+    );
+    if (!accepted) return;
+  }
+  try {
+    await postJson('/api/hand-field', {armed});
+    $('handFieldReadout').textContent = armed
+      ? 'Armado solicitado; espere estado ARMED_WAITING_INDEX.'
+      : 'Prueba detenida y control Stadia restaurado.';
+  } catch (error) {
+    console.error(error);
+    $('handFieldStatus').textContent = 'BLOQUEADA';
+    $('handFieldReadout').textContent = 'ERROR: ' + error.message;
+    window.alert('No se pudo cambiar la prueba: ' + error.message);
+  }
+}
+
+async function setBodyFieldArmed(armed) {
+  try {
+    await postJson('/api/body-field', {armed});
+    $('bodyFieldStatus').textContent = armed ? 'VERIFICANDO ROSTRO' : 'DESARMADA';
+  } catch (error) {
+    $('bodyFieldStatus').textContent = 'BLOQUEADA';
+    $('bodyFieldReadout').textContent = 'ERROR: ' + error.message;
+  }
+}
+
+async function setTiltCalibrationArmed(armed) {
+  try {
+    await postJson('/api/kinect-tilt-calibration', {armed});
+    $('tiltCalibrationStatus').textContent = armed ? 'ESPERANDO ÍNDICE' : 'DESARMADA';
+    $('tiltCalibrationReadout').textContent = armed
+      ? 'Mantén el índice arriba y mueve la mano verticalmente; abre la palma para guardar.'
+      : 'Calibración cancelada; control Stadia restaurado.';
+  } catch (error) {
+    $('tiltCalibrationStatus').textContent = 'BLOQUEADA';
+    $('tiltCalibrationReadout').textContent = 'ERROR: ' + error.message;
+  }
 }
 
 function startDrive(mode) {
@@ -537,21 +691,60 @@ function update(s) {
     : s.follower_enabled;
   $('followState').textContent = followerEnabled ? 'ON' : 'OFF';
   $('followMode').textContent = followerMode;
+  if (s.body_field_armed && !followerEnabled) {
+    const faceOk = !!(s.follower_state && s.follower_state.face_identity_session_ok);
+    $('bodyFieldStatus').textContent = faceOk ? 'ESPERANDO INDICE' : 'VERIFICANDO ROSTRO';
+  } else if (s.body_field_armed && followerEnabled) {
+    $('bodyFieldStatus').textContent = 'ACTIVA';
+  }
   $('gestureState').textContent = (s.gesture_status && s.gesture_status.state) || '--';
+  const hand = s.gesture_status || {};
+  if (s.tilt_calibration_armed) {
+    $('tiltCalibrationStatus').textContent =
+      hand.state === 'tilt_following_index' ? 'SIGUIENDO MANO' : 'ESPERANDO ÍNDICE';
+  } else if (hand.state === 'tilt_saved') {
+    $('tiltCalibrationStatus').textContent = 'GUARDADA';
+  } else {
+    $('tiltCalibrationStatus').textContent = 'DESARMADA';
+  }
+  $('tiltCalibrationReadout').textContent =
+    `ángulo=${s.kinect_tilt_degrees ?? '--'}° | estado=${hand.state || '--'}` +
+    (hand.hand_y == null ? '' : ` | mano_y=${Number(hand.hand_y).toFixed(2)}`);
+  let handStatus = 'DESARMADA';
+  if (hand.hand_field_armed) {
+    if (hand.hand_field_active) handStatus = 'ACTIVA';
+    else if (hand.state === 'paused_open_palm') handStatus = 'PAUSADA';
+    else if (hand.state === 'stopped_hand_lost') handStatus = 'MANO NO DETECTADA';
+    else if (hand.state === 'blocked_no_depth' || hand.state === 'stopped_no_depth') {
+      handStatus = 'SIN PROFUNDIDAD';
+    } else handStatus = 'ESPERANDO INDICE';
+  }
+  $('handFieldStatus').textContent = handStatus;
+  $('handFieldReadout').textContent =
+    `estado=${hand.state || '--'} | distancia=${fmt(hand.simulated_distance_m, 2, 'm')}` +
+    ` | angulo=${fmt(hand.simulated_angle_deg, 1, 'deg')}` +
+    ` | v=${fmt(hand.linear_cmd, 3)} w=${fmt(hand.angular_cmd, 3)}`;
   $('frontMin').textContent = fmt(s.scan.front_min, 2, ' m');
-  $('linCmd').textContent = fmt(s.last_cmd.linear, 2);
-  $('angCmd').textContent = fmt(s.last_cmd.angular, 2);
+  const actualCmd = s.cmd_vel || s.last_cmd || {};
+  $('linCmd').textContent = fmt(actualCmd.linear, 2);
+  $('angCmd').textContent = fmt(actualCmd.angular, 2);
   $('lrpm').textContent = fmt(s.motor_status.Lrpm, 0);
   $('rrpm').textContent = fmt(s.motor_status.Rrpm, 0);
   $('lma').textContent = fmt(s.motor_status.LmA, 2);
   $('rma').textContent = fmt(s.motor_status.RmA, 2);
+  updateBatteryCard('pi', s.battery_status);
+  updateBatteryCard('robot', s.robot_battery_status);
   $('rawLog').textContent = [
     'motor: ' + (s.motor_status.raw || '--'),
     'encoders: ' + (s.encoder_counts || '--'),
     'odom: x=' + fmt(s.odom.x, 3) + ' y=' + fmt(s.odom.y, 3) + ' v=' + fmt(s.odom.linear, 3) + ' w=' + fmt(s.odom.angular, 3),
     'follower: mode=' + followerMode + ' enabled=' + followerEnabled,
+    'cmd_vel actual: v=' + fmt(actualCmd.linear, 4) + ' w=' + fmt(actualCmd.angular, 4) + ' age=' + fmt(s.ages.cmd_vel, 3, 's'),
     'gesture: ' + ((s.gesture_status && (s.gesture_status.state + ' ' + (s.gesture_status.detail || ''))) || '--'),
-    'target: dist=' + fmt(s.follower_debug.target_dist, 3) + ' angle=' + fmt(s.follower_debug.target_angle, 3),
+    'target: dist=' + fmt(s.follower_debug.target_dist, 3) + ' angle=' + fmt(s.follower_debug.target_angle, 3)
+      + ' raw=' + fmt(s.follower_state.lidar_raw_target_dist, 3)
+      + ' clusters=' + (s.follower_state.lidar_cluster_count ?? 0)
+      + ' status=' + (s.follower_state.lidar_target_status || '--'),
     'scan: valid=' + (s.scan.valid_count || 0) + ' min=' + fmt(s.scan.min, 2) + ' front=' + fmt(s.scan.front_min, 2),
     '',
     'serial:',
@@ -565,6 +758,8 @@ function connectWs() {
   ws.onopen = () => {
     $('wsDot').className = 'dot ok';
     $('wsText').textContent = 'connected';
+    $('rebootSystem').disabled = false;
+    $('rebootSystem').textContent = 'REINICIAR SISTEMA';
   };
   ws.onmessage = (event) => update(JSON.parse(event.data));
   ws.onclose = () => {
@@ -577,6 +772,13 @@ function connectWs() {
 $('followOn').onclick = () => postJson('/api/follower', {enabled: true}).catch(console.error);
 $('followOff').onclick = () => postJson('/api/follower', {enabled: false}).catch(console.error);
 $('stop').onclick = stopMotion;
+$('handFieldArm').onclick = () => setHandFieldArmed(true);
+$('handFieldDisarm').onclick = () => setHandFieldArmed(false);
+$('bodyFieldArm').onclick = () => setBodyFieldArmed(true);
+$('bodyFieldDisarm').onclick = () => setBodyFieldArmed(false);
+$('tiltCalibrationArm').onclick = () => setTiltCalibrationArmed(true);
+$('tiltCalibrationDisarm').onclick = () => setTiltCalibrationArmed(false);
+$('rebootSystem').onclick = rebootSystem;
 $('gamepadToggle').onclick = () => setGamepadEnabled(!gamepadEnabled);
 $('gamepadStop').onclick = stopMotion;
 window.addEventListener('gamepadconnected', (ev) => {

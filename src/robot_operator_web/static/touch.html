@@ -60,7 +60,7 @@
     header {
       min-width: 0;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+      grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
       gap: 8px;
       align-items: center;
     }
@@ -105,7 +105,55 @@
     .pill.ok { color: #bff5d7; border-color: #267a51; background: #10251d; }
     .pill.warn { color: #ffe0a0; border-color: #76571c; background: #2b2110; }
     .pill.bad { color: #ffd3d7; border-color: #82313b; background: #35171c; }
+    .pill.blue { color: #d6e5ff; border-color: #385c96; background: #16263f; }
     .btn-stop { background: #651923; border-color: #b63743; color: #ffe1e4; }
+    .mode-btn-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .btn-mode {
+      min-height: 44px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel2);
+      color: var(--muted);
+      font: inherit;
+      font-weight: 900;
+      font-size: 13px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .btn-mode:active { transform: translateY(1px); filter: brightness(1.15); }
+    .btn-mode.active-follower { background: #123524; border-color: #247a53; color: #bcf7d8; }
+    .btn-mode.active-stadia   { background: #16263f; border-color: #385c96; color: #d6e5ff; }
+    .btn-mode.active-gesture  { background: #342811; border-color: #785817; color: #ffe0a0; }
+    /* ── Botón STOP global siempre visible en el header ── */
+    #globalStop {
+      background: #c0392b;
+      border: 2px solid #ff6b6b;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      min-width: 72px;
+      min-height: 44px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(255,80,80,0.5);
+    }
+    #globalStop:active { transform: scale(0.95); background: #922b21; }
+    /* ── Botón RESTART global ── */
+    #globalRestart {
+      background: #1a3a5c;
+      border: 2px solid #4a8fc1;
+      color: #d6e8ff;
+      font-size: 13px;
+      font-weight: 700;
+      min-width: 72px;
+      min-height: 44px;
+      border-radius: 8px;
+    }
+    #globalRestart:active { transform: scale(0.95); background: #0f2540; }
     .btn-ok { background: #123524; border-color: #247a53; color: #bcf7d8; }
     .btn-warn { background: #342811; border-color: #785817; color: #ffe0a0; }
     .btn-blue { background: #16263f; border-color: #385c96; color: #d6e5ff; }
@@ -340,6 +388,39 @@
       gap: 8px;
       align-items: center;
     }
+    .pwm-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .pwm-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel2);
+      padding: 10px;
+    }
+    .pwm-card strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1.05;
+    }
+    .pwm-levels {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 3px;
+      margin-top: 8px;
+    }
+    .pwm-cell {
+      height: 12px;
+      border: 1px solid #2c3832;
+      border-radius: 3px;
+      background: #0b0f0d;
+    }
+    .pwm-cell.active {
+      background: var(--green);
+      border-color: #58e19b;
+    }
     input[type="range"] { width: 100%; min-height: 30px; padding: 0; }
     .value {
       font-size: 18px;
@@ -363,11 +444,11 @@
     }
     @media (max-width: 820px), (max-height: 620px) {
       .screen { grid-template-rows: 50px minmax(0, 1fr); padding: 6px; gap: 6px; }
-      header { grid-template-columns: minmax(0, 1fr) auto auto auto auto; gap: 5px; }
+      header { grid-template-columns: minmax(0, 1fr) auto auto auto auto auto; gap: 5px; }
       #homeBtn, #exitBtn { min-width: 52px; padding: 0 7px; font-size: 11px; }
       .pill { min-width: 58px; min-height: 40px; font-size: 11px; }
       .mode-grid, .panel-layout { grid-template-columns: 1fr; overflow: auto; }
-      section { overflow: visible; }
+      section { overflow: hidden; }
       .shot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .distance-card { min-height: 116px; }
       .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -375,6 +456,29 @@
       .drive button { min-height: 50px; }
       pre { max-height: 300px; }
       .brand strong { font-size: 15px; }
+    }
+    /* Pantalla táctil 7" en horizontal (800x480): mantener las tarjetas en
+       su rejilla y hacer scroll en el panel, nunca dejar que una tarjeta
+       desborde por encima de la siguiente. */
+    @media (min-width: 650px) and (max-width: 899px) and (orientation: landscape) {
+      main { overflow: hidden; }
+      .mode-panel.active { overflow: auto; align-content: start; }
+      .home.mode-panel.active { overflow: hidden; align-content: stretch; }
+      .mode-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+      }
+      .mode-card { padding: 12px; gap: 8px; overflow: hidden; }
+      .mode-card strong { font-size: clamp(24px, 4vw, 34px); }
+      .mode-card span { font-size: 13px; }
+      .panel-layout {
+        grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
+        grid-auto-rows: max-content;
+        align-items: start;
+        overflow: auto;
+      }
+      .section-body { overflow: hidden; }
     }
     @media (min-width: 900px) and (orientation: landscape) {
       .screen { max-width: 980px; margin: 0 auto; }
@@ -388,9 +492,13 @@
         <strong id="title">Smart Caddie</strong>
         <span id="subtitle">Selecciona un modo</span>
       </div>
+      <button id="globalStop">⏹ STOP</button>
+      <button id="globalRestart">🔄 REINICIAR</button>
       <button id="homeBtn" class="btn-blue">MENU</button>
       <button id="exitBtn" class="btn-exit">SALIR</button>
       <div id="conn" class="pill bad">OFF</div>
+      <div id="batteryPill" class="pill warn">BAT PI --</div>
+      <div id="robotBatteryPill" class="pill warn">BAT ROBOT --</div>
       <div id="mode" class="pill">WAIT</div>
     </header>
 
@@ -409,11 +517,12 @@
             <strong>Pruebas y Reparaciones</strong>
             <span>Balance, motores, Hall, LiDAR, camara, sensores y reparacion del tactil.</span>
           </button>
-        
+
         <section>
           <div class="section-head"><span>Control Externo</span><span id="extStatus">--</span></div>
           <div class="section-body">
             <div class="action-row">
+              <button id="btnRestoreRobot" class="btn-ok">RESTAURAR ROBOT</button>
               <button id="btnStadiaOn" class="btn-blue">🎮 Stadia ON</button>
               <button id="btnStadiaOff" class="btn-warn">🎮 Stadia OFF</button>
               <button id="btnVoiceOn" class="btn-ok" title="Requiere auriculares con mic">🎤 Voz ON</button>
@@ -498,6 +607,20 @@
               <div class="metric"><label>Left RPM</label><strong id="leftRpm">--</strong></div>
               <div class="metric"><label>Right RPM</label><strong id="rightRpm">--</strong></div>
             </div>
+            <div class="pwm-grid">
+              <div class="pwm-card">
+                <label>Left PWM</label>
+                <strong id="leftPwm">--</strong>
+                <div id="leftPwmLevel" class="sub">Nivel --/10</div>
+                <div id="leftPwmBars" class="pwm-levels" aria-hidden="true"></div>
+              </div>
+              <div class="pwm-card">
+                <label>Right PWM</label>
+                <strong id="rightPwm">--</strong>
+                <div id="rightPwmLevel" class="sub">Nivel --/10</div>
+                <div id="rightPwmBars" class="pwm-levels" aria-hidden="true"></div>
+              </div>
+            </div>
             <div class="identity-panel">
               <div class="controller-head">
                 <span>Face ID</span>
@@ -524,9 +647,10 @@
             <span>Manual</span>
           </div>
           <div class="section-body">
-            <div class="action-row">
-              <button id="followOn" class="btn-ok">FOLLOW</button>
-              <button id="followOff" class="btn-warn">WAIT</button>
+            <div class="mode-btn-grid">
+              <button id="modeFollower" class="btn-mode">SEGUIR</button>
+              <button id="modeStadia" class="btn-mode">STADIA</button>
+              <button id="modeGesture" class="btn-mode">GESTO</button>
               <button id="stop" class="btn-stop">STOP</button>
             </div>
             <div class="drive">
@@ -542,15 +666,11 @@
             </div>
             <div class="controller-panel">
               <div class="controller-head">
-                <span>Stadia</span>
+                <span>Gamepad</span>
                 <b id="gamepadStatus">OFF</b>
               </div>
-              <div class="action-row">
-                <button id="gamepadToggle" class="btn-ok">ENABLE</button>
-                <button id="gamepadWait" class="btn-warn">WAIT</button>
-                <button id="gamepadStop" class="btn-stop">A STOP</button>
-              </div>
-              <div id="gamepadReadout" class="controller-readout">Conecta el control y presiona un boton.</div>
+              <button id="gamepadStop" class="btn-stop">A STOP</button>
+              <div id="gamepadReadout" class="controller-readout">Activa modo STADIA para usar el control.</div>
             </div>
             <div>
               <label>Linear</label>
@@ -583,6 +703,27 @@
               <button id="stopFromTests" class="btn-stop">STOP</button>
               <button id="clearLog" class="btn-warn">LIMPIAR</button>
             </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-head">
+            <span>Gestos constantes</span>
+            <span id="gestureTestState">OFF</span>
+          </div>
+          <div class="section-body">
+            <div class="action-row">
+              <button id="gestureTestOn" class="btn-blue">TEST ON</button>
+              <button id="gestureTestOff" class="btn-warn">TEST OFF</button>
+              <button id="gestureTestStop" class="btn-stop">STOP</button>
+            </div>
+            <div class="action-row">
+              <button data-gesture-test="FOLLOW" class="btn-ok">FOLLOW</button>
+              <button data-gesture-test="APPROACH" class="btn-ok">APPROACH</button>
+              <button data-gesture-test="STADIA_ON" class="btn-blue">GIRO IZQ</button>
+              <button data-gesture-test="STADIA_OFF" class="btn-blue">GIRO DER</button>
+            </div>
+            <div id="gestureTestReadout" class="hint">Modo apagado.</div>
           </div>
         </section>
 
@@ -627,6 +768,7 @@ const panels = {
   movement: $('movementPanel'),
   tests: $('testsPanel')
 };
+const rotationSpeedScale = 0.5;
 let driveTimer = null;
 let lastGolf = null;
 let lastState = null;
@@ -642,6 +784,7 @@ let gamepadManualActive = false;
 let gamepadLastSent = 0;
 let gamepadPrevButtons = [];
 let gamepadLoop = null;
+let activeMode = 'IDLE';
 
 function num(value) {
   if (value === '' || value === null || value === undefined) return null;
@@ -655,6 +798,71 @@ function yards(value) {
 function meters(value) {
   const n = num(value);
   return n === null ? '--' : n.toFixed(1) + ' m';
+}
+function pwmLevel(value) {
+  const n = num(value);
+  if (n === null) return null;
+  return Math.max(0, Math.min(10, Math.round(Math.abs(n) / 255 * 10)));
+}
+function pwmBars(level) {
+  const n = level === null ? 0 : level;
+  return Array.from({length: 10}, (_, i) => (
+    `<span class="pwm-cell ${i < n ? 'active' : ''}"></span>`
+  )).join('');
+}
+function updatePwm(prefix, value) {
+  const n = num(value);
+  const level = pwmLevel(value);
+  $(`${prefix}Pwm`).textContent = n === null ? '--' : String(Math.round(n));
+  $(`${prefix}PwmLevel`).textContent = level === null ? 'Nivel --/10' : `Nivel ${level}/10`;
+  $(`${prefix}PwmBars`).innerHTML = pwmBars(level);
+}
+function updateBattery(status) {
+  const pill = $('batteryPill');
+  if (!pill) return;
+  if (!status || !status.present) {
+    pill.textContent = 'BAT PI --';
+    pill.className = 'pill bad';
+    pill.title = status && status.error ? status.error : 'X1202 battery gauge not detected';
+    return;
+  }
+  const percent = num(status.percent);
+  const voltage = num(status.voltage);
+  const voltageText = voltage === null ? '' : ` ${voltage.toFixed(2)}V`;
+  pill.textContent = percent === null
+    ? `BAT PI --${voltageText}`
+    : `BAT PI ${Math.round(percent)}%${voltageText}`;
+  pill.className = `pill ${status.status === 'ok' ? 'ok' : status.status === 'warn' ? 'warn' : 'bad'}`;
+  const level = status.status === 'critical'
+    ? 'CRITICA'
+    : status.status === 'warn' ? 'BAJA' : 'NORMAL';
+  pill.title = voltage === null
+    ? `Bateria X1202: ${level}`
+    : `Bateria X1202: ${percent.toFixed(1)}%, ${voltage.toFixed(3)} V, estado ${level}`;
+}
+function updateRobotBattery(status) {
+  const pill = $('robotBatteryPill');
+  if (!pill) return;
+  if (!status || !status.present) {
+    pill.textContent = 'BAT ROBOT --';
+    pill.className = 'pill bad';
+    pill.title = status && status.error
+      ? status.error
+      : 'Sensor de bateria del robot no disponible';
+    return;
+  }
+  const percent = num(status.percent);
+  const voltage = num(status.voltage);
+  const voltageText = voltage === null ? '' : ` ${voltage.toFixed(1)}V`;
+  pill.textContent = percent === null
+    ? `BAT ROBOT --${voltageText}`
+    : `BAT ROBOT ${Math.round(percent)}%${voltageText}`;
+  pill.className = `pill ${status.status === 'ok' ? 'ok' : status.status === 'warn' ? 'warn' : 'bad'}`;
+  const level = status.status === 'critical'
+    ? 'CRITICA'
+    : status.status === 'warn' ? 'BAJA' : 'NORMAL';
+  const prefix = status.dummy ? 'DATO SIMULADO - ' : '';
+  pill.title = `${prefix}Bateria del robot: ${percent === null ? '--' : percent.toFixed(1) + '%'}, ${voltage === null ? '--' : voltage.toFixed(2) + ' V'}, estado ${level}`;
 }
 function recommendClub(distance) {
   const d = num(distance);
@@ -721,9 +929,26 @@ function setConn(ok) {
   $('conn').textContent = ok ? 'ON' : 'OFF';
   $('conn').className = ok ? 'pill ok' : 'pill bad';
 }
-function setRobotMode(text, enabled) {
-  $('mode').textContent = text || 'WAIT';
-  $('mode').className = enabled ? 'pill ok' : text === 'WAITING' ? 'pill warn' : 'pill';
+const MODE_LABELS = { FOLLOWER: 'SEGUIDOR', STADIA: 'STADIA', GESTURE: 'GESTOS', IDLE: 'IDLE' };
+const MODE_CLASSES = { FOLLOWER: 'pill ok', STADIA: 'pill blue', GESTURE: 'pill warn', IDLE: 'pill' };
+function setRobotModePill(mode) {
+  $('mode').textContent = MODE_LABELS[mode] || mode;
+  $('mode').className = MODE_CLASSES[mode] || 'pill';
+}
+function syncModeButtons(mode) {
+  $('modeFollower').className = 'btn-mode' + (mode === 'FOLLOWER' ? ' active-follower' : '');
+  $('modeStadia').className   = 'btn-mode' + (mode === 'STADIA'   ? ' active-stadia'   : '');
+  $('modeGesture').className  = 'btn-mode' + (mode === 'GESTURE'  ? ' active-gesture'  : '');
+}
+async function applyMode(mode) {
+  activeMode = mode;
+  syncModeButtons(mode);
+  setRobotModePill(mode);
+  if (mode !== 'STADIA') setGamepadEnabled(false);
+  try {
+    await postJson('/api/mode', {mode});
+    if (mode === 'STADIA') setGamepadEnabled(true);
+  } catch(e) { console.error('applyMode:', e); }
 }
 function sendCmd(linear, angular) {
   return postJson('/api/cmd_vel', {linear, angular}).catch(console.error);
@@ -760,7 +985,6 @@ function setGamepadUi(status, readout = '', ok = false) {
   $('gamepadStatus').textContent = status;
   $('gamepadStatus').className = ok ? 'ok' : '';
   $('gamepadReadout').textContent = readout;
-  $('gamepadToggle').textContent = gamepadEnabled ? 'DISABLE' : 'ENABLE';
 }
 function handleGamepadButton(buttons, index, callback) {
   const pressed = Boolean(buttons[index] && buttons[index].pressed);
@@ -781,16 +1005,18 @@ function processGamepad() {
   gamepadIndex = pad.index;
 
   handleGamepadButton(pad.buttons, 0, stopMotion);
-  handleGamepadButton(pad.buttons, 1, () => postJson('/api/follower', {enabled: false}).then(() => sendCmd(0, 0)).catch(console.error));
-  handleGamepadButton(pad.buttons, 3, () => postJson('/api/follower', {enabled: true}).catch(console.error));
+  handleGamepadButton(pad.buttons, 1, () => applyMode('FOLLOWER'));
+  handleGamepadButton(pad.buttons, 3, () => applyMode('IDLE'));
+  handleGamepadButton(pad.buttons, 9, stopMotion);
 
   const angularAxis = Number.isFinite(pad.axes[2]) ? pad.axes[2] : (pad.axes[0] || 0);
   const linear = axisWithDeadzone(-(pad.axes[1] || 0)) * Number($('linearMax').value);
-  const angular = axisWithDeadzone(-angularAxis) * Number($('angularMax').value);
+  const rawAngular = axisWithDeadzone(-angularAxis) * Number($('angularMax').value);
+  const pureRotation = Math.abs(linear) < 0.001 && Math.abs(rawAngular) > 0.001;
+  const angular = pureRotation ? rawAngular * rotationSpeedScale : rawAngular;
   const moving = Math.abs(linear) > 0.001 || Math.abs(angular) > 0.001;
   const now = performance.now();
   if (moving && now - gamepadLastSent > 90) {
-    if (!gamepadManualActive) postJson('/api/follower', {enabled: false}).catch(console.error);
     sendCmd(linear, angular);
     gamepadManualActive = true;
     gamepadLastSent = now;
@@ -799,7 +1025,7 @@ function processGamepad() {
     gamepadManualActive = false;
     gamepadLastSent = now;
   }
-  setGamepadUi('ON', `${pad.id} | L ${linear.toFixed(2)} A ${angular.toFixed(2)} | A stop, B wait, Y follow`, true);
+  setGamepadUi('ON', `${pad.id} | L ${linear.toFixed(2)} A ${angular.toFixed(2)} | giro 50% | A Stadia, B follower, Y/Start stop`, true);
   gamepadLoop = requestAnimationFrame(processGamepad);
 }
 function setGamepadEnabled(enabled) {
@@ -860,7 +1086,7 @@ function updateGolf(golf) {
   $('lastShotMeta').textContent = shot && shot.result ? shot.result : '--';
 }
 function faceStateClass(status, verified) {
-  if (verified || ['locked', 'verified', 'armed'].includes(status)) return 'ok';
+  if (verified || ['locked', 'verified', 'armed', 'session_ok'].includes(status)) return 'ok';
   if (['capturing', 'enrolling', 'cleared', 'idle'].includes(status)) return 'warn';
   return '';
 }
@@ -878,6 +1104,20 @@ function updateIdentity(view) {
   $('faceProfile').textContent = visual;
   $('faceReadout').textContent = `${name} | ${verified ? 'verificado' : 'pendiente'} | ${visual}`;
   if (saved.name && document.activeElement !== $('faceName')) $('faceName').value = saved.name;
+}
+function updateGestureTest(view) {
+  const follower = (view && view.follower_state) || {};
+  const enabled = Boolean(follower.gesture_test_enabled);
+  const label = follower.gesture_test_label || (enabled ? 'ready' : 'off');
+  if ($('gestureTestState')) {
+    $('gestureTestState').textContent = enabled ? 'ON' : 'OFF';
+    $('gestureTestState').className = enabled ? 'ok' : '';
+  }
+  if ($('gestureTestReadout')) {
+    $('gestureTestReadout').textContent = enabled
+      ? `Activo: ${label}. Los gestos mueven a velocidad constante.`
+      : 'Modo apagado.';
+  }
 }
 async function loadIdentity() {
   try {
@@ -921,17 +1161,24 @@ async function clearFaceId() {
 function updateRobot(s) {
   lastState = s;
   setConn(true);
-  const mode = (s.follower_state && s.follower_state.mode) || (s.follower_enabled ? 'FOLLOW' : 'WAITING');
-  const enabled = s.follower_state && typeof s.follower_state.enabled === 'boolean'
-    ? s.follower_state.enabled
-    : s.follower_enabled;
-  setRobotMode(mode, enabled);
+  const serverMode = ((s.robot_mode) || 'IDLE').toUpperCase();
+  setRobotModePill(serverMode);
+  if (serverMode !== activeMode) {
+    activeMode = serverMode;
+    syncModeButtons(serverMode);
+    if (serverMode !== 'STADIA' && gamepadEnabled) setGamepadEnabled(false);
+  }
   $('frontObstacle').textContent = meters(s.scan && s.scan.front_min);
   $('targetDist').textContent = meters(s.follower_debug && s.follower_debug.target_dist);
   $('leftRpm').textContent = yards(s.motor_status && s.motor_status.Lrpm);
   $('rightRpm').textContent = yards(s.motor_status && s.motor_status.Rrpm);
+  updatePwm('left', s.motor_status && s.motor_status.Lpwm);
+  updatePwm('right', s.motor_status && s.motor_status.Rpwm);
+  updateBattery(s.battery_status);
+  updateRobotBattery(s.robot_battery_status);
   $('gesture').textContent = (s.gesture_status && s.gesture_status.state) || '--';
   updateIdentity(s);
+  updateGestureTest(s);
   if ((!s.golf || !s.golf.position) && s.gps_status) {
     if (s.gps_status.fix === 0 || s.gps_status.fix === '0') {
       $('gpsStatus').textContent = 'GPS SIN FIX';
@@ -1078,6 +1325,14 @@ async function pollRun() {
     runPoll = null;
   }
 }
+async function setGestureTest(enabled) {
+  const res = await postJson(enabled ? '/api/gesture_test/on' : '/api/gesture_test/off', {});
+  $('gestureTestReadout').textContent = res.ok ? (enabled ? 'Test activo.' : 'Test apagado.') : 'Error';
+}
+async function sendGestureTest(command) {
+  const res = await postJson('/api/gesture_test/command', {command});
+  $('gestureTestReadout').textContent = res.ok ? `Comando ${res.command}` : 'Error';
+}
 function connectWs() {
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onopen = () => setConn(true);
@@ -1094,18 +1349,38 @@ $('courseQuery').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') s
 $('saveHole').onclick = () => saveHole().catch(console.error);
 $('useGps').onclick = useGps;
 $('logShot').onclick = () => logShot().catch(console.error);
-$('followOn').onclick = () => postJson('/api/follower', {enabled: true}).catch(console.error);
-$('followOff').onclick = () => postJson('/api/follower', {enabled: false}).catch(console.error);
-$('stop').onclick = stopMotion;
+$('modeFollower').onclick = () => applyMode(activeMode === 'FOLLOWER' ? 'IDLE' : 'FOLLOWER');
+$('modeStadia').onclick   = () => applyMode(activeMode === 'STADIA'   ? 'IDLE' : 'STADIA');
+$('modeGesture').onclick  = () => applyMode(activeMode === 'GESTURE'  ? 'IDLE' : 'GESTURE');
+$('stop').onclick = () => { stopMotion(); activeMode = 'IDLE'; syncModeButtons('IDLE'); setRobotModePill('IDLE'); };
+$('globalStop').onclick = () => { stopMotion(); activeMode = 'IDLE'; syncModeButtons('IDLE'); setRobotModePill('IDLE'); };
+$('globalRestart').onclick = async () => {
+  if (!confirm('¿Reiniciar todos los servicios del robot?')) return;
+  $('globalRestart').textContent = '⏹ Parando...';
+  $('globalRestart').disabled = true;
+  try {
+    await postJson('/api/stop', {});           // 1. Parar motores ahora
+    await new Promise(r => setTimeout(r, 600)); // 2. Esperar parada física
+    await postJson('/api/system/restore', {});  // 3. Reiniciar servicios
+    $('globalRestart').textContent = '✅ Reiniciado';
+  } catch(e) {
+    $('globalRestart').textContent = '❌ Error';
+  }
+  setTimeout(() => { $('globalRestart').textContent = '🔄 REINICIAR'; $('globalRestart').disabled = false; }, 5000);
+};
 $('faceEnroll').onclick = () => enrollFaceId().catch(console.error);
 $('faceSave').onclick = () => saveFaceId().catch(console.error);
 $('faceClear').onclick = () => clearFaceId().catch(console.error);
-$('gamepadToggle').onclick = () => setGamepadEnabled(!gamepadEnabled);
-$('gamepadWait').onclick = () => postJson('/api/follower', {enabled: false}).then(() => sendCmd(0, 0)).catch(console.error);
 $('gamepadStop').onclick = stopMotion;
 $('stopFromTests').onclick = stopMotion;
 $('refreshTests').onclick = () => { testsLoaded = false; loadTests(); };
 $('clearLog').onclick = () => { $('testLog').textContent = 'Selecciona una prueba.'; };
+$('gestureTestOn').onclick = () => setGestureTest(true).catch(console.error);
+$('gestureTestOff').onclick = () => setGestureTest(false).catch(console.error);
+$('gestureTestStop').onclick = () => sendGestureTest('STOP').catch(console.error);
+document.querySelectorAll('[data-gesture-test]').forEach(btn => {
+  btn.onclick = () => sendGestureTest(btn.dataset.gestureTest).catch(console.error);
+});
 document.querySelectorAll('[data-drive]').forEach(btn => {
   btn.addEventListener('pointerdown', () => startDrive(btn.dataset.drive));
   btn.addEventListener('pointerup', stopMotion);
@@ -1129,9 +1404,7 @@ window.addEventListener('gamepaddisconnected', () => {
   gamepadManualActive = false;
   setGamepadUi(gamepadEnabled ? 'PAIR' : 'OFF', 'Control desconectado.');
 });
-setInterval(() => {
-  $('rgb').src = '/api/frame/rgb.jpg?t=' + Date.now();
-}, 700);
+$('rgb').src = '/api/stream/rgb.mjpg';
 loadGolf();
 loadCourseCatalog();
 loadIdentity();
@@ -1150,6 +1423,11 @@ $('btnPosBack') && ($('btnPosBack').onclick  = () => goPosition(-1));
 $('btnPosStop') && ($('btnPosStop').onclick  = stopMotion);
 
 // ── Stadia ──────────────────────────────────────────────────────────────────
+$('btnRestoreRobot') && ($('btnRestoreRobot').onclick = async () => {
+  $('extStatus').textContent = 'Restaurando...';
+  const r = await postJson('/api/system/restore', {});
+  $('extStatus').textContent = r.ok ? 'Reiniciando -> Stadia' : 'Error';
+});
 $('btnStadiaOn')  && ($('btnStadiaOn').onclick  = async () => { const r = await postJson('/api/stadia/start',{}); $('extStatus').textContent = r.ok ? 'Stadia ON' : 'Error'; });
 $('btnStadiaOff') && ($('btnStadiaOff').onclick = async () => { const r = await postJson('/api/stadia/stop', {}); $('extStatus').textContent = r.ok ? 'Stadia OFF' : 'Error'; });
 

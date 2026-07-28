@@ -11,7 +11,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'supervision==0.27.0'],
     zip_safe=True, maintainer='josemsotov', license='MIT',
     entry_points={'console_scripts': [
         'follower_node = robot_follower.follower_node:main',
