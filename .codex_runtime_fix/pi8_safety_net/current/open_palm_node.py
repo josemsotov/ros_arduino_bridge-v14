@@ -4,7 +4,7 @@ import math
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool, Int32, String
 from sensor_msgs.msg import Image
 
 GESTURE_CMDS = {
@@ -46,7 +46,21 @@ class OpenPalmNode(Node):
         self.pub_image   = self.create_publisher(Image, '/gesture/image', 2)
         self.pub_cmd = self.create_publisher(Twist, '/cmd_vel', 10)
         self.pub_stadia = self.create_publisher(String, '/stadia/control', 5)
+        self.pub_follower_request = self.create_publisher(
+            Bool, '/operator/follower_request', 5
+        )
+        self.pub_tilt_set = self.create_publisher(Int32, '/kinect/tilt/set', 5)
+        self.pub_tilt_save = self.create_publisher(Bool, '/kinect/tilt/save', 5)
+        self.pub_tilt_calibration_arm = self.create_publisher(
+            Bool, '/kinect/tilt_calibration/arm', 5
+        )
+        self.create_subscription(Bool, '/body_field/arm', self.body_arm_cb, 5)
         self.create_subscription(Bool, '/hand_field/arm', self.arm_cb, 5)
+        self.create_subscription(
+            Bool, '/kinect/tilt_calibration/arm',
+            self.tilt_calibration_arm_cb, 5
+        )
+        self.create_subscription(Int32, '/kinect/tilt/state', self.tilt_state_cb, 5)
         self.create_subscription(String, '/stadia/state', self.stadia_cb, 5)
         self.create_subscription(
             Image, '/camera/depth/image_raw', self.depth_cb, 2
@@ -56,6 +70,10 @@ class OpenPalmNode(Node):
         self.gesture_since  = None
         self.last_process = 0.0
         self.hand_field_armed = False
+        self.body_field_armed = False
+        self.tilt_calibration_armed = False
+        self.kinect_tilt_degrees = 8
+        self.last_tilt_command = 0.0
         self.hand_field_active = False
         self.hand_field_state = 'disarmed'
         self.stadia_connected = False
@@ -75,6 +93,15 @@ class OpenPalmNode(Node):
             self._mp_hands = mp.solutions.hands.Hands(
                 static_image_mode=False, max_num_hands=1,
                 min_detection_confidence=0.6, min_tracking_confidence=0.5)
+            # In the body-field test the hand occupies far fewer pixels than in
+            # the hand-field bench test. Use a dedicated, more sensitive model
+            # on an upper-body crop; keeping the models separate avoids making
+            # the close-range hand test prone to false detections.
+            self._mp_body_hands = mp.solutions.hands.Hands(
+                static_image_mode=False, max_num_hands=1,
+                model_complexity=1,
+                min_detection_confidence=0.35,
+                min_tracking_confidence=0.35)
             self._mp_draw = mp.solutions.drawing_utils
             self.create_subscription(Image,
                 self.get_parameter('image_topic').value,
@@ -96,15 +123,34 @@ class OpenPalmNode(Node):
         if bgr is None:
             return
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        result = self._mp_hands.process(rgb)
+        body_mode_frame = self.body_field_armed and not self.tilt_calibration_armed
+        if body_mode_frame:
+            height, width = rgb.shape[:2]
+            # A centred full-body subject's raised hand should be within this
+            # upper-body region. Cropping gives MediaPipe substantially more
+            # useful hand pixels without changing the normal hand-field test.
+            # The Kinect on the trolley is pitched upward, so a nearby
+            # person's face, shoulders and raised hand occupy the lower part
+            # of the RGB image. Preserve the full width and crop away only the
+            # ceiling-heavy upper third.
+            x0, x1 = 0, width
+            y0, y1 = int(height * 0.32), height
+            inference_rgb = rgb[y0:y1, x0:x1]
+            result = self._mp_body_hands.process(inference_rgb)
+        else:
+            result = self._mp_hands.process(rgb)
 
         detected = None
         lm = None
         field_mode_frame = self.hand_field_armed
         if result.multi_hand_landmarks:
             lm = result.multi_hand_landmarks[0].landmark
-            self._mp_draw.draw_landmarks(bgr, result.multi_hand_landmarks[0],
-                __import__('mediapipe').solutions.hands.HAND_CONNECTIONS)
+            # Crop-relative landmarks are still valid for classifying finger
+            # geometry. Only draw landmarks when coordinates match the frame.
+            if not body_mode_frame:
+                self._mp_draw.draw_landmarks(
+                    bgr, result.multi_hand_landmarks[0],
+                    __import__('mediapipe').solutions.hands.HAND_CONNECTIONS)
             if   self.is_index_up(lm):   detected = 'index_up'
             elif self.is_thumb_up(lm):   detected = 'thumb_up'
             elif self.is_thumb_down(lm): detected = 'thumb_down'
@@ -123,6 +169,13 @@ class OpenPalmNode(Node):
             self.active_gesture = None
             self.gesture_since  = None
             held = 0.0
+
+        if self.tilt_calibration_armed:
+            self._process_tilt_calibration(lm, detected, held, now)
+            if self.get_parameter('publish_image').value and \
+                    self.pub_image.get_subscription_count() > 0:
+                self.publish_image(msg, bgr)
+            return
 
         if field_mode_frame:
             # Process field gestures only after active_gesture/gesture_since
@@ -153,13 +206,87 @@ class OpenPalmNode(Node):
             return
         if now - self.last_trigger < self.get_parameter('cooldown').value:
             return
-        cmd = GESTURE_CMDS.get(gesture, gesture.upper())
-        self.pub_command.publish(String(data=json.dumps(
-            {'command': cmd, 'source': f'gesture_{gesture}', 'stamp': now})))
+        if self.body_field_armed:
+            if gesture == 'index_up':
+                # Ask StadiaNode to enter FOLLOWER at the exact moment the
+                # verified user confirms with the index. StadiaNode is the
+                # sole publisher of authorized_enable, so takeover and safety
+                # semantics remain centralized.
+                self.pub_follower_request.publish(Bool(data=True))
+                cmd = 'FOLLOW_REQUEST'
+            elif gesture == 'open_palm':
+                self.pub_follower_request.publish(Bool(data=False))
+                cmd = 'STOP'
+            else:
+                return
+        else:
+            cmd = GESTURE_CMDS.get(gesture, gesture.upper())
+        if cmd != 'FOLLOW_REQUEST':
+            self.pub_command.publish(String(data=json.dumps(
+                {'command': cmd, 'source': f'gesture_{gesture}', 'stamp': now})))
         self.last_trigger   = now
         self.active_gesture = None
         self.gesture_since  = None
         self.get_logger().info(f'Gesture {gesture} → {cmd}')
+
+    def body_arm_cb(self, msg):
+        self.body_field_armed = bool(msg.data)
+        if self.body_field_armed and self.hand_field_armed:
+            self._disarm_field('disarmed')
+
+    def tilt_state_cb(self, msg):
+        self.kinect_tilt_degrees = int(msg.data)
+
+    def tilt_calibration_arm_cb(self, msg):
+        self.tilt_calibration_armed = bool(msg.data)
+        self.active_gesture = None
+        self.gesture_since = None
+        if self.tilt_calibration_armed:
+            self.body_field_armed = False
+            if self.hand_field_armed:
+                self._disarm_field('disarmed')
+            self._stop_field()
+            self.get_logger().info(
+                'Kinect tilt calibration armed; index follows, open palm saves'
+            )
+
+    def _process_tilt_calibration(self, lm, detected, held, now):
+        state = 'tilt_waiting_index'
+        hand_y = None
+        if lm is not None:
+            hand_y = float(lm[9].y)
+
+        if detected == 'open_palm' and held >= 0.7:
+            self.pub_tilt_save.publish(Bool(data=True))
+            self.tilt_calibration_armed = False
+            self.pub_tilt_calibration_arm.publish(Bool(data=False))
+            self.last_trigger = now
+            self.active_gesture = None
+            self.gesture_since = None
+            state = 'tilt_saved'
+            self.get_logger().info(
+                f'Kinect theoretical centre saved at {self.kinect_tilt_degrees} deg'
+            )
+        elif detected == 'index_up':
+            state = 'tilt_following_index'
+            if hand_y is not None and held >= 0.35 and now - self.last_tilt_command >= 0.25:
+                error = 0.50 - hand_y
+                if abs(error) >= 0.06:
+                    step = 2 if abs(error) >= 0.18 else 1
+                    requested = self.kinect_tilt_degrees + (
+                        step if error > 0.0 else -step
+                    )
+                    requested = max(-15, min(25, requested))
+                    self.pub_tilt_set.publish(Int32(data=requested))
+                    self.last_tilt_command = now
+
+        self.pub_status.publish(String(data=json.dumps({
+            'state': state,
+            'held': round(float(held), 2),
+            'tilt_calibration_armed': self.tilt_calibration_armed,
+            'kinect_tilt_degrees': self.kinect_tilt_degrees,
+            'hand_y': None if hand_y is None else round(hand_y, 3),
+        })))
 
     # ── Gesture classifiers ────────────────────────────────────────────────────
     def _finger_extended_up(self, lm, tip, pip):

@@ -44,6 +44,12 @@ robot_follower:
     linear_deadband: 0.06
     angular_deadband_deg: 2.0
     velocity_smoothing_alpha: 0.28
+    target_speed_alpha: 0.25
+    target_speed_deadband: 0.04
+    early_follow_min_scale: 0.25
+    pivot_angle_deg: 18.0
+    max_pivot_angular: 0.18
+    moving_turn_ratio: 1.50
     gesture_test_linear_vel: 0.14
     gesture_test_angular_vel: 0.30
     gesture_test_duration: 1.00

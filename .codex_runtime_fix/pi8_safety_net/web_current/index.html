@@ -311,6 +311,32 @@
           </div>
           <div id="gamepadReadout" class="controller-readout">Connect controller and press any button.</div>
         </div>
+        <div class="controller-card">
+          <div class="controller-head">
+            <span>Prueba de cuerpo entero</span>
+            <b id="bodyFieldStatus">DESARMADA</b>
+          </div>
+          <div class="grid2">
+            <button class="btn primary" id="bodyFieldArm">ARMAR CUERPO</button>
+            <button class="btn danger" id="bodyFieldDisarm">DETENER CUERPO</button>
+          </div>
+          <div id="bodyFieldReadout" class="controller-readout">
+            Verifica rostro; indice inicia seguimiento corporal; palma detiene.
+          </div>
+        </div>
+        <div class="controller-card">
+          <div class="controller-head">
+            <span>Calibración de ángulo Kinect</span>
+            <b id="tiltCalibrationStatus">DESARMADA</b>
+          </div>
+          <div class="grid2">
+            <button class="btn primary" id="tiltCalibrationArm">CALIBRAR ÁNGULO</button>
+            <button class="btn danger" id="tiltCalibrationDisarm">CANCELAR</button>
+          </div>
+          <div id="tiltCalibrationReadout" class="controller-readout">
+            Índice arriba: sigue la mano. Palma abierta: detiene y guarda el centro.
+          </div>
+        </div>
         <div class="grid2">
           <button class="btn" data-raw="hb on">Balance ON</button>
           <button class="btn" data-raw="hb off">Balance OFF</button>
@@ -502,6 +528,29 @@ async function setHandFieldArmed(armed) {
   }
 }
 
+async function setBodyFieldArmed(armed) {
+  try {
+    await postJson('/api/body-field', {armed});
+    $('bodyFieldStatus').textContent = armed ? 'VERIFICANDO ROSTRO' : 'DESARMADA';
+  } catch (error) {
+    $('bodyFieldStatus').textContent = 'BLOQUEADA';
+    $('bodyFieldReadout').textContent = 'ERROR: ' + error.message;
+  }
+}
+
+async function setTiltCalibrationArmed(armed) {
+  try {
+    await postJson('/api/kinect-tilt-calibration', {armed});
+    $('tiltCalibrationStatus').textContent = armed ? 'ESPERANDO ÍNDICE' : 'DESARMADA';
+    $('tiltCalibrationReadout').textContent = armed
+      ? 'Mantén el índice arriba y mueve la mano verticalmente; abre la palma para guardar.'
+      : 'Calibración cancelada; control Stadia restaurado.';
+  } catch (error) {
+    $('tiltCalibrationStatus').textContent = 'BLOQUEADA';
+    $('tiltCalibrationReadout').textContent = 'ERROR: ' + error.message;
+  }
+}
+
 function startDrive(mode) {
   clearInterval(driveTimer);
   const lmax = Number($('linearMax').value);
@@ -642,8 +691,25 @@ function update(s) {
     : s.follower_enabled;
   $('followState').textContent = followerEnabled ? 'ON' : 'OFF';
   $('followMode').textContent = followerMode;
+  if (s.body_field_armed && !followerEnabled) {
+    const faceOk = !!(s.follower_state && s.follower_state.face_identity_session_ok);
+    $('bodyFieldStatus').textContent = faceOk ? 'ESPERANDO INDICE' : 'VERIFICANDO ROSTRO';
+  } else if (s.body_field_armed && followerEnabled) {
+    $('bodyFieldStatus').textContent = 'ACTIVA';
+  }
   $('gestureState').textContent = (s.gesture_status && s.gesture_status.state) || '--';
   const hand = s.gesture_status || {};
+  if (s.tilt_calibration_armed) {
+    $('tiltCalibrationStatus').textContent =
+      hand.state === 'tilt_following_index' ? 'SIGUIENDO MANO' : 'ESPERANDO ÍNDICE';
+  } else if (hand.state === 'tilt_saved') {
+    $('tiltCalibrationStatus').textContent = 'GUARDADA';
+  } else {
+    $('tiltCalibrationStatus').textContent = 'DESARMADA';
+  }
+  $('tiltCalibrationReadout').textContent =
+    `ángulo=${s.kinect_tilt_degrees ?? '--'}° | estado=${hand.state || '--'}` +
+    (hand.hand_y == null ? '' : ` | mano_y=${Number(hand.hand_y).toFixed(2)}`);
   let handStatus = 'DESARMADA';
   if (hand.hand_field_armed) {
     if (hand.hand_field_active) handStatus = 'ACTIVA';
@@ -708,6 +774,10 @@ $('followOff').onclick = () => postJson('/api/follower', {enabled: false}).catch
 $('stop').onclick = stopMotion;
 $('handFieldArm').onclick = () => setHandFieldArmed(true);
 $('handFieldDisarm').onclick = () => setHandFieldArmed(false);
+$('bodyFieldArm').onclick = () => setBodyFieldArmed(true);
+$('bodyFieldDisarm').onclick = () => setBodyFieldArmed(false);
+$('tiltCalibrationArm').onclick = () => setTiltCalibrationArmed(true);
+$('tiltCalibrationDisarm').onclick = () => setTiltCalibrationArmed(false);
 $('rebootSystem').onclick = rebootSystem;
 $('gamepadToggle').onclick = () => setGamepadEnabled(!gamepadEnabled);
 $('gamepadStop').onclick = stopMotion;

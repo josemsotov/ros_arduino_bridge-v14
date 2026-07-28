@@ -71,6 +71,12 @@ class FollowerNode(Node):
         self.declare_parameter('linear_deadband', 0.06)
         self.declare_parameter('angular_deadband_deg', 2.0)
         self.declare_parameter('velocity_smoothing_alpha', 0.28)
+        self.declare_parameter('target_speed_alpha', 0.25)
+        self.declare_parameter('target_speed_deadband', 0.04)
+        self.declare_parameter('early_follow_min_scale', 0.25)
+        self.declare_parameter('pivot_angle_deg', 18.0)
+        self.declare_parameter('max_pivot_angular', 0.18)
+        self.declare_parameter('moving_turn_ratio', 1.50)
         self.declare_parameter('gesture_test_linear_vel', 0.14)
         self.declare_parameter('gesture_test_angular_vel', 0.30)
         self.declare_parameter('gesture_test_duration', 1.0)
@@ -118,6 +124,10 @@ class FollowerNode(Node):
         self.gesture_test_twist = Twist()
         self.smoothed_linear = 0.0
         self.smoothed_angular = 0.0
+        self.estimated_target_speed = 0.0
+        self.follow_activation_distance = None
+        self.last_control_distance = None
+        self.last_control_time = None
         self.person_detector = cv2.HOGDescriptor()
         self.person_detector.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
         self.pose_detector = mp.solutions.pose.Pose(
@@ -1202,26 +1212,81 @@ class FollowerNode(Node):
 
         target = (p['follow_min_distance'] + p['follow_max_distance']) * 0.5
         dist_error = dist - target
+        now = self.get_clock().now()
+        if self.follow_activation_distance is None:
+            self.follow_activation_distance = float(dist)
+        if self.last_control_distance is not None and self.last_control_time is not None:
+            dt = (now - self.last_control_time).nanoseconds / 1e9
+            if 0.05 <= dt <= 1.0:
+                relative_speed = (float(dist) - self.last_control_distance) / dt
+                observed_speed = relative_speed + max(0.0, self.smoothed_linear)
+                observed_speed = max(0.0, min(p['max_linear_vel'], observed_speed))
+                speed_alpha = max(
+                    0.05, min(1.0, float(p['target_speed_alpha']))
+                )
+                self.estimated_target_speed += speed_alpha * (
+                    observed_speed - self.estimated_target_speed
+                )
+        self.last_control_distance = float(dist)
+        self.last_control_time = now
+
+        if abs(angle) <= math.radians(p['angular_deadband_deg']):
+            angular = 0.0
+        else:
+            angular = -p['kp_angular'] * angle
+            angular = max(
+                -p['max_angular_vel'], min(p['max_angular_vel'], angular)
+            )
+
+        speed_deadband = float(p['target_speed_deadband'])
+        target_speed = (
+            self.estimated_target_speed
+            if self.estimated_target_speed >= speed_deadband
+            else 0.0
+        )
         if dist_error <= p['linear_deadband']:
-            # FOLLOWER is forward-only. Reaching or crossing the target causes
-            # an immediate full stop, including any residual smoothed command.
-            self.smoothed_linear = 0.0
-            self.smoothed_angular = 0.0
-            self._stop()
-            self._publish_debug(dist, angle)
-            return
+            # React as soon as the subject starts walking away, but deliberately
+            # lag at first so the gap can grow toward the desired 2.5 m. At the
+            # target distance the feed-forward reaches the subject's speed.
+            baseline = min(float(self.follow_activation_distance), target - 0.1)
+            span = max(0.1, target - baseline)
+            progress = max(0.0, min(1.0, (float(dist) - baseline) / span))
+            min_scale = max(
+                0.0, min(1.0, float(p['early_follow_min_scale']))
+            )
+            linear = target_speed * (
+                min_scale + (1.0 - min_scale) * progress
+            )
+            if target_speed == 0.0:
+                linear = 0.0
         else:
             half_range = max(0.05, (p['follow_max_distance'] - p['follow_min_distance']) * 0.5)
             ratio = min(1.0, dist_error / half_range)
             speed = p['min_linear_vel'] + (p['max_linear_vel'] - p['min_linear_vel']) * (ratio ** 1.25)
-            linear = max(0.0, min(p['max_linear_vel'], speed))
+            linear = max(
+                0.0, min(p['max_linear_vel'], max(speed, target_speed))
+            )
 
-            if abs(angle) <= math.radians(p['angular_deadband_deg']):
+        if linear <= 0.0 and float(dist) <= target:
+            self.smoothed_linear = 0.0
+        elif linear > 0.0:
+            # A real early-follow command must clear the traction dead zone.
+            linear = max(float(p['min_linear_vel']), linear)
+
+        pivot_angle = math.radians(float(p['pivot_angle_deg']))
+        if linear < float(p['min_linear_vel']):
+            if abs(angle) < pivot_angle:
                 angular = 0.0
             else:
-                angular = -p['kp_angular'] * angle
-                angular = max(-p['max_angular_vel'], min(p['max_angular_vel'], angular))
-
+                pivot_limit = abs(float(p['max_pivot_angular']))
+                angular = max(-pivot_limit, min(pivot_limit, angular))
+        else:
+            # Keep a forward arc: do not let angular correction dominate a
+            # small linear command and drive one wheel backwards.
+            turn_limit = max(
+                0.05, abs(float(linear)) * float(p['moving_turn_ratio'])
+            )
+            angular = max(-turn_limit, min(turn_limit, angular))
         self._publish_motion(linear, angular, p)
         self._publish_debug(dist, angle)
 
@@ -1267,6 +1332,10 @@ class FollowerNode(Node):
     def _reset_motion_filter(self):
         self.smoothed_linear = 0.0
         self.smoothed_angular = 0.0
+        self.estimated_target_speed = 0.0
+        self.follow_activation_distance = None
+        self.last_control_distance = None
+        self.last_control_time = None
 
     def _reset_lidar_target(self, status='idle'):
         self.target_dist = None
@@ -1384,6 +1453,10 @@ class FollowerNode(Node):
             'face_predicted_linear': round(float(self.face_predicted_linear), 3),
             'face_predicted_angular': round(float(self.face_predicted_angular), 3),
             'manual_override_active': self.manual_override_active,
+            'estimated_target_speed': round(
+                float(self.estimated_target_speed), 3
+            ),
+            'follow_activation_distance': self.follow_activation_distance,
             'require_face_session_to_start': self.get_parameter(
                 'require_face_session_to_start'
             ).value,
@@ -1409,6 +1482,12 @@ class FollowerNode(Node):
             'linear_deadband': self.get_parameter('linear_deadband').value,
             'angular_deadband_deg': self.get_parameter('angular_deadband_deg').value,
             'velocity_smoothing_alpha': self.get_parameter('velocity_smoothing_alpha').value,
+            'target_speed_alpha': self.get_parameter('target_speed_alpha').value,
+            'target_speed_deadband': self.get_parameter('target_speed_deadband').value,
+            'early_follow_min_scale': self.get_parameter('early_follow_min_scale').value,
+            'pivot_angle_deg': self.get_parameter('pivot_angle_deg').value,
+            'max_pivot_angular': self.get_parameter('max_pivot_angular').value,
+            'moving_turn_ratio': self.get_parameter('moving_turn_ratio').value,
         }
 
 

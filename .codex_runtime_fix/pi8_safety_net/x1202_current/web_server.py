@@ -22,7 +22,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Image, LaserScan
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool, Int32, String
 import uvicorn
 
 
@@ -127,6 +127,9 @@ class SharedState:
         self.cmd_vel: dict[str, float] = {"linear": 0.0, "angular": 0.0}
         self.follower_enabled = False
         self.robot_mode: str = "IDLE"
+        self.body_field_armed = False
+        self.tilt_calibration_armed = False
+        self.kinect_tilt_degrees: int | None = None
         self.stadia_state: dict[str, Any] = {
             "stadia": "disconnected",
             "mode": "off",
@@ -167,6 +170,9 @@ class SharedState:
                 "cmd_vel": dict(self.cmd_vel),
                 "follower_enabled": self.follower_enabled,
                 "robot_mode": self.robot_mode,
+                "body_field_armed": self.body_field_armed,
+                "tilt_calibration_armed": self.tilt_calibration_armed,
+                "kinect_tilt_degrees": self.kinect_tilt_degrees,
                 "stadia_state": dict(self.stadia_state),
                 "battery_status": dict(self.battery_status),
                 "robot_battery_status": dict(self.robot_battery_status),
@@ -193,6 +199,11 @@ class OperatorNode(Node):
         self.pub_hand_field_arm = self.create_publisher(
             Bool, "/hand_field/arm", 10
         )
+        self.pub_body_field_arm = self.create_publisher(Bool, "/body_field/arm", 10)
+        self.pub_tilt_calibration_arm = self.create_publisher(
+            Bool, "/kinect/tilt_calibration/arm", 10
+        )
+        self.pub_gesture = self.create_publisher(String, "/gesture/command", 10)
         self.pub_raw = self.create_publisher(String, "/arduino/raw_command", 10)
         self.create_subscription(String, "/motor_status", self.motor_status_cb, 10)
         self.create_subscription(String, "/arduino/raw_rx", self.raw_rx_cb, 10)
@@ -203,6 +214,13 @@ class OperatorNode(Node):
         self.create_subscription(String, "/follower/state", self.follower_state_cb, 10)
         self.create_subscription(String, "/stadia/state", self.stadia_state_cb, 10)
         self.create_subscription(String, "/gesture/status", self.gesture_status_cb, 10)
+        self.create_subscription(
+            Bool, "/kinect/tilt_calibration/arm",
+            self.tilt_calibration_arm_cb, 10
+        )
+        self.create_subscription(
+            Int32, "/kinect/tilt/state", self.kinect_tilt_cb, 10
+        )
         self.create_subscription(LaserScan, "/scan", self.scan_cb, 10)
         self.create_subscription(Image, "/camera/rgb/image_raw", self.rgb_cb, 2)
         self.create_subscription(Image, "/camera/depth/image_raw", self.depth_cb, 2)
@@ -279,6 +297,8 @@ class OperatorNode(Node):
             self.state.robot_mode = mode
 
     def set_hand_field_armed(self, armed: bool) -> None:
+        if armed:
+            self.pub_body_field_arm.publish(Bool(data=False))
         if not armed:
             self.pub_hand_field_arm.publish(Bool(data=False))
             self.publish_stop()
@@ -326,6 +346,72 @@ class OperatorNode(Node):
             self.state.follower_enabled = False
             self.state.robot_mode = "HAND_FIELD_ARMED"
 
+    def set_body_field_armed(self, armed: bool) -> None:
+        self.pub_hand_field_arm.publish(Bool(data=False))
+        self.pub_follower_request.publish(Bool(data=False))
+        self.pub_enable.publish(Bool(data=False))
+        self.publish_stop()
+        if not armed:
+            self.pub_body_field_arm.publish(Bool(data=False))
+            self.pub_stadia.publish(String(data="STADIA"))
+            with self.state.lock:
+                self.state.body_field_armed = False
+                self.state.robot_mode = "STADIA"
+            return
+        with self.state.lock:
+            connected = self.state.stadia_state.get("stadia") == "connected"
+            rgb_age = stamp_age(self.state.rgb_stamp)
+            depth_age = stamp_age(self.state.depth_stamp)
+        if not connected:
+            self.pub_body_field_arm.publish(Bool(data=False))
+            raise ValueError("Body test requires connected Stadia")
+        if rgb_age is None or rgb_age > 1.0:
+            self.pub_body_field_arm.publish(Bool(data=False))
+            raise ValueError("Fresh RGB camera stream is required")
+        if depth_age is None or depth_age > 1.5:
+            self.pub_body_field_arm.publish(Bool(data=False))
+            raise ValueError("Fresh depth stream is required")
+        self.pub_body_field_arm.publish(Bool(data=True))
+        self.pub_gesture.publish(String(data="FACE_STATIC_ENROLL"))
+        with self.state.lock:
+            self.state.body_field_armed = True
+            self.state.robot_mode = "BODY_WAIT_FACE_INDEX"
+
+    def set_tilt_calibration_armed(self, armed: bool) -> None:
+        self.pub_follower_request.publish(Bool(data=False))
+        self.pub_enable.publish(Bool(data=False))
+        self.pub_hand_field_arm.publish(Bool(data=False))
+        self.pub_body_field_arm.publish(Bool(data=False))
+        self.publish_stop()
+        if armed:
+            with self.state.lock:
+                rgb_age = stamp_age(self.state.rgb_stamp)
+            if rgb_age is None or rgb_age > 1.0:
+                raise ValueError("Fresh RGB camera stream is required")
+            self.pub_stadia.publish(String(data="OFF"))
+            self.pub_tilt_calibration_arm.publish(Bool(data=True))
+            with self.state.lock:
+                self.state.body_field_armed = False
+                self.state.tilt_calibration_armed = True
+                self.state.follower_enabled = False
+                self.state.robot_mode = "KINECT_TILT_CALIBRATION"
+            return
+        self.pub_tilt_calibration_arm.publish(Bool(data=False))
+        self.pub_stadia.publish(String(data="STADIA"))
+        with self.state.lock:
+            self.state.tilt_calibration_armed = False
+            self.state.robot_mode = "STADIA"
+
+    def tilt_calibration_arm_cb(self, msg: Bool) -> None:
+        with self.state.lock:
+            self.state.tilt_calibration_armed = bool(msg.data)
+            if not msg.data and self.state.robot_mode == "KINECT_TILT_CALIBRATION":
+                self.state.robot_mode = "IDLE"
+
+    def kinect_tilt_cb(self, msg: Int32) -> None:
+        with self.state.lock:
+            self.state.kinect_tilt_degrees = int(msg.data)
+
     def stadia_state_cb(self, msg: String) -> None:
         try:
             payload = json.loads(msg.data)
@@ -335,12 +421,15 @@ class OperatorNode(Node):
             self.state.stadia_state = dict(payload)
             if payload.get("stadia") != "connected":
                 self.state.follower_enabled = False
+                self.state.body_field_armed = False
                 self.state.robot_mode = "IDLE"
+                self.pub_body_field_arm.publish(Bool(data=False))
             elif payload.get("mode") in ("stadia", "off"):
                 self.state.follower_enabled = False
-                self.state.robot_mode = (
-                    "STADIA" if payload.get("mode") == "stadia" else "IDLE"
-                )
+                if not self.state.body_field_armed:
+                    self.state.robot_mode = (
+                        "STADIA" if payload.get("mode") == "stadia" else "IDLE"
+                    )
 
     def motor_status_cb(self, msg: String) -> None:
         with self.state.lock:
@@ -386,6 +475,10 @@ class OperatorNode(Node):
     def follower_state_cb(self, msg: String) -> None:
         with self.state.lock:
             self.state.follower_state = parse_json_or_raw(msg.data)
+            if self.state.body_field_armed and self.state.follower_state.get("enabled"):
+                self.state.robot_mode = "BODY_ACTIVE"
+            elif self.state.body_field_armed:
+                self.state.robot_mode = "BODY_WAIT_FACE_INDEX"
             self.state.stamps["follower_state"] = now_s()
 
     def gesture_status_cb(self, msg: String) -> None:
@@ -541,6 +634,26 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
         armed = bool(payload.get("armed", False))
         try:
             node.set_hand_field_armed(armed)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        return {"ok": True, "armed": armed}
+
+    @app.post("/api/body-field")
+    async def api_body_field(payload: dict[str, Any]) -> dict[str, Any]:
+        armed = bool(payload.get("armed", False))
+        try:
+            node.set_body_field_armed(armed)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        return {"ok": True, "armed": armed}
+
+    @app.post("/api/kinect-tilt-calibration")
+    async def api_kinect_tilt_calibration(
+        payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        armed = bool(payload.get("armed", False))
+        try:
+            node.set_tilt_calibration_armed(armed)
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc))
         return {"ok": True, "armed": armed}
