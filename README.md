@@ -1,5 +1,22 @@
 # MOTOR-INTERFACE-V-13
 
+## Operación Wi-Fi del Raspberry Pi
+
+- Perfil de NetworkManager: `SOTOSUBA-MAIN` (red 5 GHz).
+- Interfaz: `wlan0`, con conexión automática habilitada.
+- Dirección observada y validada: `192.168.40.74/24` mediante DHCP.
+- Gateway: `192.168.40.1`.
+- Interfaz web: `http://192.168.40.74:8080`.
+- SSH: `ssh josemsotov@192.168.40.74`.
+- Los servicios `robot-follower` y `robot-operator-web` funcionan sin Ethernet.
+- Antes de probar movimiento se deben confirmar RGB, profundidad, LiDAR,
+  telemetría Arduino, Stadia y PWM cero.
+- Si Arduino o LiDAR dejan de actualizar, mantener STOP y reiniciar
+  `robot-follower.service` antes de armar el follower.
+
+La dirección se mantiene en DHCP para evitar conflictos. Se recomienda reservar
+`192.168.40.74` para este Pi en el router.
+
 Sistema de control de motores para Smart Golf Trolley con in  
 
 ## 📁 Estructura del Proyecto
