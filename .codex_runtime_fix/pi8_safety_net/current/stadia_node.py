@@ -138,7 +138,7 @@ class StadiaNode(Node):
                     if ev.type == EV_ABS:
                         self.axis[ev.code] = ev.value
                         if (
-                            self.control_mode == 'follower'
+                            self.control_mode != 'stadia'
                             and ev.code in (ABS_LX, ABS_LY)
                             and self._manual_axis_takeover_requested(
                                 ABS_LX, ABS_LY
@@ -367,6 +367,12 @@ class StadiaNode(Node):
         a = p['alpha']
         self.smooth_lin += a * (target_lin - self.smooth_lin)
         self.smooth_ang += a * (target_ang - self.smooth_ang)
+        # Avoid an asymptotic stream of denormal values after the sticks
+        # return to neutral. A neutral command must settle at an exact STOP.
+        if target_lin == 0.0 and abs(self.smooth_lin) < 0.001:
+            self.smooth_lin = 0.0
+        if target_ang == 0.0 and abs(self.smooth_ang) < 0.001:
+            self.smooth_ang = 0.0
 
         t = Twist()
         t.linear.x  = float(self.smooth_lin)

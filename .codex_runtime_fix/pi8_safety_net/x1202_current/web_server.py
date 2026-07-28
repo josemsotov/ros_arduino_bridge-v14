@@ -27,6 +27,9 @@ import uvicorn
 
 
 PRINTABLE = re.compile(r"^[ -~]{1,96}$")
+I2C_SLAVE = 0x0703
+X1202_I2C_BUS = "/dev/i2c-1"
+X1202_GAUGE_ADDRESS = 0x36
 
 
 def now_s() -> float:
@@ -67,6 +70,43 @@ def parse_json_or_raw(line: str) -> dict[str, Any]:
         return {"raw": line}
 
 
+def read_x1202_battery() -> dict[str, Any]:
+    """Read the X1202 MAX17040-compatible fuel gauge without extra packages."""
+    try:
+        import fcntl
+
+        with open(X1202_I2C_BUS, "r+b", buffering=0) as bus:
+            fcntl.ioctl(bus.fileno(), I2C_SLAVE, X1202_GAUGE_ADDRESS)
+            bus.write(b"\x02")
+            vcell = bus.read(2)
+            bus.write(b"\x04")
+            soc = bus.read(2)
+        if len(vcell) != 2 or len(soc) != 2:
+            raise OSError("incomplete MAX17040 register read")
+
+        voltage = (((vcell[0] << 8) | vcell[1]) >> 4) * 0.00125
+        percent = soc[0] + soc[1] / 256.0
+        percent = round(clamp(percent, 0.0, 100.0), 1)
+        status = "critical" if percent <= 10.0 else "warn" if percent <= 20.0 else "ok"
+        return {
+            "present": True,
+            "source": "X1202/MAX17040",
+            "percent": percent,
+            "voltage": round(voltage, 3),
+            "status": status,
+            "error": None,
+        }
+    except Exception as exc:
+        return {
+            "present": False,
+            "source": "X1202/MAX17040",
+            "percent": None,
+            "voltage": None,
+            "status": "unavailable",
+            "error": str(exc),
+        }
+
+
 class SharedState:
     def __init__(self) -> None:
         self.lock = threading.Lock()
@@ -91,6 +131,26 @@ class SharedState:
             "stadia": "disconnected",
             "mode": "off",
         }
+        self.battery_status: dict[str, Any] = {
+            "present": False,
+            "source": "X1202/MAX17040",
+            "percent": None,
+            "voltage": None,
+            "status": "unavailable",
+            "error": "waiting for first reading",
+        }
+        # Placeholder for the trolley traction battery. Keep the schema equal
+        # to battery_status so a real voltage/SOC sensor can replace it later
+        # without changing the web interface.
+        self.robot_battery_status: dict[str, Any] = {
+            "present": True,
+            "source": "dummy",
+            "percent": 75.0,
+            "voltage": 12.4,
+            "status": "ok",
+            "dummy": True,
+            "error": None,
+        }
 
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
@@ -108,6 +168,8 @@ class SharedState:
                 "follower_enabled": self.follower_enabled,
                 "robot_mode": self.robot_mode,
                 "stadia_state": dict(self.stadia_state),
+                "battery_status": dict(self.battery_status),
+                "robot_battery_status": dict(self.robot_battery_status),
                 "ages": {name: stamp_age(stamp) for name, stamp in self.stamps.items()},
                 "camera": {
                     "rgb_age": stamp_age(self.rgb_stamp),
@@ -146,6 +208,14 @@ class OperatorNode(Node):
         self.create_subscription(Image, "/camera/depth/image_raw", self.depth_cb, 2)
         self._last_rgb_encode = 0.0
         self._last_depth_encode = 0.0
+        self._update_battery()
+        self.create_timer(5.0, self._update_battery)
+
+    def _update_battery(self) -> None:
+        reading = read_x1202_battery()
+        reading["updated_at"] = round(now_s(), 3)
+        with self.state.lock:
+            self.state.battery_status = reading
 
     def publish_cmd(self, linear: float, angular: float) -> None:
         msg = Twist()

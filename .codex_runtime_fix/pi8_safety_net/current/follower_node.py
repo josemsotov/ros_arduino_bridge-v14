@@ -87,7 +87,7 @@ class FollowerNode(Node):
         self.declare_parameter('face_linear_kp', 0.90)
         self.declare_parameter('face_angular_kp', 1.10)
         self.declare_parameter('face_max_linear_vel', 0.15)
-        self.declare_parameter('face_max_reverse_vel', 0.08)
+        self.declare_parameter('face_max_reverse_vel', 0.0)
         self.declare_parameter('face_max_angular_vel', 0.30)
         self.declare_parameter('require_face_session_to_start', True)
 
@@ -690,7 +690,7 @@ class FollowerNode(Node):
         linear = float(self.get_parameter('face_linear_kp').value) * width_error
         angular = -float(self.get_parameter('face_angular_kp').value) * x_error
         linear = max(
-            -float(self.get_parameter('face_max_reverse_vel').value),
+            0.0,
             min(float(self.get_parameter('face_max_linear_vel').value), linear),
         )
         angular_limit = float(
@@ -1200,24 +1200,21 @@ class FollowerNode(Node):
             self._control_approach(dist, angle, p)
             return
 
-        if dist < p['min_distance']:
-            linear = -0.15
-            angular = 0.0
-            self.get_logger().warn(
-                f'Too close: {dist:.2f} m; backing up',
-                throttle_duration_sec=1,
-            )
+        target = (p['follow_min_distance'] + p['follow_max_distance']) * 0.5
+        dist_error = dist - target
+        if dist_error <= p['linear_deadband']:
+            # FOLLOWER is forward-only. Reaching or crossing the target causes
+            # an immediate full stop, including any residual smoothed command.
+            self.smoothed_linear = 0.0
+            self.smoothed_angular = 0.0
+            self._stop()
+            self._publish_debug(dist, angle)
+            return
         else:
-            target = (p['follow_min_distance'] + p['follow_max_distance']) * 0.5
             half_range = max(0.05, (p['follow_max_distance'] - p['follow_min_distance']) * 0.5)
-            dist_error = dist - target
-            if abs(dist_error) <= p['linear_deadband']:
-                linear = 0.0
-            else:
-                ratio = min(1.0, abs(dist_error) / half_range)
-                speed = p['min_linear_vel'] + (p['max_linear_vel'] - p['min_linear_vel']) * (ratio ** 1.25)
-                linear = math.copysign(speed, dist_error)
-                linear = max(-p['max_linear_vel'] * 0.65, min(p['max_linear_vel'], linear))
+            ratio = min(1.0, dist_error / half_range)
+            speed = p['min_linear_vel'] + (p['max_linear_vel'] - p['min_linear_vel']) * (ratio ** 1.25)
+            linear = max(0.0, min(p['max_linear_vel'], speed))
 
             if abs(angle) <= math.radians(p['angular_deadband_deg']):
                 angular = 0.0
