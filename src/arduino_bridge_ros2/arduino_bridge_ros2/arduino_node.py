@@ -43,12 +43,14 @@ class ArduinoNode(Node):
         self.declare_parameter('wheel_base', 0.82)    # metros entre ruedas
         self.declare_parameter('wheel_dia',  0.20)    # metros diámetro rueda
         self.declare_parameter('ppr',        45)      # pulsos por revolución
+        self.declare_parameter('cmd_timeout', 0.50)  # seconds without /cmd_vel
 
         self.port      = self.get_parameter('port').value
         self.baud      = self.get_parameter('baud').value
         self.wheel_base = self.get_parameter('wheel_base').value
         self.wheel_dia  = self.get_parameter('wheel_dia').value
         self.ppr        = self.get_parameter('ppr').value
+        self.cmd_timeout = max(0.10, float(self.get_parameter('cmd_timeout').value))
 
         # ── Odometría ────────────────────────────────────────────────────
         self.x = self.y = self.theta = 0.0
@@ -61,6 +63,8 @@ class ArduinoNode(Node):
         self.dist_per_pulse = (math.pi * self.wheel_dia) / self.ppr
         self.last_cmd_linear = 0.0
         self.last_cmd_angular = 0.0
+        self.last_cmd_time = time.monotonic()
+        self.cmd_watchdog_stopped = True
         self.last_left_pwm = 0
         self.last_right_pwm = 0
         self.last_noise_warn = 0.0
@@ -83,6 +87,7 @@ class ArduinoNode(Node):
 
         # ── Timer para solicitar encoders cada 50ms ──────────────────────
         self.create_timer(0.05, self.request_encoders)
+        self.create_timer(0.10, self.cmd_watchdog_cb)
 
         # ── Serial ───────────────────────────────────────────────────────
         self.ser = None
@@ -138,7 +143,21 @@ class ArduinoNode(Node):
         w = msg.angular.z
         self.last_cmd_linear = v
         self.last_cmd_angular = w
+        self.last_cmd_time = time.monotonic()
+        self.cmd_watchdog_stopped = abs(v) < 1e-6 and abs(w) < 1e-6
         self._send(f'v {v:.4f} {w:.4f}')
+
+    def cmd_watchdog_cb(self):
+        age = time.monotonic() - self.last_cmd_time
+        if age <= self.cmd_timeout or self.cmd_watchdog_stopped:
+            return
+        self.last_cmd_linear = 0.0
+        self.last_cmd_angular = 0.0
+        self.cmd_watchdog_stopped = True
+        self._send('v 0.0 0.0')
+        self.get_logger().warn(
+            f'cmd_vel timeout after {age:.2f}s; motors stopped'
+        )
 
     def raw_command_cb(self, msg: String):
         cmd = msg.data.strip()
