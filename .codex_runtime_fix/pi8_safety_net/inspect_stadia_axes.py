@@ -7,10 +7,10 @@ for path in evdev.list_devices():
         dev.close()
         continue
     print(f"device={path} name={dev.name}")
-    for code in (evdev.ecodes.ABS_X, evdev.ecodes.ABS_Y):
-        info = dev.absinfo(code)
+    for code, info in dev.capabilities().get(evdev.ecodes.EV_ABS, []):
         print(
-            f"code={code} value={info.value} min={info.min} "
+            f"code={code} name={evdev.ecodes.ABS.get(code)} "
+            f"value={info.value} min={info.min} "
             f"max={info.max} flat={info.flat} fuzz={info.fuzz}"
         )
     dev.close()

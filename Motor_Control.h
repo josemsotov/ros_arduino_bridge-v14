@@ -59,7 +59,7 @@ MotorState rightMotor = {0, false, true, true, false};  // direction=false: DIR 
 #define MAX_PWM_VALUE          40    // PWM máximo permitido (full stick = mitad, 2026-07-07)
 // Motor derecho: umbral re-calibrado 2026-07-07 con ruedas 0.27m.
 // Caracterización confirmó motor gira desde PWM=20. Umbral 25 = margen seguro.
-#define MIN_PWM_RIGHT_WORKING  25    // Motor derecho: PWM mínimo garantizado (re-calibrado 2026-07-07)
+#define MIN_PWM_RIGHT_WORKING  10    // Recalibrado 2026-08-04: giro continuo desde PWM=10
 #define EMERGENCY_STOP_TIME  300000  // Tiempo máximo sin comando (ms) - 5 minutos
 
 // ── Timer5 PWM directo ───────────────────────────────────────────────────

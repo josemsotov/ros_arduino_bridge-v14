@@ -61,6 +61,47 @@ unsigned long ros2_last_cmd_time = 0;
 float ros2_linear_vel = 0.0;   // m/s
 float ros2_angular_vel = 0.0;  // rad/s
 
+// Continuous low-speed output. Calibration on 2026-08-04 confirmed both
+// wheels rotate continuously from PWM=10; temporal pulsing is unnecessary.
+static float ros2_pwm_demand_left = 0.0f;
+static float ros2_pwm_demand_right = 0.0f;
+static bool ros2_pwm_dir_left = true;
+static bool ros2_pwm_dir_right = true;
+static int ros2_pwm_applied_left = -1;
+static int ros2_pwm_applied_right = -1;
+
+int ros2_time_proportioned_pwm(float demand, int working_pwm, unsigned long phase) {
+  (void)phase;
+  if (demand <= 0.0f) return 0;
+  return constrain((int)roundf(demand), working_pwm, MAX_PWM_VALUE);
+}
+
+void ros2_apply_pwm_demands() {
+  unsigned long phase = 0;
+  int next_left = ros2_time_proportioned_pwm(
+    ros2_pwm_demand_left, MIN_PWM_VALUE, phase);
+  int next_right = ros2_time_proportioned_pwm(
+    ros2_pwm_demand_right, MIN_PWM_RIGHT_WORKING, phase);
+  if (next_left != ros2_pwm_applied_left ||
+      ros2_pwm_dir_left != leftMotor.direction) {
+    setLeftMotor(next_left, ros2_pwm_dir_left);
+    ros2_pwm_applied_left = next_left;
+  }
+  bool physical_right_dir = !ros2_pwm_dir_right;
+  if (next_right != ros2_pwm_applied_right ||
+      physical_right_dir != rightMotor.direction) {
+    setRightMotor(next_right, physical_right_dir);
+    ros2_pwm_applied_right = next_right;
+  }
+}
+
+void ros2_clear_pwm_demands() {
+  ros2_pwm_demand_left = 0.0f;
+  ros2_pwm_demand_right = 0.0f;
+  ros2_pwm_applied_left = -1;
+  ros2_pwm_applied_right = -1;
+}
+
 // Extern al Balance_Controller (incluido después): base de velocidad del usuario
 // y flag para suprimir telemetría cuando el balance llama ros2_processCmdVel
 #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
@@ -149,6 +190,7 @@ void ros2_processCmdVel(String cmd) {
       // puede distinguir si el robot frena o aun se mueve. Detener directo
       // evita el bucle de retroalimentacion positiva.
       if (fabsf(linear) < 0.01f && fabsf(angular) < 0.01f) {
+        ros2_clear_pwm_demands();
         setLeftMotor(0, true);
         setRightMotor(0, false);
         pid_reset_velocity();
@@ -213,8 +255,12 @@ void ros2_processCmdVel(String cmd) {
       bool l_moving = (fabsf(v_left_raw)  > 0.01f);
       bool r_moving = (fabsf(v_right_raw) > 0.01f);
 
-      int abs_left  = l_moving ? constrain((int)(fabsf(v_left_raw)  * ff_l), MIN_PWM_RIGHT_WORKING, MAX_PWM_VALUE) : 0;
-      int abs_right = r_moving ? constrain((int)(fabsf(v_right_raw) * ff_r), MIN_PWM_RIGHT_WORKING, MAX_PWM_VALUE) : 0;
+      float demand_left = l_moving
+        ? constrain(fabsf(v_left_raw) * ff_l, 0.0f, (float)MAX_PWM_VALUE) : 0.0f;
+      float demand_right = r_moving
+        ? constrain(fabsf(v_right_raw) * ff_r, 0.0f, (float)MAX_PWM_VALUE) : 0.0f;
+      int abs_left = (int)roundf(demand_left);
+      int abs_right = (int)roundf(demand_right);
 
       // Direccion directa de cinematica (evita ambiguedad de signo del PID)
       bool dir_left  = cmd_dir_left;
@@ -229,17 +275,26 @@ void ros2_processCmdVel(String cmd) {
           fabsf(angular) < 0.05f &&
           l_moving && r_moving &&
           currentSpeedLeftHall  > 3.0f &&
-          currentSpeedRightHall > 3.0f) {
+          currentSpeedRightHall > 3.0f &&
+          demand_left >= MIN_PWM_VALUE &&
+          demand_right >= MIN_PWM_RIGHT_WORKING) {
         float rpm_error = currentSpeedRightHall - currentSpeedLeftHall;
         int speed_trim = (int)constrain(
           rpm_error * SPEED_MATCH_KP_PWM_PER_RPM,
           -SPEED_MATCH_MAX_PWM, SPEED_MATCH_MAX_PWM);
         abs_left  = constrain(abs_left  + speed_trim, MIN_PWM_VALUE,         MAX_PWM_VALUE);
         abs_right = constrain(abs_right - speed_trim, MIN_PWM_RIGHT_WORKING, MAX_PWM_VALUE);
+        demand_left = (float)abs_left;
+        demand_right = (float)abs_right;
       }
 
-      setLeftMotor(abs_left, dir_left);
-      setRightMotor(abs_right, !dir_right);  // Motor derecho: DIR electrica invertida
+      ros2_pwm_demand_left = demand_left;
+      ros2_pwm_demand_right = demand_right;
+      ros2_pwm_dir_left = dir_left;
+      ros2_pwm_dir_right = dir_right;
+      ros2_apply_pwm_demands();
+      abs_left = max(0, ros2_pwm_applied_left);
+      abs_right = max(0, ros2_pwm_applied_right);
 
       // ── Telemetría compacta ────────────────────────────────────────────────
       // Suprimida cuando el balance anti-caída llama esta función a 50 Hz
@@ -364,6 +419,54 @@ void ros2_processCommand(String cmd) {
         setRightMotor(0, false);
         Serial.println("p STOP");
       }
+      break;
+    }
+    case 'q': {
+      // q <L|R> <pwm> - prueba individual continua de 1 s, limitada a
+      // MAX_PWM_VALUE, bypass del minimo de trabajo para calibrarlo.
+      int sp1 = cmd.indexOf(' ');
+      int sp2 = cmd.indexOf(' ', sp1 + 1);
+      if (sp1 < 0 || sp2 < 0) {
+        Serial.println("q FAIL usage=q L|R pwm");
+        break;
+      }
+      char side = cmd.charAt(sp1 + 1);
+      int test_pwm = constrain(cmd.substring(sp2 + 1).toInt(), 0, MAX_PWM_VALUE);
+      if (side != 'L' && side != 'R') {
+        Serial.println("q FAIL side");
+        break;
+      }
+      setLeftMotor(0, true);
+      setRightMotor(0, false);
+      if (currentRobotState != STATE_HABILITADO) {
+        setStateHabilitado();
+        delay(50);
+      }
+      noInterrupts();
+      leftHallTotal = 0;
+      rightHallTotal = 0;
+      leftHallCount = 0;
+      rightHallCount = 0;
+      interrupts();
+      if (side == 'L') {
+        digitalWrite(DIR_LEFT_MOTOR, HIGH);
+        motor_pwm_write(PWM_LEFT_MOTOR, test_pwm);
+      } else {
+        digitalWrite(DIR_RIGHT_MOTOR, LOW);
+        motor_pwm_write(PWM_RIGHT_MOTOR, test_pwm);
+      }
+      delay(1000);
+      motor_pwm_write(PWM_LEFT_MOTOR, 0);
+      motor_pwm_write(PWM_RIGHT_MOTOR, 0);
+      noInterrupts();
+      uint32_t q_left = leftHallTotal;
+      uint32_t q_right = rightHallTotal;
+      interrupts();
+      setStateInhabilitado();
+      Serial.print("q OK side="); Serial.print(side);
+      Serial.print(" pwm="); Serial.print(test_pwm);
+      Serial.print(" L="); Serial.print(q_left);
+      Serial.print(" R="); Serial.println(q_right);
       break;
     }
     case 'd': {
@@ -751,6 +854,11 @@ bool ros2_tryProcessCommand(String cmd) {
       ros2_processCommand(cmd);
       return true;
     }
+    // q <L|R> <pwm> : prueba individual limitada para calibrar umbral
+    else if (first_char == 'q' && cmd.length() >= 5 && cmd.charAt(1) == ' ') {
+      ros2_processCommand(cmd);
+      return true;
+    }
     // d : diagnostico Hall raw (lee pin state mientras motor corre 3s)
     else if (first_char == 'd' && cmd.length() == 1) {
       ros2_processCommand(cmd);
@@ -793,6 +901,7 @@ void ros2_update() {
     ros2_linear_vel = 0.0;
     ros2_angular_vel = 0.0;
     ros2_connected = false;
+    ros2_clear_pwm_demands();
     
     setLeftMotor(0, true);
     setRightMotor(0, false);  // false = DIR electricamente invertido en motor derecho
@@ -804,6 +913,9 @@ void ros2_update() {
     pid_per_wheel_reset();
     
     ros2_status = ROS2_STATUS_WARNING;
+  }
+  if (ros2_connected) {
+    ros2_apply_pwm_demands();
   }
 }
 
