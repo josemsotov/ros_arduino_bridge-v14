@@ -478,6 +478,136 @@ void ros2_processOptoRequest() {
   #endif
 }
 
+#if defined(ENABLE_HALL_SENSORS) && defined(ENABLE_OPTO_ENCODERS)
+enum EncoderHealthState : uint8_t {
+  ENC_HEALTH_IDLE = 0,
+  ENC_HEALTH_OK = 1,
+  ENC_HEALTH_LOW = 2,
+  ENC_HEALTH_HIGH = 3
+};
+
+static EncoderHealthState encoder_health_left = ENC_HEALTH_IDLE;
+static EncoderHealthState encoder_health_right = ENC_HEALTH_IDLE;
+static EncoderHealthState encoder_candidate_left = ENC_HEALTH_IDLE;
+static EncoderHealthState encoder_candidate_right = ENC_HEALTH_IDLE;
+static uint8_t encoder_streak_left = 0;
+static uint8_t encoder_streak_right = 0;
+static bool encoder_protection_enabled = false;
+static bool encoder_protection_latched = false;
+static uint32_t encoder_prev_hall_left = 0;
+static uint32_t encoder_prev_hall_right = 0;
+static uint32_t encoder_prev_opto_left = 0;
+static uint32_t encoder_prev_opto_right = 0;
+static uint16_t encoder_last_hall_left = 0;
+static uint16_t encoder_last_hall_right = 0;
+static uint16_t encoder_last_opto_left = 0;
+static uint16_t encoder_last_opto_right = 0;
+static unsigned long encoder_health_last_ms = 0;
+
+EncoderHealthState encoder_classify_window(uint32_t hall, uint32_t opto) {
+  if (hall < 3) return ENC_HEALTH_IDLE;
+  const uint32_t measured_scaled = opto * PPR_HALL_SENSORS * 100UL;
+  const uint32_t expected_scaled = hall * PPR_OPTO_ENCODERS;
+  if (measured_scaled < expected_scaled * 80UL) return ENC_HEALTH_LOW;
+  if (measured_scaled > expected_scaled * 120UL) return ENC_HEALTH_HIGH;
+  return ENC_HEALTH_OK;
+}
+
+const __FlashStringHelper* encoder_health_name(EncoderHealthState state) {
+  switch (state) {
+    case ENC_HEALTH_OK: return F("OK");
+    case ENC_HEALTH_LOW: return F("LOW");
+    case ENC_HEALTH_HIGH: return F("HIGH");
+    default: return F("IDLE");
+  }
+}
+
+void encoder_update_confirmed_state(EncoderHealthState sample,
+                                    EncoderHealthState &confirmed,
+                                    EncoderHealthState &candidate,
+                                    uint8_t &streak) {
+  if (sample == ENC_HEALTH_OK || sample == ENC_HEALTH_IDLE) {
+    confirmed = sample;
+    candidate = sample;
+    streak = 0;
+    return;
+  }
+  if (sample != candidate) {
+    candidate = sample;
+    streak = 1;
+  } else if (streak < 255) {
+    streak++;
+  }
+  if (streak >= 3) confirmed = sample;
+}
+
+void encoder_supervisor_update() {
+  unsigned long now = millis();
+  if (now - encoder_health_last_ms < 500UL) return;
+  encoder_health_last_ms = now;
+
+  noInterrupts();
+  uint32_t hl = leftHallTotal;
+  uint32_t hr = rightHallTotal;
+  uint32_t ol = leftOptoCount;
+  uint32_t oright = rightOptoCount;
+  interrupts();
+
+  if (hl < encoder_prev_hall_left || ol < encoder_prev_opto_left) {
+    encoder_prev_hall_left = hl;
+    encoder_prev_opto_left = ol;
+  }
+  if (hr < encoder_prev_hall_right || oright < encoder_prev_opto_right) {
+    encoder_prev_hall_right = hr;
+    encoder_prev_opto_right = oright;
+  }
+  uint32_t dhl = hl - encoder_prev_hall_left;
+  uint32_t dhr = hr - encoder_prev_hall_right;
+  uint32_t dol = ol - encoder_prev_opto_left;
+  uint32_t dor = oright - encoder_prev_opto_right;
+  encoder_prev_hall_left = hl;
+  encoder_prev_hall_right = hr;
+  encoder_prev_opto_left = ol;
+  encoder_prev_opto_right = oright;
+  encoder_last_hall_left = min(dhl, 65535UL);
+  encoder_last_hall_right = min(dhr, 65535UL);
+  encoder_last_opto_left = min(dol, 65535UL);
+  encoder_last_opto_right = min(dor, 65535UL);
+
+  EncoderHealthState left_sample = encoder_classify_window(dhl, dol);
+  EncoderHealthState right_sample = encoder_classify_window(dhr, dor);
+  encoder_update_confirmed_state(left_sample, encoder_health_left,
+    encoder_candidate_left, encoder_streak_left);
+  encoder_update_confirmed_state(right_sample, encoder_health_right,
+    encoder_candidate_right, encoder_streak_right);
+
+  if (encoder_protection_enabled && !encoder_protection_latched &&
+      (encoder_health_left == ENC_HEALTH_LOW || encoder_health_left == ENC_HEALTH_HIGH ||
+       encoder_health_right == ENC_HEALTH_LOW || encoder_health_right == ENC_HEALTH_HIGH)) {
+    encoder_protection_latched = true;
+    ros2_connected = false;
+    ros2_clear_pwm_demands();
+    setLeftMotor(0, true);
+    setRightMotor(0, false);
+    setStateInhabilitado();
+    Serial.print(F("n TRIP L=")); Serial.print(encoder_health_name(encoder_health_left));
+    Serial.print(F(" R=")); Serial.println(encoder_health_name(encoder_health_right));
+  }
+}
+
+void encoder_print_health(const __FlashStringHelper* prefix,
+                          uint32_t hl, uint32_t hr,
+                          uint32_t ol, uint32_t oright) {
+  Serial.print(prefix);
+  Serial.print(F(" L=")); Serial.print(encoder_health_name(encoder_classify_window(hl, ol)));
+  Serial.print(F(" R=")); Serial.print(encoder_health_name(encoder_classify_window(hr, oright)));
+  Serial.print(F(" HL=")); Serial.print(hl);
+  Serial.print(F(" HR=")); Serial.print(hr);
+  Serial.print(F(" OL=")); Serial.print(ol);
+  Serial.print(F(" OR=")); Serial.println(oright);
+}
+#endif
+
 // Forward declarations de módulos que se incluyen después
 #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
 void hoverboard_processCommand(String args);
@@ -494,6 +624,60 @@ void ros2_processCommand(String cmd) {
     case 'v':
       ros2_processCmdVel(cmd);
       break;
+
+    case 'n': {
+      #if defined(ENABLE_HALL_SENSORS) && defined(ENABLE_OPTO_ENCODERS)
+      String args = cmd.substring(1);
+      args.trim();
+      if (args == "selftest") {
+        bool pass =
+          encoder_classify_window(0, 0) == ENC_HEALTH_IDLE &&
+          encoder_classify_window(45, 60) == ENC_HEALTH_OK &&
+          encoder_classify_window(45, 30) == ENC_HEALTH_LOW &&
+          encoder_classify_window(45, 90) == ENC_HEALTH_HIGH;
+        Serial.println(pass ? F("n SELFTEST PASS") : F("n SELFTEST FAIL"));
+      } else if (args == "check") {
+        noInterrupts();
+        uint32_t hl = leftHallTotal, hr = rightHallTotal;
+        uint32_t ol = leftOptoCount, oright = rightOptoCount;
+        interrupts();
+        encoder_print_health(F("n CHECK"), hl, hr, ol, oright);
+      } else if (args == "protect on") {
+        encoder_protection_enabled = true;
+        encoder_protection_latched = false;
+        encoder_health_left = ENC_HEALTH_IDLE;
+        encoder_health_right = ENC_HEALTH_IDLE;
+        encoder_streak_left = 0;
+        encoder_streak_right = 0;
+        Serial.println(F("n PROTECT ON"));
+      } else if (args == "protect off") {
+        encoder_protection_enabled = false;
+        encoder_protection_latched = false;
+        Serial.println(F("n PROTECT OFF"));
+      } else if (args == "protect reset") {
+        encoder_protection_latched = false;
+        encoder_health_left = ENC_HEALTH_IDLE;
+        encoder_health_right = ENC_HEALTH_IDLE;
+        encoder_candidate_left = ENC_HEALTH_IDLE;
+        encoder_candidate_right = ENC_HEALTH_IDLE;
+        encoder_streak_left = 0;
+        encoder_streak_right = 0;
+        Serial.println(F("n PROTECT RESET"));
+      } else {
+        Serial.print(F("n STATUS L=")); Serial.print(encoder_health_name(encoder_health_left));
+        Serial.print(F(" R=")); Serial.print(encoder_health_name(encoder_health_right));
+        Serial.print(F(" protect=")); Serial.print(encoder_protection_enabled ? 1 : 0);
+        Serial.print(F(" latched=")); Serial.print(encoder_protection_latched ? 1 : 0);
+        Serial.print(F(" HL=")); Serial.print(encoder_last_hall_left);
+        Serial.print(F(" HR=")); Serial.print(encoder_last_hall_right);
+        Serial.print(F(" OL=")); Serial.print(encoder_last_opto_left);
+        Serial.print(F(" OR=")); Serial.println(encoder_last_opto_right);
+      }
+      #else
+      Serial.println(F("n DISABLED"));
+      #endif
+      break;
+    }
 
 #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
     case 'h': {
@@ -631,9 +815,19 @@ void ros2_processCommand(String cmd) {
       #endif
       interrupts();
       if (side == 'L') {
+        #ifdef ENABLE_ADAPTIVE_OPTO_FILTER
+        leftOptoFilterUs = optoLeftBootstrapFilterForPwm((uint8_t)test_pwm);
+        lastHallPulseTimeLeft = 0;
+        hallPulseIntervalLeft = 0;
+        #endif
         digitalWrite(DIR_LEFT_MOTOR, HIGH);
         motor_pwm_write(PWM_LEFT_MOTOR, test_pwm);
       } else {
+        #ifdef ENABLE_ADAPTIVE_OPTO_FILTER
+        rightOptoFilterUs = optoRightBootstrapFilterForPwm((uint8_t)test_pwm);
+        lastHallPulseTimeRight = 0;
+        hallPulseIntervalRight = 0;
+        #endif
         digitalWrite(DIR_RIGHT_MOTOR, LOW);
         motor_pwm_write(PWM_RIGHT_MOTOR, test_pwm);
       }
@@ -667,15 +861,51 @@ void ros2_processCommand(String cmd) {
       #ifdef ENABLE_OPTO_ENCODERS
       int sp = cmd.indexOf(' ');
       if (sp < 0) {
-        Serial.print("j OK us="); Serial.println(optoFilterUs);
+        Serial.print("j OK us="); Serial.println(leftOptoFilterUs);
         break;
       }
-      uint32_t requested = (uint32_t)cmd.substring(sp + 1).toInt();
+      String filter_arg = cmd.substring(sp + 1);
+      filter_arg.trim();
+      if (filter_arg == "stat") {
+        noInterrupts();
+        uint32_t lraw = leftOptoRawEdges;
+        uint32_t lacc = leftOptoAccepted;
+        uint32_t lrej = leftOptoRejected;
+        uint32_t rraw = rightOptoRawEdges;
+        uint32_t racc = rightOptoAccepted;
+        uint32_t rrej = rightOptoRejected;
+        uint32_t lfilter_us = leftOptoFilterUs;
+        uint32_t rfilter_us = rightOptoFilterUs;
+        interrupts();
+        Serial.print("j STAT Lus="); Serial.print(lfilter_us);
+        Serial.print(" Rus="); Serial.print(rfilter_us);
+        Serial.print(" Lraw="); Serial.print(lraw);
+        Serial.print(" Lacc="); Serial.print(lacc);
+        Serial.print(" Lrej="); Serial.print(lrej);
+        Serial.print(" Rraw="); Serial.print(rraw);
+        Serial.print(" Racc="); Serial.print(racc);
+        Serial.print(" Rrej="); Serial.println(rrej);
+        break;
+      }
+      if (filter_arg == "reset") {
+        noInterrupts();
+        leftOptoRawEdges = 0;
+        rightOptoRawEdges = 0;
+        leftOptoAccepted = 0;
+        rightOptoAccepted = 0;
+        leftOptoRejected = 0;
+        rightOptoRejected = 0;
+        interrupts();
+        Serial.println("j RESET OK");
+        break;
+      }
+      uint32_t requested = (uint32_t)filter_arg.toInt();
       requested = constrain(requested, 100UL, 20000UL);
       setLeftMotor(0, true);
       setRightMotor(0, false);
       noInterrupts();
-      optoFilterUs = requested;
+      leftOptoFilterUs = requested;
+      rightOptoFilterUs = requested;
       leftOptoLastPulseUs = 0;
       rightOptoLastPulseUs = 0;
       interrupts();
@@ -1178,6 +1408,10 @@ bool ros2_tryProcessCommand(String cmd) {
       ros2_processCommand(cmd);
       return true;
     }
+    else if (first_char == 'n' && (cmd.length() == 1 || cmd.charAt(1) == ' ')) {
+      ros2_processCommand(cmd);
+      return true;
+    }
     // u : una revolucion por motor en lazo cerrado usando optoencoders.
     else if (first_char == 'u' && (cmd.length() == 1 || cmd.charAt(1) == ' ')) {
       ros2_processCommand(cmd);
@@ -1227,6 +1461,9 @@ bool ros2_tryProcessCommand(String cmd) {
 //===========================================================================
 
 void ros2_update() {
+  #if defined(ENABLE_HALL_SENSORS) && defined(ENABLE_OPTO_ENCODERS)
+  encoder_supervisor_update();
+  #endif
   // Verificar timeout de comandos
   if (ros2_connected && (millis() - ros2_last_cmd_time > ROS2_CMD_TIMEOUT)) {
     ros2_linear_vel = 0.0;

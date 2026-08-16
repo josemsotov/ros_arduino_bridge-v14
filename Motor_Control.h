@@ -212,21 +212,54 @@ extern volatile uint32_t leftOptoCount;
 extern volatile uint32_t rightOptoCount;
 volatile uint32_t leftOptoLastPulseUs = 0;
 volatile uint32_t rightOptoLastPulseUs = 0;
-volatile uint32_t optoFilterUs = OPTO_FILTER_US;
+volatile uint32_t leftOptoFilterUs = OPTO_FILTER_US;
+volatile uint32_t rightOptoFilterUs = OPTO_FILTER_US;
+volatile uint32_t leftOptoRawEdges = 0;
+volatile uint32_t rightOptoRawEdges = 0;
+volatile uint32_t leftOptoAccepted = 0;
+volatile uint32_t rightOptoAccepted = 0;
+volatile uint32_t leftOptoRejected = 0;
+volatile uint32_t rightOptoRejected = 0;
+
+uint32_t optoLeftBootstrapFilterForPwm(uint8_t pwm) {
+  if (pwm >= 40) return 5600UL;
+  if (pwm >= 35) return 6700UL;
+  if (pwm >= 30) return 7800UL;
+  if (pwm >= 25) return 9800UL;
+  if (pwm >= 20) return 12800UL;
+  return OPTO_FILTER_MAX_US;
+}
+
+uint32_t optoRightBootstrapFilterForPwm(uint8_t pwm) {
+  if (pwm >= 40) return 6500UL;
+  if (pwm >= 35) return 7500UL;
+  if (pwm >= 30) return 8800UL;
+  if (pwm >= 25) return 11000UL;
+  if (pwm >= 20) return 14000UL;
+  return OPTO_FILTER_MAX_US;
+}
 
 void leftOptoISR() {
   const uint32_t now = micros();
-  if ((uint32_t)(now - leftOptoLastPulseUs) >= optoFilterUs) {
+  leftOptoRawEdges++;
+  if ((uint32_t)(now - leftOptoLastPulseUs) >= leftOptoFilterUs) {
     leftOptoCount++;
+    leftOptoAccepted++;
     leftOptoLastPulseUs = now;
+  } else {
+    leftOptoRejected++;
   }
 }
 
 void rightOptoISR() {
   const uint32_t now = micros();
-  if ((uint32_t)(now - rightOptoLastPulseUs) >= optoFilterUs) {
+  rightOptoRawEdges++;
+  if ((uint32_t)(now - rightOptoLastPulseUs) >= rightOptoFilterUs) {
     rightOptoCount++;
+    rightOptoAccepted++;
     rightOptoLastPulseUs = now;
+  } else {
+    rightOptoRejected++;
   }
 }
 #endif
@@ -279,6 +312,12 @@ void setLeftMotor(int pwm, bool direction) {
     pwm = MIN_PWM_VALUE;
   }
   
+  #ifdef ENABLE_ADAPTIVE_OPTO_FILTER
+  if (leftMotor.pwm == 0 && pwm > 0) {
+    leftOptoFilterUs = optoLeftBootstrapFilterForPwm((uint8_t)pwm);
+  }
+  #endif
+
   // Actualizar estado
   leftMotor.pwm = pwm;
   leftMotor.direction = direction;
@@ -313,6 +352,12 @@ void setRightMotor(int pwm, bool direction) {
     pwm = MIN_PWM_RIGHT_WORKING;
   }
   
+  #ifdef ENABLE_ADAPTIVE_OPTO_FILTER
+  if (rightMotor.pwm == 0 && pwm > 0) {
+    rightOptoFilterUs = optoRightBootstrapFilterForPwm((uint8_t)pwm);
+  }
+  #endif
+
   // Actualizar estado
   rightMotor.pwm = pwm;
   rightMotor.direction = direction;
