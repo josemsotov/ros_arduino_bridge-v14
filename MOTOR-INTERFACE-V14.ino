@@ -129,6 +129,10 @@ void setup() {
     current_sensors_init();
   #endif
 
+  #ifdef ENABLE_GPS
+    gps_initialize();
+  #endif
+
   // Auto-activar balance anti-caída (requiere MPU ya inicializado)
   #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
     hoverboard_enable();
@@ -153,6 +157,10 @@ void loop() {
     readSerialCommands();
     processSerialCommand();
     processContinuousDebug();
+  #endif
+
+  #ifdef ENABLE_GPS
+    gps_update();
   #endif
   
   // ===== ACTUALIZACIÓN SENSORES DE CORRIENTE =====

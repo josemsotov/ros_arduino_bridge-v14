@@ -19,21 +19,23 @@
 //   A PWM=64 → motor corre 72 RPM = 0.754 m/s → FF = 64/0.754 = 85
 //   FF alto asegura que el motor siempre recibe suficiente PWM base
 //   y el PID solo corrige el residuo pequeño.
-float FF_LEFT_GAIN  = 85.0f;  // PWM por m/s motor izquierdo (calibrado 2026-06-25)
-float FF_RIGHT_GAIN = 85.0f;  // PWM por m/s motor derecho   (calibrado 2026-06-25)
+float FF_LEFT_GAIN  = 100.0f;  // PWM/(m/s) izq FWD  — calibrado 2026-07-07: full_stick(0.40m/s)*100=40=MAX_PWM
+float FF_RIGHT_GAIN = 100.0f;  // PWM/(m/s) der FWD  — calibrado 2026-07-07
+float FF_LEFT_BWD   = 100.0f;  // PWM/(m/s) izq BWD
+float FF_RIGHT_BWD  = 100.0f;  // PWM/(m/s) der BWD
 
-// Kp=0, Ki=0 → MODO FEEDFORWARD PURO — sin retroalimentación Hall.
-// El motor corre a FF*v PWM. Anti-stall garantiza mínimo 60 PWM para motor derecho.
-// Ventaja: sin oscilaciones, sin stall-restart. Desventaja: sin regulación de velocidad.
-float Kp_v = 0.70f, Ki_v = 0.18f, Kd_v = 0.0f; // PI suave por rueda con Hall
+// PI deshabilitado (Kp=Ki=0): control por FF puro + speed-matching.
+// El PI con anti-stall provocaba oscilación cuando MIN_PWM_RIGHT_WORKING > FF*v.
+// Mantener variables para compatibilidad con comando 'k' (ahora cambia speed-match).
+float Kp_v = 0.0f, Ki_v = 0.0f, Kd_v = 0.0f; // DESHABILITADO 2026-07-07
 float Kp_w = 1.0, Ki_w = 0.0, Kd_w = 0.0; // Velocidad angular
 // Kp_pos ajustado para generar PWM=30 en pruebas: dist_error(1.0m) * Kp_pos(0.30) * 100 = 30 PWM
 float Kp_pos = 0.30, Ki_pos = 0.0, Kd_pos = 0.0; // AJUSTADO PARA PRUEBAS: PWM~30
 
 // Wheel speed matching for straight motion.
 // Positive trim means right wheel is faster: boost left and reduce right.
-float SPEED_MATCH_KP_PWM_PER_RPM = 0.22f;
-float SPEED_MATCH_MAX_PWM = 10.0f;
+float SPEED_MATCH_KP_PWM_PER_RPM = 0.50f;
+float SPEED_MATCH_MAX_PWM = 8.0f;  // rango efectivo 25-40 PWM = 15 ancho, trim max=8
 
 // =================== VARIABLES INTERNAS ===================
 float pid_v_integral = 0, pid_v_prev_error = 0;

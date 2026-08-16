@@ -46,13 +46,45 @@ float currentSpeedRightHall = 0;  // RPM calculado motor derecho
  * RUTINAS DE SERVICIO DE INTERRUPCIÓN (ISR)
  */
 void leftHallISR() {
+  const uint32_t now = micros();
   leftHallCount++;
   leftHallTotal++;
+  #if defined(ENABLE_OPTO_ENCODERS) && defined(ENABLE_ADAPTIVE_OPTO_FILTER)
+  if (lastHallPulseTimeLeft != 0) {
+    uint32_t interval = now - lastHallPulseTimeLeft;
+    if (interval < 1000000UL) {
+      if (hallPulseIntervalLeft == 0 || interval < hallPulseIntervalLeft) {
+        hallPulseIntervalLeft = interval; // acelerar: reducir filtro inmediatamente
+      } else {
+        hallPulseIntervalLeft = (hallPulseIntervalLeft * 3UL + interval) / 4UL;
+      }
+      uint32_t candidate = (hallPulseIntervalLeft * OPTO_FILTER_LEFT_HALL_PERMILLE) / 1000UL;
+      leftOptoFilterUs = constrain(candidate, OPTO_FILTER_LEFT_MIN_US, OPTO_FILTER_MAX_US);
+    }
+  }
+  lastHallPulseTimeLeft = now;
+  #endif
 }
 
 void rightHallISR() {
+  const uint32_t now = micros();
   rightHallCount++;
   rightHallTotal++;
+  #if defined(ENABLE_OPTO_ENCODERS) && defined(ENABLE_ADAPTIVE_OPTO_FILTER)
+  if (lastHallPulseTimeRight != 0) {
+    uint32_t interval = now - lastHallPulseTimeRight;
+    if (interval < 1000000UL) {
+      if (hallPulseIntervalRight == 0 || interval < hallPulseIntervalRight) {
+        hallPulseIntervalRight = interval; // acelerar: reducir filtro inmediatamente
+      } else {
+        hallPulseIntervalRight = (hallPulseIntervalRight * 3UL + interval) / 4UL;
+      }
+      uint32_t candidate = (hallPulseIntervalRight * OPTO_FILTER_RIGHT_HALL_PERMILLE) / 1000UL;
+      rightOptoFilterUs = constrain(candidate, OPTO_FILTER_RIGHT_MIN_US, OPTO_FILTER_MAX_US);
+    }
+  }
+  lastHallPulseTimeRight = now;
+  #endif
 }
 
 //===========================================================================
@@ -81,6 +113,10 @@ void initializeHallSensors() {
   rightHallTotal = 0;
   lastHallTimeLeft = millis();
   lastHallTimeRight = millis();
+  lastHallPulseTimeLeft = 0;
+  lastHallPulseTimeRight = 0;
+  hallPulseIntervalLeft = 0;
+  hallPulseIntervalRight = 0;
   
   DEBUG_PRINTLN("Sensores Hall inicializados");
   DEBUG_PRINT("PPR configurado: ");

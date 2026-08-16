@@ -1,0 +1,16 @@
+[Unit]
+Description=Smart Trolley web operator interface
+After=robot-follower.service
+Wants=robot-follower.service
+
+[Service]
+Type=simple
+ExecStart=/home/josemsotov/robot_ws/scripts/start_robot_operator_web.sh
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+KillSignal=SIGINT
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

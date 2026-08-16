@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Smart Trolley Touch
+Comment=Open the Smart Trolley touch interface
+Exec=/home/josemsotov/SMART_TROLLEY_INSTALLATION/scripts/start_operator_kiosk.sh
+Terminal=false
+Icon=firefox
+Categories=Utility;

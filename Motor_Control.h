@@ -56,10 +56,10 @@ MotorState rightMotor = {0, false, true, true, false};  // direction=false: DIR 
  * LÍMITES DE SEGURIDAD
  */
 #define MIN_PWM_VALUE          10    // PWM mínimo ambos motores
-#define MAX_PWM_VALUE          80    // PWM máximo permitido
-// Motor derecho tiene stiction severa confirmada en tests 2026-06-24:
-// RPM=0 a Rpwm<64, funciona bien a Rpwm≥64. Umbral empírico = 60.
-#define MIN_PWM_RIGHT_WORKING  60    // Motor derecho: PWM mínimo garantizado (stiction confirmada)
+#define MAX_PWM_VALUE          40    // PWM máximo permitido (full stick = mitad, 2026-07-07)
+// Motor derecho: umbral re-calibrado 2026-07-07 con ruedas 0.27m.
+// Caracterización confirmó motor gira desde PWM=20. Umbral 25 = margen seguro.
+#define MIN_PWM_RIGHT_WORKING  10    // Recalibrado 2026-08-04: giro continuo desde PWM=10
 #define EMERGENCY_STOP_TIME  300000  // Tiempo máximo sin comando (ms) - 5 minutos
 
 // ── Timer5 PWM directo ───────────────────────────────────────────────────
@@ -178,9 +178,13 @@ void forceStopPinsLowInit() {
   DEBUG_PRINTLN("*** STOP PINS FORZADOS A LOW - MOTORES INHABILITADOS ***");
 }
 
+#ifdef ENABLE_OPTO_ENCODERS
+void leftOptoISR();
+void rightOptoISR();
+#endif
+
 /**
- * INICIALIZAR OPTOENCODERS (DUMMY)
- * Esta función existe para evitar errores si ENABLE_OPTO_ENCODERS no está definido
+ * INICIALIZAR OPTOENCODERS
  */
 void initializeOptoEncoders() {
   #ifdef ENABLE_OPTO_ENCODERS
@@ -188,10 +192,9 @@ void initializeOptoEncoders() {
     pinMode(OPTO_LEFT_MOTOR, INPUT_PULLUP);
     pinMode(OPTO_RIGHT_MOTOR, INPUT_PULLUP);
     
-    // Configurar interrupciones (las funciones ISR están definidas más abajo)
-    // attachInterrupt(digitalPinToInterrupt(OPTO_LEFT_MOTOR), leftOptoISR, RISING);
-    // attachInterrupt(digitalPinToInterrupt(OPTO_RIGHT_MOTOR), rightOptoISR, RISING);
-    // Nota: Interrupciones de OptoEncoders deshabilitadas temporalmente
+    // Contar un pulso por cada flanco ascendente.
+    attachInterrupt(digitalPinToInterrupt(OPTO_LEFT_MOTOR), leftOptoISR, RISING);
+    attachInterrupt(digitalPinToInterrupt(OPTO_RIGHT_MOTOR), rightOptoISR, RISING);
     
     DEBUG_PRINTLN("OptoEncoders inicializados");
   #else
@@ -205,15 +208,59 @@ void initializeOptoEncoders() {
  */
 #ifdef ENABLE_OPTO_ENCODERS
 // Declaraciones externas para variables de OptoEncoders
-extern volatile uint16_t leftOptoCount;
-extern volatile uint16_t rightOptoCount;
+extern volatile uint32_t leftOptoCount;
+extern volatile uint32_t rightOptoCount;
+volatile uint32_t leftOptoLastPulseUs = 0;
+volatile uint32_t rightOptoLastPulseUs = 0;
+volatile uint32_t leftOptoFilterUs = OPTO_FILTER_US;
+volatile uint32_t rightOptoFilterUs = OPTO_FILTER_US;
+volatile uint32_t leftOptoRawEdges = 0;
+volatile uint32_t rightOptoRawEdges = 0;
+volatile uint32_t leftOptoAccepted = 0;
+volatile uint32_t rightOptoAccepted = 0;
+volatile uint32_t leftOptoRejected = 0;
+volatile uint32_t rightOptoRejected = 0;
+
+uint32_t optoLeftBootstrapFilterForPwm(uint8_t pwm) {
+  if (pwm >= 40) return 5600UL;
+  if (pwm >= 35) return 6700UL;
+  if (pwm >= 30) return 7800UL;
+  if (pwm >= 25) return 9800UL;
+  if (pwm >= 20) return 12800UL;
+  return OPTO_FILTER_MAX_US;
+}
+
+uint32_t optoRightBootstrapFilterForPwm(uint8_t pwm) {
+  if (pwm >= 40) return 6500UL;
+  if (pwm >= 35) return 7500UL;
+  if (pwm >= 30) return 8800UL;
+  if (pwm >= 25) return 11000UL;
+  if (pwm >= 20) return 14000UL;
+  return OPTO_FILTER_MAX_US;
+}
 
 void leftOptoISR() {
-  leftOptoCount++;
+  const uint32_t now = micros();
+  leftOptoRawEdges++;
+  if ((uint32_t)(now - leftOptoLastPulseUs) >= leftOptoFilterUs) {
+    leftOptoCount++;
+    leftOptoAccepted++;
+    leftOptoLastPulseUs = now;
+  } else {
+    leftOptoRejected++;
+  }
 }
 
 void rightOptoISR() {
-  rightOptoCount++;
+  const uint32_t now = micros();
+  rightOptoRawEdges++;
+  if ((uint32_t)(now - rightOptoLastPulseUs) >= rightOptoFilterUs) {
+    rightOptoCount++;
+    rightOptoAccepted++;
+    rightOptoLastPulseUs = now;
+  } else {
+    rightOptoRejected++;
+  }
 }
 #endif
 
@@ -265,6 +312,12 @@ void setLeftMotor(int pwm, bool direction) {
     pwm = MIN_PWM_VALUE;
   }
   
+  #ifdef ENABLE_ADAPTIVE_OPTO_FILTER
+  if (leftMotor.pwm == 0 && pwm > 0) {
+    leftOptoFilterUs = optoLeftBootstrapFilterForPwm((uint8_t)pwm);
+  }
+  #endif
+
   // Actualizar estado
   leftMotor.pwm = pwm;
   leftMotor.direction = direction;
@@ -299,6 +352,12 @@ void setRightMotor(int pwm, bool direction) {
     pwm = MIN_PWM_RIGHT_WORKING;
   }
   
+  #ifdef ENABLE_ADAPTIVE_OPTO_FILTER
+  if (rightMotor.pwm == 0 && pwm > 0) {
+    rightOptoFilterUs = optoRightBootstrapFilterForPwm((uint8_t)pwm);
+  }
+  #endif
+
   // Actualizar estado
   rightMotor.pwm = pwm;
   rightMotor.direction = direction;
@@ -343,7 +402,7 @@ void enableLeftMotor(bool enable) {
   leftMotor.enabled = enable;
   
   if (!enable) {
-    analogWrite(PWM_LEFT_MOTOR, 0);
+    motor_pwm_write(PWM_LEFT_MOTOR, 0);
     pinMode(STOP_LEFT_MOTOR, OUTPUT);
     digitalWrite(STOP_LEFT_MOTOR, LOW); // LOW = DISABLE motor
   } else {
@@ -361,8 +420,11 @@ void enableRightMotor(bool enable) {
   rightMotor.enabled = enable;
   
   if (!enable) {
-    analogWrite(PWM_RIGHT_MOTOR, 0);
+    motor_pwm_write(PWM_RIGHT_MOTOR, 0);
+    pinMode(STOP_RIGHT_MOTOR, OUTPUT);
     digitalWrite(STOP_RIGHT_MOTOR, LOW); // LOW = DISABLE motor
+  } else {
+    pinMode(STOP_RIGHT_MOTOR, INPUT);    // FLOAT = ENABLE motor
   }
   
   DEBUG_PRINT("Motor derecho ");
@@ -386,7 +448,7 @@ void brakeLeftMotor(bool brake) {
   if (brake) {
     pinMode(BRAKE_LEFT_MOTOR, OUTPUT);
     digitalWrite(BRAKE_LEFT_MOTOR, HIGH);  // HIGH = BRAKE ACTIVO
-    analogWrite(PWM_LEFT_MOTOR, 0);
+    motor_pwm_write(PWM_LEFT_MOTOR, 0);
   } else {
     pinMode(BRAKE_LEFT_MOTOR, INPUT);      // FLOAT = BRAKE DESACTIVADO
   }
@@ -404,7 +466,7 @@ void brakeRightMotor(bool brake) {
   if (brake) {
     pinMode(BRAKE_RIGHT_MOTOR, OUTPUT);
     digitalWrite(BRAKE_RIGHT_MOTOR, HIGH);  // HIGH = BRAKE ACTIVO
-    analogWrite(PWM_RIGHT_MOTOR, 0);
+    motor_pwm_write(PWM_RIGHT_MOTOR, 0);
   } else {
     pinMode(BRAKE_RIGHT_MOTOR, INPUT);      // FLOAT = BRAKE DESACTIVADO
   }
@@ -430,7 +492,7 @@ void brakeAllMotors(bool brake) {
  */
 void moveForward(int speed) {
   speed = constrain(speed, 0, MAX_PWM_VALUE);
-  setBothMotors(speed, true, speed, true);
+  setBothMotors(speed, true, speed, false);
   DEBUG_PRINT("Avanzando a velocidad: ");
   DEBUG_PRINTLN(speed);
 }
@@ -440,7 +502,7 @@ void moveForward(int speed) {
  */
 void moveBackward(int speed) {
   speed = constrain(speed, 0, MAX_PWM_VALUE);
-  setBothMotors(speed, false, speed, false);
+  setBothMotors(speed, false, speed, true);
   DEBUG_PRINT("Retrocediendo a velocidad: ");
   DEBUG_PRINTLN(speed);
 }
@@ -452,7 +514,7 @@ void turnLeft(int leftSpeed, int rightSpeed) {
   leftSpeed = constrain(leftSpeed, 0, MAX_PWM_VALUE);
   rightSpeed = constrain(rightSpeed, 0, MAX_PWM_VALUE);
   
-  setBothMotors(leftSpeed, true, rightSpeed, true);
+  setBothMotors(leftSpeed, true, rightSpeed, false);
   
   DEBUG_PRINT("Girando izquierda - IZQ:");
   DEBUG_PRINT(leftSpeed);
@@ -467,7 +529,7 @@ void turnRight(int leftSpeed, int rightSpeed) {
   leftSpeed = constrain(leftSpeed, 0, MAX_PWM_VALUE);
   rightSpeed = constrain(rightSpeed, 0, MAX_PWM_VALUE);
   
-  setBothMotors(leftSpeed, true, rightSpeed, true);
+  setBothMotors(leftSpeed, true, rightSpeed, false);
   
   DEBUG_PRINT("Girando derecha - IZQ:");
   DEBUG_PRINT(leftSpeed);

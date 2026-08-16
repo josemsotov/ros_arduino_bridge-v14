@@ -1,0 +1,301 @@
+{
+  "results": [
+    {
+      "step": "zero_baseline",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": 0.0,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 0.0,
+        "Rpwm": 0.0,
+        "Lrpm": 0.0,
+        "Rrpm": 0.0,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        0,
+        0
+      ],
+      "encoder_delta_raw": [
+        0,
+        0
+      ],
+      "odom_avg": {
+        "linear": 0.0,
+        "angular": 0.0
+      },
+      "scan_front_min_avg": null,
+      "samples": 30
+    },
+    {
+      "step": "forward_slow",
+      "ros_cmd": {
+        "linear": 0.06,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": 0.06,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 10.0,
+        "Rpwm": 60.0,
+        "Lrpm": 16.25,
+        "Rrpm": 0.0,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        17,
+        0
+      ],
+      "encoder_delta_raw": [
+        17,
+        0
+      ],
+      "odom_avg": {
+        "linear": 0.0989,
+        "angular": -0.2412
+      },
+      "scan_front_min_avg": 1.894,
+      "samples": 24
+    },
+    {
+      "step": "stop_after_forward",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": 0.0,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 0.0,
+        "Rpwm": 0.0,
+        "Lrpm": 0.0,
+        "Rrpm": 0.0,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        0,
+        0
+      ],
+      "encoder_delta_raw": [
+        1,
+        0
+      ],
+      "odom_avg": {
+        "linear": 0.007,
+        "angular": -0.017
+      },
+      "scan_front_min_avg": 1.7868,
+      "samples": 20
+    },
+    {
+      "step": "backward_slow",
+      "ros_cmd": {
+        "linear": -0.06,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": -0.0575,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 12.0,
+        "Rpwm": 58.5,
+        "Lrpm": 22.625,
+        "Rrpm": 24.5833,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        22,
+        25
+      ],
+      "encoder_delta_raw": [
+        22,
+        25
+      ],
+      "odom_avg": {
+        "linear": 0.2734,
+        "angular": 0.0426
+      },
+      "scan_front_min_avg": 1.7545,
+      "samples": 24
+    },
+    {
+      "step": "stop_after_backward",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": -0.003,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 0.9,
+        "Rpwm": 3.0,
+        "Lrpm": 1.3,
+        "Rrpm": 3.3,
+        "pwm_ok": false
+      },
+      "encoder_delta_filtered": [
+        0,
+        0
+      ],
+      "encoder_delta_raw": [
+        3,
+        7
+      ],
+      "odom_avg": {
+        "linear": 0.0209,
+        "angular": -0.017
+      },
+      "scan_front_min_avg": 1.7612,
+      "samples": 20
+    },
+    {
+      "step": "turn_left_slow",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": 0.18
+      },
+      "arduino_echo_avg": {
+        "linear": 0.0,
+        "angular": 0.1728,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 9.76,
+        "Rpwm": 57.6,
+        "Lrpm": 15.6,
+        "Rrpm": 0.96,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        16,
+        1
+      ],
+      "encoder_delta_raw": [
+        16,
+        1
+      ],
+      "odom_avg": {
+        "linear": 0.1285,
+        "angular": -0.2861
+      },
+      "scan_front_min_avg": 1.8068,
+      "samples": 25
+    },
+    {
+      "step": "stop_after_left",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": 0.0,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 0.0,
+        "Rpwm": 0.0,
+        "Lrpm": 0.0,
+        "Rrpm": 0.0,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        0,
+        0
+      ],
+      "encoder_delta_raw": [
+        1,
+        7
+      ],
+      "odom_avg": {
+        "linear": 0.007,
+        "angular": -0.017
+      },
+      "scan_front_min_avg": 1.8583,
+      "samples": 20
+    },
+    {
+      "step": "turn_right_slow",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": -0.18
+      },
+      "arduino_echo_avg": {
+        "linear": 0.0,
+        "angular": -0.1725,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 9.875,
+        "Rpwm": 57.5,
+        "Lrpm": 12.9167,
+        "Rrpm": 0.0,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        13,
+        0
+      ],
+      "encoder_delta_raw": [
+        13,
+        0
+      ],
+      "odom_avg": {
+        "linear": 0.0756,
+        "angular": -0.1845
+      },
+      "scan_front_min_avg": 1.7581,
+      "samples": 24
+    },
+    {
+      "step": "final_stop",
+      "ros_cmd": {
+        "linear": 0.0,
+        "angular": 0.0
+      },
+      "arduino_echo_avg": {
+        "linear": 0.0,
+        "angular": 0.0,
+        "ok": true
+      },
+      "motor_avg": {
+        "Lpwm": 0.0,
+        "Rpwm": 0.0,
+        "Lrpm": 0.0,
+        "Rrpm": 0.0,
+        "pwm_ok": true
+      },
+      "encoder_delta_filtered": [
+        0,
+        0
+      ],
+      "encoder_delta_raw": [
+        0,
+        0
+      ],
+      "odom_avg": {
+        "linear": 0.0047,
+        "angular": -0.0114
+      },
+      "scan_front_min_avg": 1.7809,
+      "samples": 30
+    }
+  ]
+}

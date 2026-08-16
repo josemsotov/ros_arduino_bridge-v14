@@ -3,8 +3,16 @@
 
 # Arduino build output
 build/
+build_output/
 MOTOR-INTERFACE-V-13/build/
 MOTOR-INTERFACE-V-13/slprj/
+
+# Local backups and credentials
+BACKUPS/
+.env
+*.env
+!.env.example
+!*.env.example
 
 # Arduino IDE / ArduinoIDE project files
 *.prj
@@ -14,6 +22,10 @@ MOTOR-INTERFACE-V-13/resources/
 __pycache__/
 *.pyc
 *.pyo
+
+# Local robot camera diagnostics (may contain personal images)
+.codex_runtime_fix/pi8_face_static/*.jpg
+.codex_runtime_fix/pi8_safety_net/*.jpg
 
 # VS Code
 .vscode/

@@ -26,7 +26,7 @@
  * SISTEMA PID
  * Control automático de velocidad con retroalimentación
  * NOTA: Si PID_CONTROL está desactivado, todas las opciones PID se desactivan automáticamente
- */
+ */          
 //#define ENABLE_PID_CONTROL             // Activar control PID
 
 #ifdef ENABLE_PID_CONTROL
@@ -40,7 +40,7 @@
  * NOTA: DUAL_SENSOR_MODE solo se activa si ambos sensores están habilitados
  */
 #define ENABLE_HALL_SENSORS           // Activar sensores Hall
-//#define ENABLE_OPTO_ENCODERS          // Activar OptoEncoders
+#define ENABLE_OPTO_ENCODERS           // Activar OptoEncoders en D2/D3
 
 #if defined(ENABLE_HALL_SENSORS) && defined(ENABLE_OPTO_ENCODERS)
   #define ENABLE_DUAL_SENSOR_MODE     // Usar ambos sensores simultáneamente
@@ -61,6 +61,21 @@
 #ifdef ENABLE_MPU9250
   //#define ENABLE_MPU_DEBUG          // Debug información MPU (DESACTIVADO para ahorrar RAM)
   #define ENABLE_MPU_AUTO_CALIBRATION // Calibración automática al inicio
+
+  // Closed-loop orientation control for ROS2 velocity commands.
+  #define ENABLE_MPU_HEADING_CONTROL
+  // The existing differential-drive convention produces negative raw MPU yaw
+  // for a positive angular command. Normalize MPU feedback to command space.
+  #define HEADING_GYRO_SIGN             -1.0f
+  #define HEADING_HOLD_KP                0.035f
+  #define HEADING_RATE_KP                0.30f
+  #define HEADING_MAX_CORRECTION_RAD_S   0.35f
+  #define HEADING_ANGULAR_DEADBAND_RAD_S 0.04f
+  #define HEADING_LINEAR_ACTIVE_M_S      0.03f
+  #define HEADING_ERROR_DEADBAND_DEG     0.8f
+  #define HEADING_GYRO_FILTER_ALPHA      0.18f
+  #define HEADING_GYRO_BIAS_RAD_S       -0.00024f
+  #define HEADING_GYRO_NOISE_RAD_S       0.004f
 #endif
 
 /**
@@ -137,6 +152,10 @@
  * - Compatible con nav2 stack
  * NOTA: Usa puerto Serial principal (115200 baud)
  */
+#define ENABLE_GPS                    // Activar GPS fisico del robot
+#define GPS_BAUD_RATE                 9600
+#define GPS_REPORT_INTERVAL_MS        1000
+
 #define ENABLE_ROS2_BRIDGE              // Activar bridge ROS2
 
 #ifdef ENABLE_ROS2_BRIDGE
@@ -227,7 +246,14 @@
 #endif
 
 #ifdef ENABLE_OPTO_ENCODERS  
-  #define PPR_OPTO_ENCODERS     40    // Pulsos por revolución OptoEncoders
+  #define PPR_OPTO_ENCODERS     60    // Pulsos por revolución OptoEncoders
+  #define OPTO_FILTER_US       6000UL // Calibrado: mejor error Hall/opto con motores energizados
+  #define ENABLE_ADAPTIVE_OPTO_FILTER
+  #define OPTO_FILTER_LEFT_MIN_US   5500UL
+  #define OPTO_FILTER_RIGHT_MIN_US  6000UL
+  #define OPTO_FILTER_MAX_US       15000UL
+  #define OPTO_FILTER_LEFT_HALL_PERMILLE  450UL
+  #define OPTO_FILTER_RIGHT_HALL_PERMILLE 520UL
 #endif
 
 /**

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Smart Trolley Touch Interface
+Comment=Open the robot touch operator interface
+Exec=/home/josemsotov/SMART_TROLLEY_INSTALLATION/scripts/start_operator_kiosk.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true

@@ -75,8 +75,8 @@
  * OPTOENCODERS - RETROALIMENTACIÓN POSICIÓN  
  */
 #ifdef ENABLE_OPTO_ENCODERS
-  #define OPTO_LEFT_MOTOR   20    // Interrupción 3 - OptoEncoder izquierdo
-  #define OPTO_RIGHT_MOTOR  21    // Interrupción 2 - OptoEncoder derecho
+  #define OPTO_LEFT_MOTOR    3    // INT1 - OptoEncoder izquierdo
+  #define OPTO_RIGHT_MOTOR   2    // INT0 - OptoEncoder derecho
 #endif
 
 /**
@@ -98,6 +98,12 @@
 #ifdef ENABLE_CURRENT_SENSORS
   #define CURRENT_RIGHT_PIN  A3   // ACS712 motor derecho
   #define CURRENT_LEFT_PIN   A4   // ACS712 motor izquierdo
+#endif
+
+#ifdef ENABLE_GPS
+  #define GPS_SERIAL         Serial3
+  #define GPS_TX_PIN         14
+  #define GPS_RX_PIN         15
 #endif
 
 //===========================================================================
@@ -154,8 +160,8 @@
 #endif
 
 #ifdef ENABLE_OPTO_ENCODERS  
-  #define OPTO_LEFT_INTERRUPT   3   // digitalPinToInterrupt(20)
-  #define OPTO_RIGHT_INTERRUPT  2   // digitalPinToInterrupt(21)
+  #define OPTO_LEFT_INTERRUPT   1   // digitalPinToInterrupt(3)
+  #define OPTO_RIGHT_INTERRUPT  0   // digitalPinToInterrupt(2)
 #endif
 
 //===========================================================================
