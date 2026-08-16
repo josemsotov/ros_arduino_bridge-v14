@@ -59,6 +59,11 @@ void readSerialCommands() {
     if (inChar == '\n' || inChar == '\r') {
       if (serialBuffer.length() > 0) {
         commandReady = true;
+        // Process exactly one complete line per main-loop iteration. Without
+        // this break, multiple commands already waiting in the USB buffer are
+        // concatenated before processSerialCommand() can clear serialBuffer
+        // (for example: "hb off", "hc on", then "v 0 0").
+        break;
       }
     } else if (inChar >= 32 && inChar <= 126) {  // Caracteres imprimibles
       if (serialBuffer.length() < MAX_COMMAND_LENGTH) {

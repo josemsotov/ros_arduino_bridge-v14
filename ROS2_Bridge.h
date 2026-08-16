@@ -70,6 +70,103 @@ static bool ros2_pwm_dir_right = true;
 static int ros2_pwm_applied_left = -1;
 static int ros2_pwm_applied_right = -1;
 
+#if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
+// Starts disabled until gyro sign is confirmed once on the physical robot.
+// Enable at runtime with `hc on`; the setting will become the default after
+// the protected bench calibration.
+static bool heading_control_enabled = false;
+static bool heading_hold_active = false;
+static float heading_reference_deg = 0.0f;
+static float heading_last_error_deg = 0.0f;
+static float heading_last_w_raw = 0.0f;
+static float heading_last_w_meas = 0.0f;
+static float heading_last_w_output = 0.0f;
+static float heading_gyro_bias_rad_s = HEADING_GYRO_BIAS_RAD_S;
+static float heading_gyro_alpha = HEADING_GYRO_FILTER_ALPHA;
+static float heading_gyro_noise_rad_s = HEADING_GYRO_NOISE_RAD_S;
+static float heading_gyro_filtered_rad_s = 0.0f;
+
+float heading_wrap_deg(float angle) {
+  while (angle > 180.0f) angle -= 360.0f;
+  while (angle < -180.0f) angle += 360.0f;
+  return angle;
+}
+
+float heading_control_yaw_deg() {
+  return HEADING_GYRO_SIGN * mpu_getYaw();
+}
+
+void heading_control_reset() {
+  heading_hold_active = false;
+  heading_reference_deg = heading_control_yaw_deg();
+  heading_last_error_deg = 0.0f;
+  heading_last_w_raw = 0.0f;
+  heading_last_w_meas = 0.0f;
+  heading_last_w_output = 0.0f;
+  heading_gyro_filtered_rad_s = 0.0f;
+}
+
+float heading_filter_gyro(float raw_rad_s) {
+  float unbiased = raw_rad_s - heading_gyro_bias_rad_s;
+  float alpha = constrain(heading_gyro_alpha, 0.02f, 1.0f);
+  heading_gyro_filtered_rad_s +=
+    alpha * (unbiased - heading_gyro_filtered_rad_s);
+  if (fabsf(heading_gyro_filtered_rad_s) <= heading_gyro_noise_rad_s) {
+    return 0.0f;
+  }
+  return heading_gyro_filtered_rad_s;
+}
+
+float heading_control_apply(float linear, float angular_request) {
+  if (!mpu_isReady()) {
+    heading_hold_active = false;
+    heading_last_w_output = angular_request;
+    return angular_request;
+  }
+
+  const float gyro_raw_rad_s = HEADING_GYRO_SIGN * mpu_getGyroZ() * (PI / 180.0f);
+  heading_last_w_raw = gyro_raw_rad_s;
+  const float gyro_rad_s = heading_filter_gyro(gyro_raw_rad_s);
+  heading_last_w_meas = gyro_rad_s;
+  if (!heading_control_enabled) {
+    heading_hold_active = false;
+    heading_last_w_output = angular_request;
+    return angular_request;
+  }
+
+  // Intentional steering has priority; close its angular-rate loop.
+  if (fabsf(angular_request) >= HEADING_ANGULAR_DEADBAND_RAD_S) {
+    heading_hold_active = false;
+    float rate_error = angular_request - gyro_rad_s;
+    float correction = constrain(HEADING_RATE_KP * rate_error,
+      -HEADING_MAX_CORRECTION_RAD_S, HEADING_MAX_CORRECTION_RAD_S);
+    heading_last_error_deg = 0.0f;
+    heading_last_w_output = constrain(angular_request + correction,
+      -ROS2_MAX_ANGULAR_VEL, ROS2_MAX_ANGULAR_VEL);
+    return heading_last_w_output;
+  }
+
+  // At rest, do not fight gyro noise. Capture yaw when translation starts.
+  if (fabsf(linear) < HEADING_LINEAR_ACTIVE_M_S) {
+    heading_control_reset();
+    return angular_request;
+  }
+  if (!heading_hold_active) {
+    heading_reference_deg = heading_control_yaw_deg();
+    heading_hold_active = true;
+  }
+
+  float error_deg = heading_wrap_deg(
+    heading_reference_deg - heading_control_yaw_deg());
+  if (fabsf(error_deg) < HEADING_ERROR_DEADBAND_DEG) error_deg = 0.0f;
+  heading_last_error_deg = error_deg;
+  float correction = HEADING_HOLD_KP * error_deg - HEADING_RATE_KP * gyro_rad_s;
+  heading_last_w_output = constrain(correction,
+    -HEADING_MAX_CORRECTION_RAD_S, HEADING_MAX_CORRECTION_RAD_S);
+  return heading_last_w_output;
+}
+#endif
+
 int ros2_time_proportioned_pwm(float demand, int working_pwm, unsigned long phase) {
   (void)phase;
   if (demand <= 0.0f) return 0;
@@ -100,6 +197,9 @@ void ros2_clear_pwm_demands() {
   ros2_pwm_demand_right = 0.0f;
   ros2_pwm_applied_left = -1;
   ros2_pwm_applied_right = -1;
+#if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
+  heading_control_reset();
+#endif
 }
 
 // Extern al Balance_Controller (incluido después): base de velocidad del usuario
@@ -211,9 +311,14 @@ void ros2_processCmdVel(String cmd) {
       // ── CINEMATICA: signo de velocidad por rueda ──────────────────────────
       // v_left  = v + w*L/2   (giro CCW positivo → rueda izq mas rapida)
       // v_right = v - w*L/2   (giro CCW positivo → rueda der mas lenta)
+      float angular_controlled = angular;
+      #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
+      angular_controlled = heading_control_apply(linear, angular);
+      #endif
+
       const float wb2 = WHEEL_BASE_DISTANCE_M / 2.0f;
-      float v_left_raw  = linear + angular * wb2;
-      float v_right_raw = linear - angular * wb2;
+      float v_left_raw  = linear + angular_controlled * wb2;
+      float v_right_raw = linear - angular_controlled * wb2;
       bool  cmd_dir_left  = (v_left_raw  >= 0.0f);  // direccion comandada izq
       bool  cmd_dir_right = (v_right_raw >= 0.0f);  // direccion comandada der
 
@@ -272,7 +377,7 @@ void ros2_processCmdVel(String cmd) {
 
       // Speed-matching Hall: corrige asimetria RPM en linea recta
       if (cmd_dir_left == cmd_dir_right &&
-          fabsf(angular) < 0.05f &&
+          fabsf(angular_controlled) < 0.05f &&
           l_moving && r_moving &&
           currentSpeedLeftHall  > 3.0f &&
           currentSpeedRightHall > 3.0f &&
@@ -304,6 +409,12 @@ void ros2_processCmdVel(String cmd) {
       {
         Serial.print("T lin="); Serial.print(linear, 3);
         Serial.print(" ang=");  Serial.print(angular, 3);
+#if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
+        Serial.print(" hcw=");  Serial.print(angular_controlled, 3);
+        Serial.print(" hce=");  Serial.print(heading_last_error_deg, 1);
+        Serial.print(" gyr=");  Serial.print(heading_last_w_raw, 5);
+        Serial.print(" gyz=");  Serial.print(heading_last_w_meas, 3);
+#endif
         Serial.print(" Lpwm="); Serial.print(abs_left);
         Serial.print(" Rpwm="); Serial.print(abs_right);
         Serial.print(" Lrpm="); Serial.print((int)currentSpeedLeftHall);
@@ -351,6 +462,22 @@ void ros2_processStatusRequest() {
   Serial.println(ros2_status);
 }
 
+// Lectura independiente: "o <pulsos_izq> <pulsos_der>".
+void ros2_processOptoRequest() {
+  #ifdef ENABLE_OPTO_ENCODERS
+    noInterrupts();
+    uint32_t l = leftOptoCount;
+    uint32_t r = rightOptoCount;
+    interrupts();
+    Serial.print("o ");
+    Serial.print(l);
+    Serial.print(" ");
+    Serial.println(r);
+  #else
+    Serial.println("o 0 0");
+  #endif
+}
+
 // Forward declarations de módulos que se incluyen después
 #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
 void hoverboard_processCommand(String args);
@@ -367,6 +494,57 @@ void ros2_processCommand(String cmd) {
     case 'v':
       ros2_processCmdVel(cmd);
       break;
+
+#if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
+    case 'h': {
+      // Preserve the existing hoverboard command family.
+      #if defined(ENABLE_HOVERBOARD_MODE)
+      if (cmd.startsWith("hb")) {
+        String hb_args = cmd.length() > 3 ? cmd.substring(3) : "";
+        hoverboard_processCommand(hb_args);
+        break;
+      }
+      #endif
+      // hc on|off|reset|stat|filter
+      if (!cmd.startsWith("hc")) break;
+      String args = cmd.substring(2);
+      args.trim();
+      if (args == "on") {
+        heading_control_enabled = true;
+        heading_control_reset();
+      } else if (args == "off") {
+        heading_control_enabled = false;
+        heading_control_reset();
+      } else if (args == "reset") {
+        heading_control_reset();
+      } else if (args.startsWith("filter ")) {
+        String values = args.substring(7);
+        int sp1 = values.indexOf(' ');
+        int sp2 = values.indexOf(' ', sp1 + 1);
+        if (sp1 > 0 && sp2 > sp1) {
+          heading_gyro_bias_rad_s = values.substring(0, sp1).toFloat();
+          heading_gyro_alpha = constrain(
+            values.substring(sp1 + 1, sp2).toFloat(), 0.02f, 1.0f);
+          heading_gyro_noise_rad_s = constrain(
+            values.substring(sp2 + 1).toFloat(), 0.0f, 0.20f);
+          heading_control_reset();
+        }
+      }
+      Serial.print("hc enabled="); Serial.print(heading_control_enabled ? 1 : 0);
+      Serial.print(" hold="); Serial.print(heading_hold_active ? 1 : 0);
+      Serial.print(" ref="); Serial.print(heading_reference_deg, 2);
+      Serial.print(" yaw="); Serial.print(heading_control_yaw_deg(), 2);
+      Serial.print(" err="); Serial.print(heading_last_error_deg, 2);
+      Serial.print(" raw="); Serial.print(
+        HEADING_GYRO_SIGN * mpu_getGyroZ() * (PI / 180.0f), 5);
+      Serial.print(" gyro="); Serial.print(heading_gyro_filtered_rad_s, 5);
+      Serial.print(" bias="); Serial.print(heading_gyro_bias_rad_s, 5);
+      Serial.print(" alpha="); Serial.print(heading_gyro_alpha, 3);
+      Serial.print(" noise="); Serial.print(heading_gyro_noise_rad_s, 5);
+      Serial.print(" out="); Serial.println(heading_last_w_output, 3);
+      break;
+    }
+#endif
 
     case 'k': {
       // k <kp_v> [ki_v]  — cambia Kp_v y opcionalmente Ki_v en runtime
@@ -447,6 +625,10 @@ void ros2_processCommand(String cmd) {
       rightHallTotal = 0;
       leftHallCount = 0;
       rightHallCount = 0;
+      #ifdef ENABLE_OPTO_ENCODERS
+      leftOptoCount = 0;
+      rightOptoCount = 0;
+      #endif
       interrupts();
       if (side == 'L') {
         digitalWrite(DIR_LEFT_MOTOR, HIGH);
@@ -461,12 +643,140 @@ void ros2_processCommand(String cmd) {
       noInterrupts();
       uint32_t q_left = leftHallTotal;
       uint32_t q_right = rightHallTotal;
+      #ifdef ENABLE_OPTO_ENCODERS
+      uint32_t q_opto_left = leftOptoCount;
+      uint32_t q_opto_right = rightOptoCount;
+      #endif
       interrupts();
       setStateInhabilitado();
       Serial.print("q OK side="); Serial.print(side);
       Serial.print(" pwm="); Serial.print(test_pwm);
       Serial.print(" L="); Serial.print(q_left);
-      Serial.print(" R="); Serial.println(q_right);
+      Serial.print(" R="); Serial.print(q_right);
+      #ifdef ENABLE_OPTO_ENCODERS
+      Serial.print(" OL="); Serial.print(q_opto_left);
+      Serial.print(" OR="); Serial.println(q_opto_right);
+      #else
+      Serial.println();
+      #endif
+      break;
+    }
+    case 'j': {
+      // j <microsegundos> - ajuste temporal del filtro de optoencoders.
+      // Solo se cambia con los motores detenidos y queda limitado a un rango seguro.
+      #ifdef ENABLE_OPTO_ENCODERS
+      int sp = cmd.indexOf(' ');
+      if (sp < 0) {
+        Serial.print("j OK us="); Serial.println(optoFilterUs);
+        break;
+      }
+      uint32_t requested = (uint32_t)cmd.substring(sp + 1).toInt();
+      requested = constrain(requested, 100UL, 20000UL);
+      setLeftMotor(0, true);
+      setRightMotor(0, false);
+      noInterrupts();
+      optoFilterUs = requested;
+      leftOptoLastPulseUs = 0;
+      rightOptoLastPulseUs = 0;
+      interrupts();
+      Serial.print("j OK us="); Serial.println(requested);
+      #else
+      Serial.println("j FAIL opto_disabled");
+      #endif
+      break;
+    }
+    case 'u': {
+      // u: una revolucion cerrada por optoencoder (PPR_OPTO_ENCODERS).
+      // Cada motor se detiene individualmente al alcanzar el objetivo.
+      #ifdef ENABLE_OPTO_ENCODERS
+      uint32_t target = PPR_OPTO_ENCODERS;
+      int target_sep = cmd.indexOf(' ');
+      if (target_sep > 0) {
+        target = constrain(cmd.substring(target_sep + 1).toInt(), 1, 600);
+      }
+      const uint8_t base_pwm = 40;
+      const uint8_t min_pwm = 24;
+      const unsigned long timeout_ms = 8000;
+
+      setLeftMotor(0, true);
+      setRightMotor(0, false);
+      if (currentRobotState != STATE_HABILITADO) {
+        setStateHabilitado();
+        delay(50);
+      }
+      noInterrupts();
+      leftOptoCount = 0;
+      rightOptoCount = 0;
+      leftHallTotal = 0;
+      rightHallTotal = 0;
+      leftHallCount = 0;
+      rightHallCount = 0;
+      interrupts();
+
+      unsigned long started = millis();
+      bool left_done = false;
+      bool right_done = false;
+      while ((!left_done || !right_done) && millis() - started < timeout_ms) {
+        noInterrupts();
+        uint32_t ol = leftOptoCount;
+        uint32_t oright = rightOptoCount;
+        interrupts();
+        left_done = ol >= target;
+        right_done = oright >= target;
+
+        int32_t error = (int32_t)ol - (int32_t)oright;
+        int left_pwm = base_pwm;
+        int right_pwm = base_pwm;
+        if (error > 1) left_pwm -= min((int32_t)12, error * 2);
+        if (error < -1) right_pwm -= min((int32_t)12, -error * 2);
+        uint32_t left_remaining = ol < target ? target - ol : 0;
+        uint32_t right_remaining = oright < target ? target - oright : 0;
+        if (left_remaining <= 8) left_pwm = min(left_pwm, 26);
+        else if (left_remaining <= 20) left_pwm = min(left_pwm, 32);
+        if (right_remaining <= 8) right_pwm = min(right_pwm, 26);
+        else if (right_remaining <= 20) right_pwm = min(right_pwm, 32);
+        left_pwm = constrain(left_pwm, min_pwm, base_pwm);
+        right_pwm = constrain(right_pwm, min_pwm, base_pwm);
+
+        if (left_done) motor_pwm_write(PWM_LEFT_MOTOR, 0);
+        else {
+          digitalWrite(DIR_LEFT_MOTOR, HIGH);
+          motor_pwm_write(PWM_LEFT_MOTOR, left_pwm);
+        }
+        if (right_done) motor_pwm_write(PWM_RIGHT_MOTOR, 0);
+        else {
+          digitalWrite(DIR_RIGHT_MOTOR, LOW);
+          motor_pwm_write(PWM_RIGHT_MOTOR, right_pwm);
+        }
+        delay(2);
+      }
+
+      motor_pwm_write(PWM_LEFT_MOTOR, 0);
+      motor_pwm_write(PWM_RIGHT_MOTOR, 0);
+      noInterrupts();
+      uint32_t final_ol = leftOptoCount;
+      uint32_t final_or = rightOptoCount;
+      uint32_t final_hl = leftHallTotal;
+      uint32_t final_hr = rightHallTotal;
+      interrupts();
+      unsigned long elapsed = millis() - started;
+      setStateInhabilitado();
+
+      Serial.print("u ");
+      Serial.print((final_ol >= target && final_or >= target) ? "OK" : "TIMEOUT");
+      Serial.print(" target="); Serial.print(target);
+      Serial.print(" OL="); Serial.print(final_ol);
+      Serial.print(" OR="); Serial.print(final_or);
+      Serial.print(" HL="); Serial.print(final_hl);
+      Serial.print(" HR="); Serial.print(final_hr);
+      Serial.print(" errL="); Serial.print((int32_t)final_ol - (int32_t)target);
+      Serial.print(" errR="); Serial.print((int32_t)final_or - (int32_t)target);
+      Serial.print(" revL="); Serial.print((float)final_ol / PPR_OPTO_ENCODERS, 3);
+      Serial.print(" revR="); Serial.print((float)final_or / PPR_OPTO_ENCODERS, 3);
+      Serial.print(" ms="); Serial.println(elapsed);
+      #else
+      Serial.println("u FAIL opto_disabled");
+      #endif
       break;
     }
     case 'd': {
@@ -508,6 +818,10 @@ void ros2_processCommand(String cmd) {
       
     case 'e':
       ros2_processEncoderRequest();
+      break;
+
+    case 'o':
+      ros2_processOptoRequest();
       break;
       
     case 'r':
@@ -840,7 +1154,7 @@ bool ros2_tryProcessCommand(String cmd) {
       ros2_processCommand(cmd);
       return true;
     }
-    else if ((first_char == 'e' || first_char == 'r' || first_char == 's' || first_char == 'c') && cmd.length() == 1) {
+    else if ((first_char == 'e' || first_char == 'o' || first_char == 'r' || first_char == 's' || first_char == 'c') && cmd.length() == 1) {
       ros2_processCommand(cmd);
       return true;
     }
@@ -856,6 +1170,16 @@ bool ros2_tryProcessCommand(String cmd) {
     }
     // q <L|R> <pwm> : prueba individual limitada para calibrar umbral
     else if (first_char == 'q' && cmd.length() >= 5 && cmd.charAt(1) == ' ') {
+      ros2_processCommand(cmd);
+      return true;
+    }
+    // j <us> : ajusta el filtro temporal de optoencoders para calibracion.
+    else if (first_char == 'j' && (cmd.length() == 1 || cmd.charAt(1) == ' ')) {
+      ros2_processCommand(cmd);
+      return true;
+    }
+    // u : una revolucion por motor en lazo cerrado usando optoencoders.
+    else if (first_char == 'u' && (cmd.length() == 1 || cmd.charAt(1) == ' ')) {
       ros2_processCommand(cmd);
       return true;
     }
@@ -879,6 +1203,13 @@ bool ros2_tryProcessCommand(String cmd) {
       ros2_processCommand(cmd);
       return true;
     }
+    // hc [on|off|reset|stat|filter bias alpha deadband]
+    #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
+    else if (first_char == 'h' && cmd.length() >= 2 && cmd.charAt(1) == 'c') {
+      ros2_processCommand(cmd);
+      return true;
+    }
+    #endif
     // hb [on|off|cal|stat] : modo hoverboard
     #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
     else if (first_char == 'h' && cmd.length() >= 2 && cmd.charAt(1) == 'b') {

@@ -178,9 +178,13 @@ void forceStopPinsLowInit() {
   DEBUG_PRINTLN("*** STOP PINS FORZADOS A LOW - MOTORES INHABILITADOS ***");
 }
 
+#ifdef ENABLE_OPTO_ENCODERS
+void leftOptoISR();
+void rightOptoISR();
+#endif
+
 /**
- * INICIALIZAR OPTOENCODERS (DUMMY)
- * Esta función existe para evitar errores si ENABLE_OPTO_ENCODERS no está definido
+ * INICIALIZAR OPTOENCODERS
  */
 void initializeOptoEncoders() {
   #ifdef ENABLE_OPTO_ENCODERS
@@ -188,10 +192,9 @@ void initializeOptoEncoders() {
     pinMode(OPTO_LEFT_MOTOR, INPUT_PULLUP);
     pinMode(OPTO_RIGHT_MOTOR, INPUT_PULLUP);
     
-    // Configurar interrupciones (las funciones ISR están definidas más abajo)
-    // attachInterrupt(digitalPinToInterrupt(OPTO_LEFT_MOTOR), leftOptoISR, RISING);
-    // attachInterrupt(digitalPinToInterrupt(OPTO_RIGHT_MOTOR), rightOptoISR, RISING);
-    // Nota: Interrupciones de OptoEncoders deshabilitadas temporalmente
+    // Contar un pulso por cada flanco ascendente.
+    attachInterrupt(digitalPinToInterrupt(OPTO_LEFT_MOTOR), leftOptoISR, RISING);
+    attachInterrupt(digitalPinToInterrupt(OPTO_RIGHT_MOTOR), rightOptoISR, RISING);
     
     DEBUG_PRINTLN("OptoEncoders inicializados");
   #else
@@ -205,15 +208,26 @@ void initializeOptoEncoders() {
  */
 #ifdef ENABLE_OPTO_ENCODERS
 // Declaraciones externas para variables de OptoEncoders
-extern volatile uint16_t leftOptoCount;
-extern volatile uint16_t rightOptoCount;
+extern volatile uint32_t leftOptoCount;
+extern volatile uint32_t rightOptoCount;
+volatile uint32_t leftOptoLastPulseUs = 0;
+volatile uint32_t rightOptoLastPulseUs = 0;
+volatile uint32_t optoFilterUs = OPTO_FILTER_US;
 
 void leftOptoISR() {
-  leftOptoCount++;
+  const uint32_t now = micros();
+  if ((uint32_t)(now - leftOptoLastPulseUs) >= optoFilterUs) {
+    leftOptoCount++;
+    leftOptoLastPulseUs = now;
+  }
 }
 
 void rightOptoISR() {
-  rightOptoCount++;
+  const uint32_t now = micros();
+  if ((uint32_t)(now - rightOptoLastPulseUs) >= optoFilterUs) {
+    rightOptoCount++;
+    rightOptoLastPulseUs = now;
+  }
 }
 #endif
 

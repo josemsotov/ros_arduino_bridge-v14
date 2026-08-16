@@ -32,8 +32,8 @@ unsigned long systemStartTime = 0;
 #endif
 
 #ifdef ENABLE_OPTO_ENCODERS
-  volatile uint16_t leftOptoCount = 0;
-  volatile uint16_t rightOptoCount = 0;
+  volatile uint32_t leftOptoCount = 0;
+  volatile uint32_t rightOptoCount = 0;
 #endif
 
 /**
@@ -90,6 +90,9 @@ void initializeSystem() {
     DEBUG_PRINTLN("");
     DEBUG_PRINTLN("Inicializando I2C para MPU9250/6500...");
     Wire.begin();
+    // Evitar que un MPU desconectado o un bus SDA/SCL bloqueado congele
+    // todo el firmware. Tras el timeout, Wire reinicia su periférico TWI.
+    Wire.setWireTimeout(3000, true);
     Wire.setClock(400000);  // 400kHz para máxima velocidad
     DEBUG_PRINTLN("I2C iniciado a 400kHz");
     
