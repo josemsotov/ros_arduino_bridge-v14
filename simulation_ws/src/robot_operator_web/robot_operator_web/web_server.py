@@ -75,6 +75,13 @@ class SharedState:
         self.odom: dict[str, Any] = {}
         self.follower_debug: dict[str, Any] = {}
         self.follower_state: dict[str, Any] = {}
+        self.field_state: dict[str, Any] = {
+            "requested_mode": "PAUSE",
+            "effective_mode": "PAUSE",
+            "reason": "waiting_for_supervisor",
+            "monitor_only": True,
+        }
+        self.gps_status: dict[str, Any] = {}
         self.gesture_status: dict[str, Any] = {}
         self.scan: dict[str, Any] = {}
         self.raw_rx = deque(maxlen=80)
@@ -100,6 +107,8 @@ class SharedState:
                 "odom": dict(self.odom),
                 "follower_debug": dict(self.follower_debug),
                 "follower_state": dict(self.follower_state),
+                "field_state": dict(self.field_state),
+                "gps_status": dict(self.gps_status),
                 "gesture_status": dict(self.gesture_status),
                 "scan": dict(self.scan),
                 "raw_rx": list(self.raw_rx),
@@ -131,6 +140,9 @@ class OperatorNode(Node):
         self.pub_follower_request = self.create_publisher(
             Bool, "/operator/follower_request", 10
         )
+        self.pub_field_mode = self.create_publisher(
+            String, "/field/mode_request", 10
+        )
         self.pub_hand_field_arm = self.create_publisher(
             Bool, "/hand_field/arm", 10
         )
@@ -143,6 +155,8 @@ class OperatorNode(Node):
         self.create_subscription(Twist, "/cmd_vel", self.cmd_vel_cb, 20)
         self.create_subscription(String, "/follower/state", self.follower_state_cb, 10)
         self.create_subscription(String, "/stadia/state", self.stadia_state_cb, 10)
+        self.create_subscription(String, "/field/state", self.field_state_cb, 10)
+        self.create_subscription(String, "/gps/status", self.gps_status_cb, 10)
         self.create_subscription(String, "/gesture/status", self.gesture_status_cb, 10)
         self.create_subscription(LaserScan, "/scan", self.scan_cb, 10)
         self.create_subscription(Image, "/camera/rgb/image_raw", self.rgb_cb, 2)
@@ -217,6 +231,25 @@ class OperatorNode(Node):
         with self.state.lock:
             self.state.follower_enabled = (mode == "FOLLOWER")
             self.state.robot_mode = mode
+        field_mode = {
+            "IDLE": "PAUSE",
+            "STADIA": "STADIA",
+            "FOLLOWER": "FOLLOW",
+            "GESTURE": "PAUSE",
+        }[mode]
+        self.publish_field_mode(field_mode)
+
+    def publish_field_mode(self, mode: str) -> None:
+        mode = str(mode).strip().upper()
+        aliases = {"IDLE": "PAUSE", "MANUAL": "STADIA", "FOLLOWER": "FOLLOW"}
+        mode = aliases.get(mode, mode)
+        valid = {
+            "EMERGENCY_STOP", "PAUSE", "STADIA", "FOLLOW",
+            "GO_TO", "RETURN_HOME",
+        }
+        if mode not in valid:
+            raise ValueError(f"Unknown field mode: {mode}")
+        self.pub_field_mode.publish(String(data=mode))
 
     def set_hand_field_armed(self, armed: bool) -> None:
         if not armed:
@@ -327,6 +360,16 @@ class OperatorNode(Node):
         with self.state.lock:
             self.state.follower_state = parse_json_or_raw(msg.data)
             self.state.stamps["follower_state"] = now_s()
+
+    def field_state_cb(self, msg: String) -> None:
+        with self.state.lock:
+            self.state.field_state = parse_json_or_raw(msg.data)
+            self.state.stamps["field_state"] = now_s()
+
+    def gps_status_cb(self, msg: String) -> None:
+        with self.state.lock:
+            self.state.gps_status = parse_key_values(msg.data)
+            self.state.stamps["gps_status"] = now_s()
 
     def gesture_status_cb(self, msg: String) -> None:
         with self.state.lock:
@@ -485,7 +528,17 @@ def create_app(node: OperatorNode, state: SharedState) -> FastAPI:
     @app.post("/api/stop")
     async def api_stop() -> dict[str, Any]:
         node.set_robot_mode("IDLE")
+        node.publish_field_mode("EMERGENCY_STOP")
         return {"ok": True}
+
+    @app.post("/api/field/mode")
+    async def api_field_mode(payload: dict[str, Any]) -> dict[str, Any]:
+        mode = str(payload.get("mode", "PAUSE")).upper()
+        try:
+            node.publish_field_mode(mode)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"ok": True, "requested_mode": mode}
 
     @app.post("/api/hand-field")
     async def api_hand_field(payload: dict[str, Any]) -> dict[str, Any]:

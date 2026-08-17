@@ -653,6 +653,14 @@
               <button id="modeGesture" class="btn-mode">GESTO</button>
               <button id="stop" class="btn-stop">STOP</button>
             </div>
+            <div class="controller-panel">
+              <div class="controller-head">
+                <span>Supervisor de campo</span>
+                <b id="fieldEffective">PAUSE</b>
+              </div>
+              <div id="fieldReason" class="controller-readout">Esperando estado...</div>
+              <div id="fieldReadiness" class="controller-readout">GPS -- · Navegacion -- · Salida --</div>
+            </div>
             <div class="drive">
               <button class="empty"></button>
               <button data-drive="fwd">UP</button>
@@ -940,6 +948,20 @@ function syncModeButtons(mode) {
   $('modeStadia').className   = 'btn-mode' + (mode === 'STADIA'   ? ' active-stadia'   : '');
   $('modeGesture').className  = 'btn-mode' + (mode === 'GESTURE'  ? ' active-gesture'  : '');
 }
+function updateFieldSupervisor(field) {
+  field = field || {};
+  const effective = String(field.effective_mode || 'SIN DATOS').toUpperCase();
+  const requested = String(field.requested_mode || '--').toUpperCase();
+  const readiness = field.readiness || {};
+  $('fieldEffective').textContent = effective;
+  $('fieldEffective').className = effective === 'EMERGENCY_STOP' ? '' :
+    (effective === 'PAUSE' ? 'warn' : 'ok');
+  $('fieldReason').textContent = `Solicitado ${requested} · ${field.reason || 'sin razon'}`;
+  $('fieldReadiness').textContent =
+    `GPS ${readiness.gps_fix ? 'FIX' : 'NO FIX'} · ` +
+    `Navegacion ${readiness.navigation_ready ? 'LISTA' : 'BLOQUEADA'} · ` +
+    `Salida ${field.command_output_enabled ? 'ACTIVA' : 'MONITOR'}`;
+}
 async function applyMode(mode) {
   activeMode = mode;
   syncModeButtons(mode);
@@ -1179,6 +1201,7 @@ function updateRobot(s) {
   $('gesture').textContent = (s.gesture_status && s.gesture_status.state) || '--';
   updateIdentity(s);
   updateGestureTest(s);
+  updateFieldSupervisor(s.field_state);
   if ((!s.golf || !s.golf.position) && s.gps_status) {
     if (s.gps_status.fix === 0 || s.gps_status.fix === '0') {
       $('gpsStatus').textContent = 'GPS SIN FIX';
