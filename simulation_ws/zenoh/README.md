@@ -17,3 +17,5 @@ reiniciar `robot-follower.service`.
 Rollback: deshabilitar el router, retirar los dos drop-ins, ejecutar
 `systemctl --user daemon-reload` y reiniciar ambos servicios. El firmware del
 Arduino no cambia.
+
+El script `pi_rollback_to_fastdds.sh` automatiza exactamente ese rollback.
