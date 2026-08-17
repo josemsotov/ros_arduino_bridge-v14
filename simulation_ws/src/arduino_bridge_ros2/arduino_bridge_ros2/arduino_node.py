@@ -42,7 +42,7 @@ class ArduinoNode(Node):
         self.declare_parameter('baud',      115200)
         self.declare_parameter('wheel_base', 0.82)    # metros entre ruedas
         self.declare_parameter('wheel_dia',  0.20)    # metros diámetro rueda
-        self.declare_parameter('ppr',        45)      # pulsos por revolución
+        self.declare_parameter('ppr',        60)      # pulsos por revolución
         self.declare_parameter('cmd_timeout', 0.50)  # seconds without /cmd_vel
 
         self.port      = self.get_parameter('port').value

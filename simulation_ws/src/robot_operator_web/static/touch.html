@@ -958,7 +958,8 @@ function updateFieldSupervisor(field) {
     (effective === 'PAUSE' ? 'warn' : 'ok');
   $('fieldReason').textContent = `Solicitado ${requested} · ${field.reason || 'sin razon'}`;
   $('fieldReadiness').textContent =
-    `GPS ${readiness.gps_fix ? 'FIX' : 'NO FIX'} · ` +
+    `GPS ${readiness.gps_quality_ok ? 'APTO' : 'NO APTO'} ` +
+    `(${readiness.gps_satellites ?? 0} sat, HDOP ${readiness.gps_hdop ?? '--'}) · ` +
     `Navegacion ${readiness.navigation_ready ? 'LISTA' : 'BLOQUEADA'} · ` +
     `Salida ${field.command_output_enabled ? 'ACTIVA' : 'MONITOR'}`;
 }

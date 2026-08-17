@@ -25,10 +25,13 @@ def select_effective_mode(requested, *, emergency_latched=False,
                           stadia_fresh=False, stadia_connected=False,
                           stadia_mode='', follower_fresh=False,
                           follower_enabled=False, gps_fresh=False,
-                          gps_fix=False, navigation_ready=False):
+                          gps_fix=False, gps_quality_ok=None,
+                          navigation_ready=False):
     """Return ``(mode, reason)`` using fail-closed field priorities."""
     requested = normalize_request(requested)
     stadia_mode = str(stadia_mode).strip().lower()
+    if gps_quality_ok is None:
+        gps_quality_ok = gps_fix
 
     if emergency_latched or requested == 'EMERGENCY_STOP':
         return 'EMERGENCY_STOP', 'emergency_stop_latched'
@@ -67,6 +70,8 @@ def select_effective_mode(requested, *, emergency_latched=False,
             return 'PAUSE', 'gps_state_stale'
         if not gps_fix:
             return 'PAUSE', 'gps_fix_unavailable'
+        if not gps_quality_ok:
+            return 'PAUSE', 'gps_quality_insufficient'
         return requested, 'navigation_ready'
 
     return 'PAUSE', 'fail_closed'

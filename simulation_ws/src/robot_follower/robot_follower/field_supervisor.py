@@ -34,6 +34,9 @@ class FieldSupervisor(Node):
         self.declare_parameter('state_timeout_s', 2.0)
         self.declare_parameter('navigation_ready', False)
         self.declare_parameter('initial_mode', 'PAUSE')
+        self.declare_parameter('gps_min_satellites', 6)
+        self.declare_parameter('gps_max_hdop', 2.5)
+        self.declare_parameter('gps_stable_time_s', 10.0)
 
         self.requested = normalize_request(
             self.get_parameter('initial_mode').value)
@@ -44,6 +47,7 @@ class FieldSupervisor(Node):
         self.last_seen = {'stadia': 0.0, 'follower': 0.0, 'gps': 0.0,
                           'motor': 0.0}
         self.motor_status = ''
+        self.gps_quality_since = None
 
         self.pub_state = self.create_publisher(String, '/field/state', 10)
         self.create_subscription(
@@ -86,6 +90,24 @@ class FieldSupervisor(Node):
     def gps_cb(self, msg):
         self.gps = _tokens(msg.data)
         self._mark('gps')
+        fix = str(self.gps.get('fix', '')).lower() in ('1', 'true')
+        try:
+            satellites = int(float(self.gps.get('sats', 0)))
+            hdop = float(self.gps.get('hdop', 99.9))
+        except (TypeError, ValueError):
+            satellites, hdop = 0, 99.9
+        instant_ok = (
+            fix
+            and satellites >= int(
+                self.get_parameter('gps_min_satellites').value)
+            and 0.0 < hdop <= float(
+                self.get_parameter('gps_max_hdop').value)
+        )
+        if instant_ok:
+            if self.gps_quality_since is None:
+                self.gps_quality_since = time.monotonic()
+        else:
+            self.gps_quality_since = None
 
     def motor_status_cb(self, msg):
         self.motor_status = msg.data
@@ -100,6 +122,20 @@ class FieldSupervisor(Node):
         fresh = {name: self._fresh(name, now) for name in self.last_seen}
         stadia_connected = self.stadia.get('stadia') == 'connected'
         gps_fix = str(self.gps.get('fix', '')).lower() in ('1', 'true')
+        try:
+            gps_satellites = int(float(self.gps.get('sats', 0)))
+            gps_hdop = float(self.gps.get('hdop', 99.9))
+        except (TypeError, ValueError):
+            gps_satellites, gps_hdop = 0, 99.9
+        stable_time = float(self.get_parameter('gps_stable_time_s').value)
+        gps_quality_seconds = (
+            0.0 if self.gps_quality_since is None
+            else max(0.0, now - self.gps_quality_since)
+        )
+        gps_quality_ok = (
+            fresh['gps'] and self.gps_quality_since is not None
+            and gps_quality_seconds >= stable_time
+        )
         effective, reason = select_effective_mode(
             self.requested,
             emergency_latched=self.emergency_latched,
@@ -110,6 +146,7 @@ class FieldSupervisor(Node):
             follower_enabled=bool(self.follower.get('enabled', False)),
             gps_fresh=fresh['gps'],
             gps_fix=gps_fix,
+            gps_quality_ok=gps_quality_ok,
             navigation_ready=bool(
                 self.get_parameter('navigation_ready').value),
         )
@@ -124,6 +161,10 @@ class FieldSupervisor(Node):
                 'stadia_connected': stadia_connected,
                 'follower_enabled': bool(self.follower.get('enabled', False)),
                 'gps_fix': gps_fix,
+                'gps_satellites': gps_satellites,
+                'gps_hdop': gps_hdop,
+                'gps_quality_ok': gps_quality_ok,
+                'gps_quality_seconds': round(gps_quality_seconds, 1),
                 'navigation_ready': bool(
                     self.get_parameter('navigation_ready').value),
             },

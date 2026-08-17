@@ -18,6 +18,7 @@ def generate_launch_description():
     enable_gesture = LaunchConfiguration('enable_gesture')
     enable_follower = LaunchConfiguration('enable_follower')
     enable_field_supervisor = LaunchConfiguration('enable_field_supervisor')
+    enable_cmd_vel_guard = LaunchConfiguration('enable_cmd_vel_guard')
     use_kinect = LaunchConfiguration('use_kinect')
 
     return LaunchDescription([
@@ -38,6 +39,8 @@ def generate_launch_description():
                               description='Start follower control node'),
         DeclareLaunchArgument('enable_field_supervisor', default_value='true',
                               description='Start monitor-only field supervisor'),
+        DeclareLaunchArgument('enable_cmd_vel_guard', default_value='true',
+                              description='Start passive cmd_vel safety observer'),
         DeclareLaunchArgument('use_kinect', default_value='true',
                               description='Use Kinect depth inside follower node'),
         Node(package='arduino_bridge_ros2', executable='arduino_node',
@@ -45,7 +48,7 @@ def generate_launch_description():
              condition=IfCondition(enable_arduino),
              parameters=[{'port':'/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_85438333036351A040D0-if00',
                           'baud':115200,
-                          'wheel_base':0.82,'wheel_dia':0.20,'ppr':45,
+                          'wheel_base':0.82,'wheel_dia':0.20,'ppr':60,
                           'cmd_linear_sign':1.0,
                           'cmd_angular_sign':1.0}]),
         Node(package='ldlidar_stl_ros2', executable='ldlidar_stl_ros2_node',
@@ -80,5 +83,9 @@ def generate_launch_description():
         Node(package='robot_follower', executable='field_supervisor',
              name='field_supervisor', output='screen',
              condition=IfCondition(enable_field_supervisor),
+             parameters=[cfg]),
+        Node(package='robot_follower', executable='cmd_vel_guard',
+             name='cmd_vel_guard', output='screen',
+             condition=IfCondition(enable_cmd_vel_guard),
              parameters=[cfg]),
     ])

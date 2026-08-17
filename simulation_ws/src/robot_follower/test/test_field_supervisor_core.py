@@ -43,8 +43,16 @@ def test_follow_requires_fresh_authorized_and_enabled_states():
 
 @pytest.mark.parametrize('mode_request', ['GO_TO', 'RETURN_HOME'])
 def test_navigation_requires_ready_stack_and_fresh_fix(mode_request):
-    ready = dict(navigation_ready=True, gps_fresh=True, gps_fix=True)
+    ready = dict(navigation_ready=True, gps_fresh=True, gps_fix=True,
+                 gps_quality_ok=True)
     assert decide(mode_request, **ready)[0] == mode_request
     assert decide(mode_request, **{**ready, 'gps_fix': False})[0] == 'PAUSE'
     assert decide(
         mode_request, **{**ready, 'navigation_ready': False})[0] == 'PAUSE'
+
+
+def test_navigation_rejects_unqualified_gps_fix():
+    mode, reason = decide(
+        'GO_TO', navigation_ready=True, gps_fresh=True, gps_fix=True,
+        gps_quality_ok=False)
+    assert (mode, reason) == ('PAUSE', 'gps_quality_insufficient')

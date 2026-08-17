@@ -78,3 +78,13 @@ field_supervisor:
     state_timeout_s: 2.0
     navigation_ready: false
     initial_mode: PAUSE
+    gps_min_satellites: 6
+    gps_max_hdop: 2.5
+    gps_stable_time_s: 10.0
+
+cmd_vel_guard:
+  ros__parameters:
+    monitor_only: true
+    cmd_timeout_s: 0.6
+    max_linear: 0.45
+    max_angular: 0.90

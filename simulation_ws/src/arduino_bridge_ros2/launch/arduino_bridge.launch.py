@@ -13,7 +13,7 @@ def generate_launch_description():
                 'baud':       115200,
                 'wheel_base': 0.82,
                 'wheel_dia':  0.20,
-                'ppr':        45,
+                'ppr':        60,
             }],
         ),
     ])

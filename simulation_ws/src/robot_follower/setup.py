@@ -17,5 +17,6 @@ setup(
         'follower_node = robot_follower.follower_node:main',
         'open_palm_node = robot_follower.open_palm_node:main',
         'field_supervisor = robot_follower.field_supervisor:main',
+        'cmd_vel_guard = robot_follower.cmd_vel_guard:main',
     ]},
 )
