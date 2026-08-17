@@ -71,3 +71,10 @@ stadia_node:
     kinect_tilt_deadzone: 0.20 # zona muerta de la palanca derecha vertical
     kinect_tilt_speed_deg_s: 10.0 # velocidad maxima de inclinacion
     kinect_tilt_command_interval: 0.15 # limita ordenes al motor del Kinect
+
+field_supervisor:
+  ros__parameters:
+    monitor_only: true
+    state_timeout_s: 2.0
+    navigation_ready: false
+    initial_mode: PAUSE

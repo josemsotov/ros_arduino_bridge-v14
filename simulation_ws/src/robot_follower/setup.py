@@ -16,5 +16,6 @@ setup(
     entry_points={'console_scripts': [
         'follower_node = robot_follower.follower_node:main',
         'open_palm_node = robot_follower.open_palm_node:main',
+        'field_supervisor = robot_follower.field_supervisor:main',
     ]},
 )

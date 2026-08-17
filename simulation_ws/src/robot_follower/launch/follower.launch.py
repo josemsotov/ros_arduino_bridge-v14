@@ -17,6 +17,7 @@ def generate_launch_description():
     enable_stadia  = LaunchConfiguration('enable_stadia')
     enable_gesture = LaunchConfiguration('enable_gesture')
     enable_follower = LaunchConfiguration('enable_follower')
+    enable_field_supervisor = LaunchConfiguration('enable_field_supervisor')
     use_kinect = LaunchConfiguration('use_kinect')
 
     return LaunchDescription([
@@ -35,6 +36,8 @@ def generate_launch_description():
                               description='Start open-palm gesture detector'),
         DeclareLaunchArgument('enable_follower', default_value='true',
                               description='Start follower control node'),
+        DeclareLaunchArgument('enable_field_supervisor', default_value='true',
+                              description='Start monitor-only field supervisor'),
         DeclareLaunchArgument('use_kinect', default_value='true',
                               description='Use Kinect depth inside follower node'),
         Node(package='arduino_bridge_ros2', executable='arduino_node',
@@ -74,4 +77,8 @@ def generate_launch_description():
              name='robot_follower', output='screen',
              condition=IfCondition(enable_follower),
              parameters=[cfg, {'use_kinect': ParameterValue(use_kinect, value_type=bool)}]),
+        Node(package='robot_follower', executable='field_supervisor',
+             name='field_supervisor', output='screen',
+             condition=IfCondition(enable_field_supervisor),
+             parameters=[cfg]),
     ])
