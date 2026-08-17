@@ -18,3 +18,5 @@ echo MOTOR_STATUS
 timeout 5 ros2 topic echo /motor_status --once || true
 echo WEB_NODE
 ros2 node list | grep robot_operator_web || true
+echo STADIA_STATE
+timeout 5 ros2 topic echo /stadia/state --once || true

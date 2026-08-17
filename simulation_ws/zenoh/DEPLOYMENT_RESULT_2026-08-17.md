@@ -18,6 +18,8 @@
 - Caida controlada del router durante 8 segundos.
 - Reconexion automatica de WSL y telemetria al restaurar el router.
 - Durante arranque, operacion y caida del router: `cmd_vel=0`, PWM=0 y RPM=0.
+- Reinicio completo del Pi: router, follower y web arrancaron automaticamente.
+- Tras el reinicio: Kinect 4.4--4.9 Hz, LiDAR 9.7--9.8 Hz y RViz reconectado.
 
 ## Observaciones
 
@@ -25,8 +27,9 @@
   entrega frames, un segundo reinicio de `robot-follower.service` despues de
   estabilizar USB recupera el flujo.
 - GPS conectado, sin fix durante la prueba interior (`sats=0`).
-- Falta validar un reinicio electrico completo del Pi y una prueba de Stadia con
-  ruedas suspendidas antes de declarar el perfil productivo de campo.
+- Stadia quedo `disconnected`, modo `off` y `neutral_armed=false` despues del
+  reinicio. Falta conectar el mando y validar takeover/STOP con ruedas suspendidas
+  antes de declarar el perfil productivo de campo.
 
 ## Rollback
 
