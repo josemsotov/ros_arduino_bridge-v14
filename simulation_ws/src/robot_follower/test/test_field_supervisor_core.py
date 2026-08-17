@@ -41,6 +41,10 @@ def test_follow_requires_fresh_authorized_and_enabled_states():
     assert decide('FOLLOW', **{**ready, 'stadia_mode': 'off'})[0] == 'PAUSE'
 
 
+def test_gesture_mode_is_explicitly_observable():
+    assert decide('GESTURE') == ('GESTURE', 'gesture_requested')
+
+
 @pytest.mark.parametrize('mode_request', ['GO_TO', 'RETURN_HOME'])
 def test_navigation_requires_ready_stack_and_fresh_fix(mode_request):
     ready = dict(navigation_ready=True, gps_fresh=True, gps_fix=True,

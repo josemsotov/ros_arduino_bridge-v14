@@ -5,6 +5,7 @@ VALID_REQUESTS = {
     'PAUSE',
     'STADIA',
     'FOLLOW',
+    'GESTURE',
     'GO_TO',
     'RETURN_HOME',
 }
@@ -62,6 +63,9 @@ def select_effective_mode(requested, *, emergency_latched=False,
         if not follower_enabled:
             return 'PAUSE', 'follower_not_enabled'
         return 'FOLLOW', 'follower_ready'
+
+    if requested == 'GESTURE':
+        return 'GESTURE', 'gesture_requested'
 
     if requested in ('GO_TO', 'RETURN_HOME'):
         if not navigation_ready:

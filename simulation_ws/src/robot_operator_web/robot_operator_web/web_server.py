@@ -131,7 +131,7 @@ class OperatorNode(Node):
     def __init__(self, state: SharedState) -> None:
         super().__init__("robot_operator_web")
         self.state = state
-        self.pub_cmd = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.pub_cmd = self.create_publisher(Twist, "/cmd_vel/web", 10)
         self.pub_enable = self.create_publisher(Bool, "/follower/enable", 10)
         self.pub_stadia = self.create_publisher(String, "/stadia/control", 10)
         self.pub_stadia_speed = self.create_publisher(
@@ -235,7 +235,7 @@ class OperatorNode(Node):
             "IDLE": "PAUSE",
             "STADIA": "STADIA",
             "FOLLOWER": "FOLLOW",
-            "GESTURE": "PAUSE",
+            "GESTURE": "GESTURE",
         }[mode]
         self.publish_field_mode(field_mode)
 
@@ -244,7 +244,7 @@ class OperatorNode(Node):
         aliases = {"IDLE": "PAUSE", "MANUAL": "STADIA", "FOLLOWER": "FOLLOW"}
         mode = aliases.get(mode, mode)
         valid = {
-            "EMERGENCY_STOP", "PAUSE", "STADIA", "FOLLOW",
+            "EMERGENCY_STOP", "PAUSE", "STADIA", "FOLLOW", "GESTURE",
             "GO_TO", "RETURN_HOME",
         }
         if mode not in valid:

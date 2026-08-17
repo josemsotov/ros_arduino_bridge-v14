@@ -19,6 +19,7 @@ def generate_launch_description():
     enable_follower = LaunchConfiguration('enable_follower')
     enable_field_supervisor = LaunchConfiguration('enable_field_supervisor')
     enable_cmd_vel_guard = LaunchConfiguration('enable_cmd_vel_guard')
+    enable_cmd_vel_mux = LaunchConfiguration('enable_cmd_vel_mux')
     use_kinect = LaunchConfiguration('use_kinect')
 
     return LaunchDescription([
@@ -41,6 +42,8 @@ def generate_launch_description():
                               description='Start monitor-only field supervisor'),
         DeclareLaunchArgument('enable_cmd_vel_guard', default_value='true',
                               description='Start passive cmd_vel safety observer'),
+        DeclareLaunchArgument('enable_cmd_vel_mux', default_value='true',
+                              description='Start single-output velocity arbiter'),
         DeclareLaunchArgument('use_kinect', default_value='true',
                               description='Use Kinect depth inside follower node'),
         Node(package='arduino_bridge_ros2', executable='arduino_node',
@@ -65,6 +68,7 @@ def generate_launch_description():
         Node(package='robot_follower', executable='open_palm_node',
              name='open_palm_detector', output='screen',
              condition=IfCondition(enable_gesture),
+             remappings=[('/cmd_vel', '/cmd_vel/gesture')],
              parameters=[{'image_topic':'/camera/rgb/image_raw',
                           'process_rate':8.0,
                           'gesture_hold_time':0.7,
@@ -75,10 +79,12 @@ def generate_launch_description():
         Node(package='arduino_bridge_ros2', executable='stadia_node',
              name='stadia_node', output='screen',
              condition=IfCondition(enable_stadia),
+             remappings=[('/cmd_vel', '/cmd_vel/stadia')],
              parameters=[cfg]),
         Node(package='robot_follower', executable='follower_node',
              name='robot_follower', output='screen',
              condition=IfCondition(enable_follower),
+             remappings=[('/cmd_vel', '/cmd_vel/follower')],
              parameters=[cfg, {'use_kinect': ParameterValue(use_kinect, value_type=bool)}]),
         Node(package='robot_follower', executable='field_supervisor',
              name='field_supervisor', output='screen',
@@ -87,5 +93,9 @@ def generate_launch_description():
         Node(package='robot_follower', executable='cmd_vel_guard',
              name='cmd_vel_guard', output='screen',
              condition=IfCondition(enable_cmd_vel_guard),
+             parameters=[cfg]),
+        Node(package='robot_follower', executable='cmd_vel_mux',
+             name='cmd_vel_mux', output='screen',
+             condition=IfCondition(enable_cmd_vel_mux),
              parameters=[cfg]),
     ])

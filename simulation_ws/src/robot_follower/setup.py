@@ -18,5 +18,6 @@ setup(
         'open_palm_node = robot_follower.open_palm_node:main',
         'field_supervisor = robot_follower.field_supervisor:main',
         'cmd_vel_guard = robot_follower.cmd_vel_guard:main',
+        'cmd_vel_mux = robot_follower.cmd_vel_mux:main',
     ]},
 )

@@ -88,3 +88,11 @@ cmd_vel_guard:
     cmd_timeout_s: 0.6
     max_linear: 0.45
     max_angular: 0.90
+
+cmd_vel_mux:
+  ros__parameters:
+    source_timeout_s: 0.35
+    field_timeout_s: 1.5
+    max_linear: 0.45
+    max_angular: 0.90
+    publish_rate_hz: 20.0
