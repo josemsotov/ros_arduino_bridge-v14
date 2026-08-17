@@ -1,0 +1,41 @@
+{
+  "date": "2026-08-17",
+  "comparison_baseline": "nav2_footprint_tuned_2026-08-17.json",
+  "configuration": {
+    "map_resolution_m": 0.05,
+    "max_beams": 120,
+    "min_particles": 750,
+    "max_particles": 3000,
+    "update_min_distance_m": 0.05,
+    "update_min_angle_rad": 0.05,
+    "laser_model": "likelihood_field_prob"
+  },
+  "goal": {
+    "x_m": 1.0,
+    "y_m": -1.0,
+    "yaw_rad": 0.0
+  },
+  "result": {
+    "status": "SUCCEEDED",
+    "action_status_code": 4
+  },
+  "gazebo_ground_truth_final": {
+    "x_m": 0.994282,
+    "y_m": -0.946014,
+    "yaw_rad": 0.136857,
+    "position_error_to_goal_m": 0.0543
+  },
+  "amcl_final": {
+    "x_m": 0.968201012306275,
+    "y_m": -0.9727318485457206,
+    "yaw_rad": 0.14153,
+    "position_error_to_ground_truth_m": 0.0373,
+    "yaw_error_to_ground_truth_rad": 0.0047
+  },
+  "improvement": {
+    "previous_amcl_ground_truth_error_m": 0.1076,
+    "new_amcl_ground_truth_error_m": 0.0373,
+    "localization_error_reduction_percent": 65.3
+  },
+  "tradeoff": "High CPU cost and substantially slower than real time."
+}

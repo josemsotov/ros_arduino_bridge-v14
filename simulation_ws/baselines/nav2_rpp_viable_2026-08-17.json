@@ -1,0 +1,56 @@
+{
+  "date": "2026-08-17",
+  "status": "ACCEPTED_VIABLE",
+  "goal": {
+    "x_m": 1.0,
+    "y_m": -1.0,
+    "yaw_rad": 0.0
+  },
+  "configuration": {
+    "graphics_backend": "D3D12",
+    "graphics_adapter": "NVIDIA Quadro T2000",
+    "controller": "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController",
+    "max_linear_velocity_mps": 0.35,
+    "rotate_to_heading_angular_velocity_radps": 0.5,
+    "xy_goal_tolerance_m": 0.06,
+    "yaw_goal_tolerance_rad": 0.15,
+    "inflation_radius_m": 0.8,
+    "lidar_height_m": 1.35,
+    "voxel_origin_z_m": 1.0,
+    "voxel_height_m": 0.8,
+    "amcl_max_beams": 90,
+    "amcl_particles": [500, 1500]
+  },
+  "validation_runs": [
+    {
+      "status": "SUCCEEDED",
+      "wall_duration_s": 20.957,
+      "sim_duration_s": 10.011,
+      "real_time_factor": 0.4777,
+      "gazebo_goal_error_m": 0.0667,
+      "amcl_ground_truth_error_m": 0.0059,
+      "gazebo_yaw_error_rad": 0.1399,
+      "recoveries": 0
+    },
+    {
+      "status": "SUCCEEDED",
+      "wall_duration_s": 22.471,
+      "sim_duration_s": 9.862,
+      "real_time_factor": 0.4389,
+      "gazebo_goal_error_m": 0.0629,
+      "amcl_ground_truth_error_m": 0.0139,
+      "gazebo_yaw_error_rad": 0.1349,
+      "recoveries": 0
+    }
+  ],
+  "summary": {
+    "success_rate_percent": 100.0,
+    "mean_wall_duration_s": 21.714,
+    "mean_sim_duration_s": 9.937,
+    "mean_real_time_factor": 0.4583,
+    "mean_gazebo_goal_error_m": 0.0648,
+    "mean_amcl_ground_truth_error_m": 0.0099,
+    "speedup_vs_304s_mppi_run": 14.0
+  },
+  "acceptance": "Two consecutive clean runs, position error below 0.10 m, yaw error below 0.15 rad, no recovery cycles, no costmap geometry errors, and no orphan Gazebo processes."
+}

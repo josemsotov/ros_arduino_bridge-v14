@@ -1,0 +1,13 @@
+[Unit]
+Description=Smart Trolley ROS 2 Zenoh router
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/josemsotov/robot_ws/zenoh/pi_router.sh
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

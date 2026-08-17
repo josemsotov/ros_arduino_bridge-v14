@@ -1,0 +1,36 @@
+{
+  "date": "2026-08-16",
+  "environment": {
+    "ros_distribution": "jazzy",
+    "gazebo": "harmonic",
+    "mode": "headless",
+    "stack": "nav2_minimal"
+  },
+  "goal": {
+    "frame": "map",
+    "x_m": 1.0,
+    "y_m": -1.0,
+    "yaw_rad": 0.0
+  },
+  "result": {
+    "status": "SUCCEEDED",
+    "error_code": 0,
+    "recoveries": 0
+  },
+  "gazebo_ground_truth_final": {
+    "x_m": 1.011920,
+    "y_m": -0.869538,
+    "yaw_rad": -0.298255,
+    "position_error_to_goal_m": 0.1310
+  },
+  "amcl_final": {
+    "x_m": 1.1070657422920052,
+    "y_m": -0.8366897852362267,
+    "yaw_rad": -0.3582,
+    "position_error_to_ground_truth_m": 0.1007
+  },
+  "notes": [
+    "Default Nav2 goal tolerances were used.",
+    "The next iteration should tighten position/yaw tolerances and use a trolley-sized footprint."
+  ]
+}

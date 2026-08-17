@@ -1,0 +1,17 @@
+{
+  "date": "2026-08-17",
+  "comparison_baseline": "amcl_balanced_2026-08-17.json",
+  "change_under_test": {
+    "simulated_imu_rate_hz_before": 200,
+    "simulated_imu_rate_hz_tested": 50
+  },
+  "result": {
+    "status": "SUCCEEDED",
+    "action_status_code": 4,
+    "wall_time_s": 304.0,
+    "gazebo_goal_error_m": 0.0609,
+    "amcl_ground_truth_error_m": 0.0362
+  },
+  "decision": "REJECTED",
+  "reason": "Localization accuracy was retained, but no wall-time improvement was demonstrated. The IMU rate was restored to 200 Hz before the next isolated experiment."
+}

@@ -33,3 +33,22 @@ __pycache__/
 # Windows
 Thumbs.db
 desktop.ini
+
+# ROS 2 / colcon generated output
+simulation_ws/build/
+simulation_ws/install/
+simulation_ws/log/
+simulation_ws/build_native/
+simulation_ws/install_native/
+simulation_ws/log_native/
+
+# Local snapshots retained on the workstation, not source of truth
+simulation_ws/src/**/*.before_*
+simulation_ws/src/**/*.bak_*
+simulation_ws/src/**/*.orig
+simulation_ws/src/**/__pycache__/
+
+# Nested vendor checkouts are restored independently
+simulation_ws/src/arduino_bridge/
+simulation_ws/src/ldlidar_stl_ros2/
+simulation_ws/src/my_package/

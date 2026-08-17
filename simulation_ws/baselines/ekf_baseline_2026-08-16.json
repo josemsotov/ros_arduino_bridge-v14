@@ -1,0 +1,34 @@
+{
+  "date": "2026-08-16",
+  "environment": {
+    "ros_distribution": "jazzy",
+    "gazebo": "harmonic",
+    "mode": "gui_software_rendering",
+    "robot": "trolley_A_deployed"
+  },
+  "straight_test": {
+    "command_linear_m_s": 0.2,
+    "command_duration_sim_s": 2.0,
+    "expected_distance_with_acceleration_ramp_m": 0.36,
+    "raw_odometry_delta_m": 0.36030000000361917,
+    "filtered_odometry_delta_m": 0.3602991692918437,
+    "gazebo_ground_truth_delta_m": 0.363337279596081,
+    "raw_vs_ground_truth_error_percent": -0.836,
+    "filtered_lateral_drift_m": 4.891706865302779e-12
+  },
+  "turn_test": {
+    "command_angular_rad_s": 0.3,
+    "command_duration_sim_s": 2.0,
+    "expected_yaw_with_acceleration_ramp_rad": 0.6,
+    "raw_odometry_yaw_delta_rad": 0.5557499999712389,
+    "filtered_odometry_yaw_delta_rad": 0.5890315477458093,
+    "gazebo_ground_truth_yaw_delta_rad": 0.5890315470571509,
+    "raw_vs_ground_truth_error_percent": -5.65,
+    "filtered_vs_ground_truth_error_rad": 6.886584635878102e-10
+  },
+  "performance": {
+    "straight_real_time_factor": 0.3584533762993026,
+    "turn_real_time_factor": 0.3968744748689233
+  },
+  "result": "pass"
+}

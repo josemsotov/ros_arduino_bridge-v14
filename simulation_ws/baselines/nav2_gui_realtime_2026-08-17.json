@@ -1,0 +1,46 @@
+{
+  "date": "2026-08-17",
+  "status": "ACCEPTED_REALTIME_GUI",
+  "configuration": {
+    "gazebo_physics_rate_hz": 200,
+    "max_step_size_s": 0.005,
+    "gazebo_gui_profile": "gazebo_minimal.gui.config",
+    "rviz_frame_rate_fps": 15,
+    "rviz_laserscan_visible_by_default": false,
+    "graphics_backend": "D3D12",
+    "graphics_adapter": "NVIDIA Quadro T2000",
+    "controller": "RegulatedPurePursuit"
+  },
+  "idle_measurement": {
+    "wall_duration_s": 20.001,
+    "sim_duration_s": 19.925,
+    "real_time_factor": 0.9962
+  },
+  "navigation_measurement": {
+    "goal": {"x_m": 1.0, "y_m": -1.0, "yaw_rad": 0.0},
+    "status": "SUCCEEDED",
+    "wall_duration_s": 10.672,
+    "sim_duration_s": 10.350,
+    "real_time_factor": 0.9698,
+    "gazebo_final": {
+      "x_m": 0.951756,
+      "y_m": -0.963991,
+      "yaw_rad": -0.132699,
+      "goal_position_error_m": 0.0602
+    },
+    "amcl_final": {
+      "x_m": 0.9473470997415757,
+      "y_m": -0.9576182478221394,
+      "yaw_rad": -0.18576509318544634,
+      "ground_truth_position_error_m": 0.0078
+    }
+  },
+  "comparison": {
+    "original_gui_real_time_factor": 0.2701,
+    "minimal_gui_1khz_real_time_factor": 0.2840,
+    "gui_250hz_real_time_factor": 0.8445,
+    "gui_200hz_real_time_factor": 0.9962,
+    "realtime_factor_improvement_percent": 268.8
+  },
+  "acceptance": "Gazebo GUI and RViz active together, RTF >= 0.95 at idle and during navigation, physical goal error < 0.10 m, yaw error < 0.15 rad."
+}
