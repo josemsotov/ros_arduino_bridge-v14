@@ -32,6 +32,8 @@ import threading
 import math
 import time
 
+from .encoder_math import wheel_encoder_signs
+
 
 class ArduinoNode(Node):
     def __init__(self):
@@ -70,6 +72,8 @@ class ArduinoNode(Node):
         self.cmd_watchdog_stopped = True
         self.last_left_pwm = 0
         self.last_right_pwm = 0
+        self.left_encoder_sign = 1
+        self.right_encoder_sign = 1
         self.last_noise_warn = 0.0
 
         # ── Publishers ───────────────────────────────────────────────────
@@ -149,6 +153,9 @@ class ArduinoNode(Node):
     def cmd_vel_cb(self, msg: Twist):
         v = msg.linear.x
         w = msg.angular.z
+        self.left_encoder_sign, self.right_encoder_sign = wheel_encoder_signs(
+            v, w, self.wheel_base,
+            self.left_encoder_sign, self.right_encoder_sign)
         self.last_cmd_linear = v
         self.last_cmd_angular = w
         self.last_cmd_time = time.monotonic()
@@ -343,8 +350,8 @@ class ArduinoNode(Node):
         self.raw_left_prev = l_enc
         self.raw_right_prev = r_enc
 
-        use_dl = raw_dl
-        use_dr = raw_dr
+        use_dl = raw_dl * self.left_encoder_sign
+        use_dr = raw_dr * self.right_encoder_sign
         if self.last_left_pwm == 0 and raw_dl != 0:
             use_dl = 0
             self._warn_encoder_noise('left', raw_dl, l_enc)
