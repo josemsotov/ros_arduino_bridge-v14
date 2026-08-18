@@ -62,6 +62,7 @@ class ArduinoNode(Node):
         self.enc_right_filtered = 0
         self.enc_left_prev = 0
         self.enc_right_prev = 0
+        self.last_encoder_time = None
         self.dist_per_pulse = (math.pi * self.wheel_dia) / self.ppr
         self.last_cmd_linear = 0.0
         self.last_cmd_angular = 0.0
@@ -333,6 +334,7 @@ class ArduinoNode(Node):
             self.enc_right_filtered = r_enc
             self.enc_left_prev = l_enc
             self.enc_right_prev = r_enc
+            self.last_encoder_time = time.monotonic()
             self.pub_enc.publish(String(data=f'L={l_enc} R={r_enc}'))
             return
 
@@ -365,6 +367,10 @@ class ArduinoNode(Node):
         self.x     += d_center * math.cos(self.theta)
         self.y     += d_center * math.sin(self.theta)
 
+        encoder_now = time.monotonic()
+        dt = 0.05 if self.last_encoder_time is None else max(
+            0.01, min(0.20, encoder_now - self.last_encoder_time))
+        self.last_encoder_time = encoder_now
         now = self.get_clock().now().to_msg()
 
         # TF odom → base_link
@@ -393,10 +399,22 @@ class ArduinoNode(Node):
         odom.pose.pose.orientation.y = q[1]
         odom.pose.pose.orientation.z = q[2]
         odom.pose.pose.orientation.w = q[3]
-        v_lin = d_center / 0.05  # dt ≈ 50ms
-        v_ang = d_theta  / 0.05
+        v_lin = d_center / dt
+        v_ang = d_theta / dt
         odom.twist.twist.linear.x  = v_lin
         odom.twist.twist.angular.z = v_ang
+        odom.pose.covariance = [0.0] * 36
+        odom.twist.covariance = [0.0] * 36
+        for index, value in {
+            0: 0.02, 7: 0.02, 14: 1.0e6,
+            21: 1.0e6, 28: 1.0e6, 35: 0.04,
+        }.items():
+            odom.pose.covariance[index] = value
+        for index, value in {
+            0: 0.04, 7: 1.0e6, 14: 1.0e6,
+            21: 1.0e6, 28: 1.0e6, 35: 0.08,
+        }.items():
+            odom.twist.covariance[index] = value
         self.pub_odom.publish(odom)
 
         self.pub_enc.publish(String(data=f'L={self.enc_left_filtered} R={self.enc_right_filtered}'))

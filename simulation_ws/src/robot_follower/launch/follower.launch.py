@@ -20,6 +20,7 @@ def generate_launch_description():
     enable_field_supervisor = LaunchConfiguration('enable_field_supervisor')
     enable_cmd_vel_guard = LaunchConfiguration('enable_cmd_vel_guard')
     enable_cmd_vel_mux = LaunchConfiguration('enable_cmd_vel_mux')
+    enable_ekf = LaunchConfiguration('enable_ekf')
     use_kinect = LaunchConfiguration('use_kinect')
 
     return LaunchDescription([
@@ -44,6 +45,8 @@ def generate_launch_description():
                               description='Start passive cmd_vel safety observer'),
         DeclareLaunchArgument('enable_cmd_vel_mux', default_value='true',
                               description='Start single-output velocity arbiter'),
+        DeclareLaunchArgument('enable_ekf', default_value='true',
+                              description='Start wheel/IMU EKF without TF takeover'),
         DeclareLaunchArgument('use_kinect', default_value='true',
                               description='Use Kinect depth inside follower node'),
         Node(package='arduino_bridge_ros2', executable='arduino_node',
@@ -98,4 +101,15 @@ def generate_launch_description():
              name='cmd_vel_mux', output='screen',
              condition=IfCondition(enable_cmd_vel_mux),
              parameters=[cfg]),
+        Node(package='tf2_ros', executable='static_transform_publisher',
+             name='imu_static_tf', output='screen',
+             arguments=['--x', '0.10', '--y', '0.0', '--z', '0.0',
+                        '--roll', '0.0', '--pitch', '0.0', '--yaw', '0.0',
+                        '--frame-id', 'base_link',
+                        '--child-frame-id', 'imu_link'],
+             condition=IfCondition(enable_ekf)),
+        Node(package='robot_localization', executable='ekf_node',
+             name='ekf_filter_node', output='screen',
+             condition=IfCondition(enable_ekf),
+             parameters=[os.path.join(pkg, 'config', 'ekf_local.yaml')]),
     ])
