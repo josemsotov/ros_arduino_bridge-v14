@@ -24,7 +24,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import NavSatFix, NavSatStatus
+from sensor_msgs.msg import Imu, NavSatFix, NavSatStatus, Temperature
 from std_msgs.msg import String
 import tf2_ros
 import serial
@@ -78,6 +78,11 @@ class ArduinoNode(Node):
         self.pub_raw_rx = self.create_publisher(String,   '/arduino/raw_rx', 10)
         self.pub_fix    = self.create_publisher(NavSatFix, '/fix',           10)
         self.pub_gps    = self.create_publisher(String,   '/gps/status',     10)
+        self.pub_imu    = self.create_publisher(Imu,      '/imu/data_raw',   20)
+        self.pub_imu_temp = self.create_publisher(
+            Temperature, '/imu/temperature', 10)
+        self.pub_imu_status = self.create_publisher(
+            String, '/imu/status', 10)
 
         # ── TF broadcaster ───────────────────────────────────────────────
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
@@ -203,6 +208,8 @@ class ArduinoNode(Node):
                     self._process_encoders(line)
                 elif line.startswith('G '):
                     self._process_gps(line)
+                elif line.startswith('I '):
+                    self._process_imu(line)
             except Exception as e:
                 self.get_logger().warn(f'Error read: {e}. Desconectando serial para reconexión.')
                 self._handle_serial_disconnect()
@@ -259,6 +266,56 @@ class ArduinoNode(Node):
         ]
         msg.position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
         self.pub_fix.publish(msg)
+
+    def _process_imu(self, line: str):
+        parts = {}
+        for token in line.split()[1:]:
+            if '=' in token:
+                key, value = token.split('=', 1)
+                parts[key] = value
+        ready = parts.get('ready') in ('1', 'true', 'True')
+        self.pub_imu_status.publish(String(data=line))
+        if not ready:
+            return
+        try:
+            ax, ay, az = (float(parts[key]) for key in ('ax', 'ay', 'az'))
+            gx, gy, gz = (float(parts[key]) for key in ('gx', 'gy', 'gz'))
+            temperature = float(parts.get('temp', 'nan'))
+        except (KeyError, TypeError, ValueError):
+            self.get_logger().warn(f'Invalid IMU telemetry: {line}')
+            return
+
+        stamp = self.get_clock().now().to_msg()
+        msg = Imu()
+        msg.header.stamp = stamp
+        msg.header.frame_id = 'imu_link'
+        msg.orientation_covariance[0] = -1.0
+        deg_to_rad = math.pi / 180.0
+        msg.angular_velocity.x = gx * deg_to_rad
+        msg.angular_velocity.y = gy * deg_to_rad
+        msg.angular_velocity.z = gz * deg_to_rad
+        gravity = 9.80665
+        msg.linear_acceleration.x = ax * gravity
+        msg.linear_acceleration.y = ay * gravity
+        msg.linear_acceleration.z = az * gravity
+        msg.angular_velocity_covariance = [
+            0.0025, 0.0, 0.0,
+            0.0, 0.0025, 0.0,
+            0.0, 0.0, 0.0012,
+        ]
+        msg.linear_acceleration_covariance = [
+            0.09, 0.0, 0.0,
+            0.0, 0.09, 0.0,
+            0.0, 0.0, 0.16,
+        ]
+        self.pub_imu.publish(msg)
+
+        temp = Temperature()
+        temp.header.stamp = stamp
+        temp.header.frame_id = 'imu_link'
+        temp.temperature = temperature
+        temp.variance = 1.0
+        self.pub_imu_temp.publish(temp)
 
     def _process_encoders(self, line: str):
         # formato: e <L_total> <R_total>
