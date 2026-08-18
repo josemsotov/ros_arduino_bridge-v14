@@ -288,6 +288,7 @@ class ArduinoNode(Node):
         try:
             ax, ay, az = (float(parts[key]) for key in ('ax', 'ay', 'az'))
             gx, gy, gz = (float(parts[key]) for key in ('gx', 'gy', 'gz'))
+            yaw = float(parts['yaw'])
             temperature = float(parts.get('temp', 'nan'))
         except (KeyError, TypeError, ValueError):
             self.get_logger().warn(f'Invalid IMU telemetry: {line}')
@@ -297,8 +298,17 @@ class ArduinoNode(Node):
         msg = Imu()
         msg.header.stamp = stamp
         msg.header.frame_id = 'imu_link'
-        msg.orientation_covariance[0] = -1.0
         deg_to_rad = math.pi / 180.0
+        orientation = _yaw_to_quat(yaw * deg_to_rad)
+        msg.orientation.x = orientation[0]
+        msg.orientation.y = orientation[1]
+        msg.orientation.z = orientation[2]
+        msg.orientation.w = orientation[3]
+        msg.orientation_covariance = [
+            1.0e6, 0.0, 0.0,
+            0.0, 1.0e6, 0.0,
+            0.0, 0.0, 0.02,
+        ]
         msg.angular_velocity.x = gx * deg_to_rad
         msg.angular_velocity.y = gy * deg_to_rad
         msg.angular_velocity.z = gz * deg_to_rad
