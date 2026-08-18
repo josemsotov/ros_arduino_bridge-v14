@@ -69,6 +69,8 @@ static bool ros2_pwm_dir_left = true;
 static bool ros2_pwm_dir_right = true;
 static int ros2_pwm_applied_left = -1;
 static int ros2_pwm_applied_right = -1;
+static float ros2_pwm_accumulator_left = 0.0f;
+static float ros2_pwm_accumulator_right = 0.0f;
 
 #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
 // Starts disabled until gyro sign is confirmed once on the physical robot.
@@ -167,18 +169,34 @@ float heading_control_apply(float linear, float angular_request) {
 }
 #endif
 
-int ros2_time_proportioned_pwm(float demand, int working_pwm, unsigned long phase) {
-  (void)phase;
-  if (demand <= 0.0f) return 0;
-  return constrain((int)roundf(demand), working_pwm, MAX_PWM_VALUE);
+int ros2_time_proportioned_pwm(float demand, int working_pwm,
+                               float &accumulator) {
+  if (demand <= 0.0f) {
+    accumulator = 0.0f;
+    return 0;
+  }
+  if (demand >= (float)working_pwm) {
+    accumulator = 0.0f;
+    return constrain((int)roundf(demand), working_pwm, MAX_PWM_VALUE);
+  }
+
+  // The motors cannot turn reliably below working_pwm.  Distribute minimum
+  // PWM pulses over successive ROS command cycles so the average output still
+  // follows low demands without forcing minimum PWM continuously.
+  accumulator += demand;
+  if (accumulator + 0.001f >= (float)working_pwm) {
+    accumulator -= (float)working_pwm;
+    return working_pwm;
+  }
+  return 0;
 }
 
 void ros2_apply_pwm_demands() {
-  unsigned long phase = 0;
   int next_left = ros2_time_proportioned_pwm(
-    ros2_pwm_demand_left, MIN_PWM_VALUE, phase);
+    ros2_pwm_demand_left, MIN_PWM_VALUE, ros2_pwm_accumulator_left);
   int next_right = ros2_time_proportioned_pwm(
-    ros2_pwm_demand_right, MIN_PWM_RIGHT_WORKING, phase);
+    ros2_pwm_demand_right, MIN_PWM_RIGHT_WORKING,
+    ros2_pwm_accumulator_right);
   if (next_left != ros2_pwm_applied_left ||
       ros2_pwm_dir_left != leftMotor.direction) {
     setLeftMotor(next_left, ros2_pwm_dir_left);
@@ -195,6 +213,8 @@ void ros2_apply_pwm_demands() {
 void ros2_clear_pwm_demands() {
   ros2_pwm_demand_left = 0.0f;
   ros2_pwm_demand_right = 0.0f;
+  ros2_pwm_accumulator_left = 0.0f;
+  ros2_pwm_accumulator_right = 0.0f;
   ros2_pwm_applied_left = -1;
   ros2_pwm_applied_right = -1;
 #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
