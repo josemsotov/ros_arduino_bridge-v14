@@ -54,7 +54,7 @@ def generate_launch_description():
              condition=IfCondition(enable_arduino),
              parameters=[{'port':'/dev/serial/by-id/usb-Arduino_Srl_Arduino_Mega_85438333036351A040D0-if00',
                           'baud':115200,
-                          'wheel_base':0.82,'wheel_dia':0.20,'ppr':60,
+                          'wheel_base':0.82,'wheel_dia':0.27,'ppr':60,
                           'cmd_linear_sign':1.0,
                           'cmd_angular_sign':1.0}]),
         Node(package='ldlidar_stl_ros2', executable='ldlidar_stl_ros2_node',

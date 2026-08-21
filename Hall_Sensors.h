@@ -45,6 +45,15 @@ float currentSpeedRightHall = 0;  // RPM calculado motor derecho
 /**
  * RUTINAS DE SERVICIO DE INTERRUPCIÓN (ISR)
  */
+uint16_t optoLeftPermilleForHallInterval(uint32_t interval_us) {
+  // Mas rechazo contra rebote a baja velocidad; ventana menor a alta velocidad.
+  if (interval_us >= 50000UL) return 650U;
+  if (interval_us >= 27000UL) return 500U;
+  if (interval_us >= 12000UL) return 450U;
+  if (interval_us >= 8000UL) return 375U;
+  return 350U;
+}
+
 void leftHallISR() {
   const uint32_t now = micros();
   leftHallCount++;
@@ -58,7 +67,8 @@ void leftHallISR() {
       } else {
         hallPulseIntervalLeft = (hallPulseIntervalLeft * 3UL + interval) / 4UL;
       }
-      uint32_t candidate = (hallPulseIntervalLeft * OPTO_FILTER_LEFT_HALL_PERMILLE) / 1000UL;
+      uint16_t adaptive_permille = optoLeftPermilleForHallInterval(hallPulseIntervalLeft);
+      uint32_t candidate = (hallPulseIntervalLeft * adaptive_permille) / 1000UL;
       leftOptoFilterUs = constrain(candidate, OPTO_FILTER_LEFT_MIN_US, OPTO_FILTER_MAX_US);
     }
   }

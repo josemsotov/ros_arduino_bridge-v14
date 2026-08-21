@@ -1,0 +1,152 @@
+{
+  "results": [
+    {
+      "name": "open_loop",
+      "heading_control": false,
+      "velocity_m_s": 0.15,
+      "duration_s": 1.5241190180095145,
+      "estimated_distance_m": 0.2,
+      "yaw_change_deg": 0.10475518746740956,
+      "samples": [
+        {
+          "t": 0.015486199001315981,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.00015,
+          "yaw_change_deg": 0.00013309407652126743,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.18318705999990925,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.00083,
+          "yaw_change_deg": 0.0048886437761071,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.35095999600889627,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.03074,
+          "yaw_change_deg": 0.18101586999932218,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.5193418420094531,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": -0.02415,
+          "yaw_change_deg": 0.04264656247522834,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.6870808509993367,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.01312,
+          "yaw_change_deg": 0.11781862519639234,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.8550175280106487,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.00016,
+          "yaw_change_deg": 0.11873535766860165,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 1.0234228190092836,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.00597,
+          "yaw_change_deg": 0.15294093803791178,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 1.1911447169986786,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": -0.00841,
+          "yaw_change_deg": 0.10475518746740956,
+          "left_pwm": 15,
+          "right_pwm": 15
+        }
+      ]
+    },
+    {
+      "name": "closed_loop",
+      "heading_control": true,
+      "velocity_m_s": 0.15,
+      "duration_s": 1.526090501996805,
+      "estimated_distance_m": 0.2,
+      "yaw_change_deg": -0.602517629309417,
+      "samples": [
+        {
+          "t": 0.01805945399974007,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 6e-05,
+          "yaw_change_deg": 6.208382966974559e-05,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.1861306499922648,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.00927,
+          "yaw_change_deg": 0.05317527143829706,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.354087122992496,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": -0.02846,
+          "yaw_change_deg": -0.10988851705593523,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.5221605959959561,
+          "hcw_rad_s": 0.0,
+          "gyro_rad_s": 0.00251,
+          "yaw_change_deg": -0.09550727639815156,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.6902311250014463,
+          "hcw_rad_s": 0.003,
+          "gyro_rad_s": -0.05116,
+          "yaw_change_deg": -0.3886324843870807,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 0.8582321899884846,
+          "hcw_rad_s": 0.005,
+          "gyro_rad_s": -0.03624,
+          "yaw_change_deg": -0.596272389342491,
+          "left_pwm": 15,
+          "right_pwm": 15
+        },
+        {
+          "t": 1.026278885998181,
+          "hcw_rad_s": 0.04,
+          "gyro_rad_s": -0.01429,
+          "yaw_change_deg": -0.6781480582666857,
+          "left_pwm": 23,
+          "right_pwm": 10
+        },
+        {
+          "t": 1.193309889989905,
+          "hcw_rad_s": 0.041,
+          "gyro_rad_s": 0.0132,
+          "yaw_change_deg": -0.602517629309417,
+          "left_pwm": 17,
+          "right_pwm": 13
+        }
+      ]
+    }
+  ]
+}

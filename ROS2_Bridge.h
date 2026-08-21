@@ -452,24 +452,40 @@ void ros2_processCmdVel(String cmd) {
 }
 
 void ros2_processEncoderRequest() {
-  #ifdef ENABLE_HALL_SENSORS
-    // Usar contadores acumulativos (no se resetean cada 100ms como leftHallCount)
+  #if defined(ENABLE_OPTO_ENCODERS) && defined(ENABLE_HALL_SENSORS)
+    // e <optoL> <optoR> <hallL> <hallR>: dual-sensor cumulative frame.
     noInterrupts();
-    uint32_t l = leftHallTotal;
-    uint32_t r = rightHallTotal;
+    uint32_t ol = leftOptoCount;
+    uint32_t oright = rightOptoCount;
+    uint32_t hl = leftHallTotal;
+    uint32_t hr = rightHallTotal;
     interrupts();
-    Serial.print("e ");
-    Serial.print(l);
-    Serial.print(" ");
-    Serial.println(r);
+    Serial.print("e "); Serial.print(ol);
+    Serial.print(" "); Serial.print(oright);
+    Serial.print(" "); Serial.print(hl);
+    Serial.print(" "); Serial.println(hr);
+  #elif defined(ENABLE_OPTO_ENCODERS)
+    noInterrupts();
+    uint32_t l = leftOptoCount;
+    uint32_t r = rightOptoCount;
+    interrupts();
+    Serial.print("e "); Serial.print(l); Serial.print(" "); Serial.println(r);
   #else
     Serial.println("e 0 0");
   #endif
 }
 
 void ros2_processEncoderReset() {
-  #ifdef ENABLE_HALL_SENSORS
+  #if defined(ENABLE_HALL_SENSORS) || defined(ENABLE_OPTO_ENCODERS)
+    #ifdef ENABLE_HALL_SENSORS
     resetHallCounters();
+    #endif
+    #ifdef ENABLE_OPTO_ENCODERS
+    noInterrupts();
+    leftOptoCount = 0;
+    rightOptoCount = 0;
+    interrupts();
+    #endif
     Serial.println("✅ Encoders reseteados");
     Serial.println("r OK");
   #else
@@ -813,7 +829,8 @@ void ros2_processCommand(String cmd) {
         break;
       }
       char side = cmd.charAt(sp1 + 1);
-      int test_pwm = constrain(cmd.substring(sp2 + 1).toInt(), 0, MAX_PWM_VALUE);
+      const int DIAGNOSTIC_MAX_PWM = 80;
+      int test_pwm = constrain(cmd.substring(sp2 + 1).toInt(), 0, DIAGNOSTIC_MAX_PWM);
       if (side != 'L' && side != 'R') {
         Serial.println("q FAIL side");
         break;

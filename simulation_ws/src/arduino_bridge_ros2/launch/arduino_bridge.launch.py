@@ -12,7 +12,7 @@ def generate_launch_description():
                 'port':       '/dev/ttyACM0',
                 'baud':       115200,
                 'wheel_base': 0.82,
-                'wheel_dia':  0.20,
+                'wheel_dia':  0.27,
                 'ppr':        60,
             }],
         ),

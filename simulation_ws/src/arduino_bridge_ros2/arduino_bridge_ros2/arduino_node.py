@@ -33,6 +33,7 @@ import math
 import time
 
 from .encoder_math import wheel_encoder_signs
+from .encoder_fusion import WheelEncoderFusion
 
 
 class ArduinoNode(Node):
@@ -43,8 +44,8 @@ class ArduinoNode(Node):
         self.declare_parameter('port',      '/dev/ttyACM0')
         self.declare_parameter('baud',      115200)
         self.declare_parameter('wheel_base', 0.82)    # metros entre ruedas
-        self.declare_parameter('wheel_dia',  0.20)    # metros diámetro rueda
-        self.declare_parameter('ppr',        60)      # pulsos por revolución
+        self.declare_parameter('wheel_dia',  0.27)    # physical wheel diameter (m)
+        self.declare_parameter('ppr',        60)      # encoder pulses per wheel revolution
         self.declare_parameter('cmd_timeout', 0.50)  # seconds without /cmd_vel
 
         self.port      = self.get_parameter('port').value
@@ -60,6 +61,10 @@ class ArduinoNode(Node):
         self.x = self.y = self.theta = 0.0
         self.raw_left_prev = None
         self.raw_right_prev = None
+        self.hall_left_prev = None
+        self.hall_right_prev = None
+        self.left_fusion = WheelEncoderFusion()
+        self.right_fusion = WheelEncoderFusion()
         self.enc_left_filtered = 0
         self.enc_right_filtered = 0
         self.enc_left_prev = 0
@@ -80,6 +85,8 @@ class ArduinoNode(Node):
         self.pub_odom   = self.create_publisher(Odometry, '/odom',           10)
         self.pub_status = self.create_publisher(String,   '/motor_status',   10)
         self.pub_enc    = self.create_publisher(String,   '/encoder_counts', 10)
+        self.pub_encoder_fusion = self.create_publisher(
+            String, '/encoder_fusion/status', 10)
         self.pub_raw_rx = self.create_publisher(String,   '/arduino/raw_rx', 10)
         self.pub_fix    = self.create_publisher(NavSatFix, '/fix',           10)
         self.pub_gps    = self.create_publisher(String,   '/gps/status',     10)
@@ -336,106 +343,122 @@ class ArduinoNode(Node):
         self.pub_imu_temp.publish(temp)
 
     def _process_encoders(self, line: str):
-        # formato: e <L_total> <R_total>
+        # Extended format: e <optoL> <optoR> <hallL> <hallR>.
+        # Legacy two-counter frames remain accepted without fusion.
         try:
             parts = line.split()
-            l_enc = int(parts[1])
-            r_enc = int(parts[2])
-        except Exception:
+            l_opto = int(parts[1])
+            r_opto = int(parts[2])
+            dual_frame = len(parts) >= 5
+            l_hall = int(parts[3]) if dual_frame else None
+            r_hall = int(parts[4]) if dual_frame else None
+        except (ValueError, IndexError):
             return
 
-        if self.raw_left_prev is None or self.raw_right_prev is None:
-            self.raw_left_prev = l_enc
-            self.raw_right_prev = r_enc
-            self.enc_left_filtered = l_enc
-            self.enc_right_filtered = r_enc
-            self.enc_left_prev = l_enc
-            self.enc_right_prev = r_enc
+        first = self.raw_left_prev is None or self.raw_right_prev is None
+        if dual_frame:
+            first = first or self.hall_left_prev is None or self.hall_right_prev is None
+        if first:
+            self.raw_left_prev, self.raw_right_prev = l_opto, r_opto
+            self.hall_left_prev, self.hall_right_prev = l_hall, r_hall
             self.last_encoder_time = time.monotonic()
-            self.pub_enc.publish(String(data=f'L={l_enc} R={r_enc}'))
+            self.pub_enc.publish(String(data='L=0.000 R=0.000 initializing=1'))
             return
 
-        raw_dl = l_enc - self.raw_left_prev
-        raw_dr = r_enc - self.raw_right_prev
-        self.raw_left_prev = l_enc
-        self.raw_right_prev = r_enc
+        raw_dl = l_opto - self.raw_left_prev
+        raw_dr = r_opto - self.raw_right_prev
+        self.raw_left_prev, self.raw_right_prev = l_opto, r_opto
+        if dual_frame:
+            hall_dl = l_hall - self.hall_left_prev
+            hall_dr = r_hall - self.hall_right_prev
+            self.hall_left_prev, self.hall_right_prev = l_hall, r_hall
+        else:
+            hall_dl = hall_dr = 0
 
-        use_dl = raw_dl * self.left_encoder_sign
-        use_dr = raw_dr * self.right_encoder_sign
-        if self.last_left_pwm == 0 and raw_dl != 0:
-            use_dl = 0
-            self._warn_encoder_noise('left', raw_dl, l_enc)
-        if self.last_right_pwm == 0 and raw_dr != 0:
-            use_dr = 0
-            self._warn_encoder_noise('right', raw_dr, r_enc)
+        if raw_dl < 0 or raw_dr < 0 or hall_dl < 0 or hall_dr < 0:
+            self.left_fusion.reset()
+            self.right_fusion.reset()
+            return
+
+        left_moving = self.last_left_pwm > 0
+        right_moving = self.last_right_pwm > 0
+        if dual_frame:
+            left = self.left_fusion.update(raw_dl, hall_dl, left_moving)
+            right = self.right_fusion.update(raw_dr, hall_dr, right_moving)
+        else:
+            left = {'delta': raw_dl if left_moving else 0.0, 'source': 'OPTO_LEGACY',
+                    'confidence': 0.5, 'error': -1.0,
+                    'opto_window': raw_dl, 'hall_window': 0.0}
+            right = {'delta': raw_dr if right_moving else 0.0, 'source': 'OPTO_LEGACY',
+                     'confidence': 0.5, 'error': -1.0,
+                     'opto_window': raw_dr, 'hall_window': 0.0}
+
+        use_dl = left['delta'] * self.left_encoder_sign
+        use_dr = right['delta'] * self.right_encoder_sign
+        if not left_moving and raw_dl != 0:
+            self._warn_encoder_noise('left', raw_dl, l_opto)
+        if not right_moving and raw_dr != 0:
+            self._warn_encoder_noise('right', raw_dr, r_opto)
 
         self.enc_left_filtered += use_dl
         self.enc_right_filtered += use_dr
-
-        dl = (self.enc_left_filtered - self.enc_left_prev) * self.dist_per_pulse
-        dr = (self.enc_right_filtered - self.enc_right_prev) * self.dist_per_pulse
-        self.enc_left_prev = self.enc_left_filtered
-        self.enc_right_prev = self.enc_right_filtered
-
+        dl = use_dl * self.dist_per_pulse
+        dr = use_dr * self.dist_per_pulse
         d_center = (dl + dr) / 2.0
-        d_theta  = (dr - dl) / self.wheel_base
-
+        d_theta = (dr - dl) / self.wheel_base
         self.theta += d_theta
-        self.x     += d_center * math.cos(self.theta)
-        self.y     += d_center * math.sin(self.theta)
+        self.x += d_center * math.cos(self.theta)
+        self.y += d_center * math.sin(self.theta)
 
         encoder_now = time.monotonic()
         dt = 0.05 if self.last_encoder_time is None else max(
             0.01, min(0.20, encoder_now - self.last_encoder_time))
         self.last_encoder_time = encoder_now
         now = self.get_clock().now().to_msg()
+        q = _yaw_to_quat(self.theta)
 
-        # TF odom → base_link
         tf = TransformStamped()
-        tf.header.stamp    = now
+        tf.header.stamp = now
         tf.header.frame_id = 'odom'
-        tf.child_frame_id  = 'base_link'
+        tf.child_frame_id = 'base_link'
         tf.transform.translation.x = self.x
         tf.transform.translation.y = self.y
         tf.transform.translation.z = 0.0
-        q = _yaw_to_quat(self.theta)
-        tf.transform.rotation.x = q[0]
-        tf.transform.rotation.y = q[1]
-        tf.transform.rotation.z = q[2]
-        tf.transform.rotation.w = q[3]
+        tf.transform.rotation.x, tf.transform.rotation.y = q[0], q[1]
+        tf.transform.rotation.z, tf.transform.rotation.w = q[2], q[3]
         self.tf_broadcaster.sendTransform(tf)
 
-        # Odometry msg
         odom = Odometry()
-        odom.header.stamp    = now
+        odom.header.stamp = now
         odom.header.frame_id = 'odom'
-        odom.child_frame_id  = 'base_link'
+        odom.child_frame_id = 'base_link'
         odom.pose.pose.position.x = self.x
         odom.pose.pose.position.y = self.y
-        odom.pose.pose.orientation.x = q[0]
-        odom.pose.pose.orientation.y = q[1]
-        odom.pose.pose.orientation.z = q[2]
-        odom.pose.pose.orientation.w = q[3]
-        v_lin = d_center / dt
-        v_ang = d_theta / dt
-        odom.twist.twist.linear.x  = v_lin
-        odom.twist.twist.angular.z = v_ang
+        odom.pose.pose.orientation.x, odom.pose.pose.orientation.y = q[0], q[1]
+        odom.pose.pose.orientation.z, odom.pose.pose.orientation.w = q[2], q[3]
+        odom.twist.twist.linear.x = d_center / dt
+        odom.twist.twist.angular.z = d_theta / dt
+        confidence = max(0.1, min(left['confidence'], right['confidence']))
         odom.pose.covariance = [0.0] * 36
         odom.twist.covariance = [0.0] * 36
-        for index, value in {
-            0: 0.02, 7: 0.02, 14: 1.0e6,
-            21: 1.0e6, 28: 1.0e6, 35: 0.04,
-        }.items():
-            odom.pose.covariance[index] = value
-        for index, value in {
-            0: 0.04, 7: 1.0e6, 14: 1.0e6,
-            21: 1.0e6, 28: 1.0e6, 35: 0.08,
-        }.items():
-            odom.twist.covariance[index] = value
+        for index, value in {0: 0.02, 7: 0.02, 14: 1.0e6,
+                             21: 1.0e6, 28: 1.0e6, 35: 0.04}.items():
+            odom.pose.covariance[index] = value / confidence if value < 1.0e6 else value
+        for index, value in {0: 0.04, 7: 1.0e6, 14: 1.0e6,
+                             21: 1.0e6, 28: 1.0e6, 35: 0.08}.items():
+            odom.twist.covariance[index] = value / confidence if value < 1.0e6 else value
         self.pub_odom.publish(odom)
 
-        self.pub_enc.publish(String(data=f'L={self.enc_left_filtered} R={self.enc_right_filtered}'))
-
+        status = (
+            f"Lsrc={left['source']} Lconf={left['confidence']:.2f} "
+            f"Lerr={left['error']:.3f} Rsrc={right['source']} "
+            f"Rconf={right['confidence']:.2f} Rerr={right['error']:.3f}"
+        )
+        self.pub_encoder_fusion.publish(String(data=status))
+        self.pub_enc.publish(String(data=(
+            f'L={self.enc_left_filtered:.3f} R={self.enc_right_filtered:.3f} '
+            f'OL={l_opto} OR={r_opto} HL={l_hall} HR={r_hall}'
+        )))
     def _warn_encoder_noise(self, side: str, delta: int, raw_count: int):
         now = time.monotonic()
         if now - self.last_noise_warn < 2.0:

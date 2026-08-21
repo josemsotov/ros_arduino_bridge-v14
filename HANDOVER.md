@@ -1,7 +1,28 @@
 # Handover — Smart Trolley V14
 
-Actualizado: 2026-07-24
+Actualizado: 2026-08-20
 
+
+## Actualizacion 2026-08-20 - plataforma de movimiento y odometria
+
+- Workspace local activo migrado a `D:\1-EXTERNAL\PROYECTOS JMS 2025\SMART-TROLLEY-JUN-2026\MOTOR-INTERFACE-V14`.
+- Raspberry Pi accesible en `josemsotov@192.168.40.74`.
+- Zenoh persistente y servicios `smart-trolley-zenoh-router`, `robot-follower` y `robot-operator-web` activos.
+- Diametro fisico real: `wheel_dia=0.27 m`; Pi recompilado y parametro activo verificado.
+- Optoencoders declarados a `ppr=60`: D3 izquierdo y D2 derecho. El comando `e` publica optos; Hall permanece para RPM/diagnostico.
+- IMU activa con fusion inicial yaw/gyro Z. GPS comunica, pero la ultima verificacion seguia sin fix ni satelites.
+- Prueba terrestre util: inicio `L=1794 R=2225`, final `L=1988 R=2345`, distancia fisica `30.3 cm`; deltas `L=194 R=120`.
+- Hay asimetria significativa entre encoders. La calibracion de odometria no esta cerrada.
+- El Pi tuvo perdidas temporales de SSH, sin reinicio ni bajo voltaje (`get_throttled=0x0`); revisar Wi-Fi.
+- Estado seguro al cierre: servicios activos, `/cmd_vel=0`, robot en `PAUSE`.
+
+### Siguiente paso recomendado
+
+1. Repetir dos recorridos terrestres rectos y medidos con Stadia.
+2. Registrar conteos iniciales/finales por rueda y distancia fisica.
+3. Evaluar factores de escala separados izquierda/derecha.
+4. Conservar el diametro fisico `0.27 m`; no usarlo para ocultar asimetrias de encoder.
+5. Validar avance, retroceso y parada antes de navegacion autonoma.
 ## Estado de cierre
 
 - Raspberry Pi 5 de 8 GB: `josemsotov@192.168.40.73`.
@@ -125,3 +146,45 @@ Las capturas de cámara y cachés Python permanecen excluidas de GitHub.
 ssh josemsotov@192.168.40.73
 systemctl --user status robot-follower.service robot-operator-web.service
 ```
+
+## 2026-08-21 - Perfil ampliado Hall/opto (banco suspendido)
+
+- `MAX_PWM_VALUE` operativo permanece en 40 para ROS2/Stadia.
+- El comando diagnostico `q <L|R> <pwm>` tiene limite independiente `DIAGNOSTIC_MAX_PWM = 80`.
+- Firmware compilado (59990 bytes), respaldado en Pi como `/home/josemsotov/robot_backups/pre_20260821_diag_pwm80.hex`, cargado y verificado con avrdude.
+- Matriz: PWM 10,15,20,25,30,35,40,50,60,70,80; 3 repeticiones por rueda; Hall 45 PPR contra opto 60 PPR.
+- Zona mas consistente: PWM 25-40 (aprox. -3.4% a +5.4% de error medio, excepto dispersion puntual izquierda a 40).
+- PWM 10-15: sobreconteo fuerte; PWM 50-80: subconteo creciente, alrededor de -20% a -23% desde PWM 60.
+- Informes: `encoder_calibration_reports/encoder_cross_extended_20260821.{json,csv}`.
+- Al terminar: `robot-follower.service` activo, `/motor_status` Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0.
+## 2026-08-21 - Filtro opto adaptativo V3 validado
+
+- Mejora 1: limites adaptativos ampliados de L=5500/R=6000..15000 us a L=2500/R=2500..40000 us.
+- Mejora 2 evaluada: ganancia izquierda por bandas; corrigio extremos pero sobrefiltro PWM 15-20.
+- Mejora 3 activa: ganancia izquierda por intervalo Hall: >=50000 us:650 permille; >=27000:500; >=12000:450; >=8000:375; menor:350. Derecha conserva 520 permille.
+- Comparacion misma matriz (PWM 10..80, 3 repeticiones/rueda): baseline MAE 18.23%, V1 6.00%, V2 4.13%, V3 3.14%.
+- Peor muestra: baseline 118.75%; V3 10.71%.
+- Informes JSON/CSV en `encoder_calibration_reports/` para baseline, adaptive_bounds_v1, left_piecewise_v2 y left_piecewise_v3.
+- `MAX_PWM_VALUE` operativo sigue en 40; `DIAGNOSTIC_MAX_PWM` sigue en 80.
+- Estado final: follower y Zenoh activos; motor_status Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0.
+## 2026-08-21 - Base de lazo cerrado: fusion Hall/opto
+
+- Firmware `e` extendido: `e <optoL> <optoR> <hallL> <hallR>`; conteos acumulados tomados atomicamente.
+- ROS2 incorpora `WheelEncoderFusion` con ventana de 10 muestras (~0.5 s): <=5% usa OPTO; 5-12% BLEND; >12% fallback HALL; PWM=0 fuerza STOP y delta cero.
+- Nuevo topico `/encoder_fusion/status`; `/encoder_counts` incluye fusion y los cuatro conteos crudos.
+- Covarianza de `/odom` aumenta automaticamente cuando baja la confianza.
+- Compatibilidad preservada con trama antigua `e <L> <R>`.
+- Pruebas unitarias directas: OPTO, BLEND, HALL fallback y STOP aprobadas. Firmware 60184 bytes, verificado por avrdude.
+- Respaldo firmware: `/home/josemsotov/robot_backups/pre_20260821_dual_encoder_fusion.hex`.
+- Respaldo nodo Pi: `arduino_node.py.pre_encoder_fusion_20260821.bak`.
+- Validacion estatica: follower activo; fusion L/R=STOP conf=1.00; odom linear/angular=0; motor PWM/RPM=0.
+- Observacion: OL acumulo flancos crudos con PWM=0; fueron rechazados completamente por la fusion/guardia de reposo.
+- Pendiente antes de ajustar PID: prueba dinamica controlada para observar transiciones OPTO/BLEND/HALL y confirmar si el robot esta suspendido o en suelo.
+### Prueba dinamica suspendida de fusion
+
+- Escalones comandados: 0.08, 0.15 y 0.25 m/s, 3 s cada uno, con parada entre escalones.
+- El puente se ejecuto aislado temporalmente para evitar ceros del `cmd_vel_mux`; el servicio completo fue restaurado automaticamente.
+- Se observaron correctamente los estados OPTO, BLEND y HALL. Ante discrepancia del opto izquierdo, la odometria uso Hall como fallback.
+- Resultado acumulado fusionado de la corrida: L=239.000, R=234.833 pulsos equivalentes; conteos crudos finales OL=601 OR=262 HL=199 HR=204 (incluyen acumulados previos al inicio).
+- La seleccion cambia durante transitorios; para el primer ajuste de velocidad usar PI (D=0) y agregar histeresis antes de habilitar derivada.
+- Estado posterior: follower activo, PWM/RPM=0 y fusion STOP conf=1.00 en ambas ruedas.

@@ -249,9 +249,9 @@
   #define PPR_OPTO_ENCODERS     60    // Pulsos por revolución OptoEncoders
   #define OPTO_FILTER_US       6000UL // Calibrado: mejor error Hall/opto con motores energizados
   #define ENABLE_ADAPTIVE_OPTO_FILTER
-  #define OPTO_FILTER_LEFT_MIN_US   5500UL
-  #define OPTO_FILTER_RIGHT_MIN_US  6000UL
-  #define OPTO_FILTER_MAX_US       15000UL
+  #define OPTO_FILTER_LEFT_MIN_US   2500UL
+  #define OPTO_FILTER_RIGHT_MIN_US  2500UL
+  #define OPTO_FILTER_MAX_US       40000UL
   #define OPTO_FILTER_LEFT_HALL_PERMILLE  450UL
   #define OPTO_FILTER_RIGHT_HALL_PERMILLE 520UL
 #endif
