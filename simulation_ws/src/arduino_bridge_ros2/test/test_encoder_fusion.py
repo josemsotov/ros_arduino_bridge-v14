@@ -33,3 +33,12 @@ def test_stopped_wheel_rejects_counts_and_resets_window():
     result = fusion.update(9, 9, moving=False)
     assert result['source'] == 'STOP'
     assert result['delta'] == 0
+
+def test_source_switch_requires_three_consistent_windows():
+    fusion = WheelEncoderFusion(window_samples=1)
+    fusion.update(4, 3, moving=True)
+    fusion.update(4, 3, moving=True)
+    assert fusion.update(4, 3, moving=True)['source'] == 'OPTO'
+    assert fusion.update(0, 3, moving=True)['source'] == 'OPTO'
+    assert fusion.update(0, 3, moving=True)['source'] == 'OPTO'
+    assert fusion.update(0, 3, moving=True)['source'] == 'HALL'

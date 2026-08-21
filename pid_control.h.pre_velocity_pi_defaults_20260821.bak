@@ -27,7 +27,7 @@ float FF_RIGHT_BWD  = 100.0f;  // PWM/(m/s) der BWD
 // PI deshabilitado (Kp=Ki=0): control por FF puro + speed-matching.
 // El PI con anti-stall provocaba oscilación cuando MIN_PWM_RIGHT_WORKING > FF*v.
 // Mantener variables para compatibilidad con comando 'k' (ahora cambia speed-match).
-float Kp_v = 0.25f, Ki_v = 0.0f, Kd_v = 0.0f; // PI velocidad V1; activacion explicita con k on
+float Kp_v = 0.0f, Ki_v = 0.0f, Kd_v = 0.0f; // DESHABILITADO 2026-07-07
 float Kp_w = 1.0, Ki_w = 0.0, Kd_w = 0.0; // Velocidad angular
 // Kp_pos ajustado para generar PWM=30 en pruebas: dist_error(1.0m) * Kp_pos(0.30) * 100 = 30 PWM
 float Kp_pos = 0.30, Ki_pos = 0.0, Kd_pos = 0.0; // AJUSTADO PARA PRUEBAS: PWM~30

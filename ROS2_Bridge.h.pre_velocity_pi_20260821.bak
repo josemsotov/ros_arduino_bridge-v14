@@ -45,22 +45,11 @@
 static float integral_left  = 0.0f;
 static float integral_right = 0.0f;
 static unsigned long pid_per_wheel_last_time = 0;
-static bool velocity_pi_enabled = false;
-static float velocity_pi_corr_left = 0.0f;
-static float velocity_pi_corr_right = 0.0f;
-static float velocity_pi_target_left_rpm = 0.0f;
-static float velocity_pi_target_right_rpm = 0.0f;
-static const float VELOCITY_PI_MAX_CORRECTION_PWM = 6.0f;
-static const float VELOCITY_PI_INTEGRAL_LIMIT = 30.0f;
 
 void pid_per_wheel_reset() {
   integral_left  = 0.0f;
   integral_right = 0.0f;
   pid_per_wheel_last_time = 0;
-  velocity_pi_corr_left = 0.0f;
-  velocity_pi_corr_right = 0.0f;
-  velocity_pi_target_left_rpm = 0.0f;
-  velocity_pi_target_right_rpm = 0.0f;
   // Limpiar velocidades Hall stale para que FF domine al arrancar
   currentSpeedLeftHall  = 0.0f;
   currentSpeedRightHall = 0.0f;
@@ -406,42 +395,8 @@ void ros2_processCmdVel(String cmd) {
       if (abs_left  > 0 && dir_left   != leftMotor.direction)  { motor_pwm_write(PWM_LEFT_MOTOR,  0); delayMicroseconds(2000); }
       if (abs_right > 0 && !dir_right != rightMotor.direction) { motor_pwm_write(PWM_RIGHT_MOTOR, 0); delayMicroseconds(2000); }
 
-      // PI de velocidad por rueda sobre el feed-forward. Hall es la referencia
-      // rapida del lazo interno; la odometria Hall/opto fusionada cierra posicion.
-      velocity_pi_target_left_rpm = fabsf(v_left_raw) * 60.0f / (PI * WHEEL_DIAMETER_M);
-      velocity_pi_target_right_rpm = fabsf(v_right_raw) * 60.0f / (PI * WHEEL_DIAMETER_M);
-      unsigned long velocity_pi_now = millis();
-      float velocity_pi_dt = pid_per_wheel_last_time == 0 ? 0.1f :
-        constrain((velocity_pi_now - pid_per_wheel_last_time) / 1000.0f, 0.02f, 0.20f);
-      pid_per_wheel_last_time = velocity_pi_now;
-      velocity_pi_corr_left = 0.0f;
-      velocity_pi_corr_right = 0.0f;
-      if (velocity_pi_enabled) {
-        float left_error_rpm = velocity_pi_target_left_rpm - currentSpeedLeftHall;
-        float right_error_rpm = velocity_pi_target_right_rpm - currentSpeedRightHall;
-        if (l_moving && currentSpeedLeftHall > 0.5f) {
-          integral_left = constrain(integral_left + left_error_rpm * velocity_pi_dt,
-            -VELOCITY_PI_INTEGRAL_LIMIT, VELOCITY_PI_INTEGRAL_LIMIT);
-          velocity_pi_corr_left = constrain(Kp_v * left_error_rpm + Ki_v * integral_left,
-            -VELOCITY_PI_MAX_CORRECTION_PWM, VELOCITY_PI_MAX_CORRECTION_PWM);
-          abs_left = constrain((int)roundf(demand_left + velocity_pi_corr_left),
-            0, MAX_PWM_VALUE);
-        }
-        if (r_moving && currentSpeedRightHall > 0.5f) {
-          integral_right = constrain(integral_right + right_error_rpm * velocity_pi_dt,
-            -VELOCITY_PI_INTEGRAL_LIMIT, VELOCITY_PI_INTEGRAL_LIMIT);
-          velocity_pi_corr_right = constrain(Kp_v * right_error_rpm + Ki_v * integral_right,
-            -VELOCITY_PI_MAX_CORRECTION_PWM, VELOCITY_PI_MAX_CORRECTION_PWM);
-          abs_right = constrain((int)roundf(demand_right + velocity_pi_corr_right),
-            0, MAX_PWM_VALUE);
-        }
-        demand_left = (float)abs_left;
-        demand_right = (float)abs_right;
-      }
-
       // Speed-matching Hall: corrige asimetria RPM en linea recta
-      if (!velocity_pi_enabled &&
-          cmd_dir_left == cmd_dir_right &&
+      if (cmd_dir_left == cmd_dir_right &&
           fabsf(angular_controlled) < 0.05f &&
           l_moving && r_moving &&
           currentSpeedLeftHall  > 3.0f &&
@@ -484,11 +439,6 @@ void ros2_processCmdVel(String cmd) {
         Serial.print(" Rpwm="); Serial.print(abs_right);
         Serial.print(" Lrpm="); Serial.print((int)currentSpeedLeftHall);
         Serial.print(" Rrpm="); Serial.print((int)currentSpeedRightHall);
-        Serial.print(" Ltrpm="); Serial.print(velocity_pi_target_left_rpm, 1);
-        Serial.print(" Rtrpm="); Serial.print(velocity_pi_target_right_rpm, 1);
-        Serial.print(" Lpi="); Serial.print(velocity_pi_corr_left, 2);
-        Serial.print(" Rpi="); Serial.print(velocity_pi_corr_right, 2);
-        Serial.print(" PI="); Serial.print(velocity_pi_enabled ? 1 : 0);
         Serial.print(" Ld=");   Serial.print(dir_left  ? "F" : "B");
         Serial.print(" Rd=");   Serial.print(dir_right ? "F" : "B");
         #ifdef ENABLE_CURRENT_SENSORS
@@ -817,29 +767,29 @@ void ros2_processCommand(String cmd) {
 #endif
 
     case 'k': {
-      // k on|off | k <kp_pwm_per_rpm> [ki_pwm_per_rpm_s]
-      String params = cmd.substring(1);
-      params.trim();
-      if (params == "on") {
-        velocity_pi_enabled = true;
-        pid_per_wheel_reset();
-      } else if (params == "off") {
-        velocity_pi_enabled = false;
-        pid_per_wheel_reset();
-      } else if (params.length() > 0) {
+      // k <kp_v> [ki_v]  — cambia Kp_v y opcionalmente Ki_v en runtime
+      // Responde: k OK Kp_v=<kp> Ki_v=<ki>
+      int sp = cmd.indexOf(' ');
+      if (sp > 0) {
+        String params = cmd.substring(sp + 1);
         int sp2 = params.indexOf(' ');
         if (sp2 > 0) {
-          Kp_v = constrain(params.substring(0, sp2).toFloat(), 0.0f, 2.0f);
-          Ki_v = constrain(params.substring(sp2 + 1).toFloat(), 0.0f, 1.0f);
+          Kp_v = params.substring(0, sp2).toFloat();
+          Ki_v = params.substring(sp2 + 1).toFloat();
         } else {
-          Kp_v = constrain(params.toFloat(), 0.0f, 2.0f);
+          Kp_v = params.toFloat();
         }
         pid_per_wheel_reset();
+        Serial.print("k OK Kp_v=");
+        Serial.print(Kp_v, 4);
+        Serial.print(" Ki_v=");
+        Serial.println(Ki_v, 4);
+      } else {
+        Serial.print("k Kp_v=");
+        Serial.print(Kp_v, 4);
+        Serial.print(" Ki_v=");
+        Serial.println(Ki_v, 4);
       }
-      Serial.print("k enabled="); Serial.print(velocity_pi_enabled ? 1 : 0);
-      Serial.print(" Kp_v="); Serial.print(Kp_v, 4);
-      Serial.print(" Ki_v="); Serial.print(Ki_v, 4);
-      Serial.print(" maxcorr="); Serial.println(VELOCITY_PI_MAX_CORRECTION_PWM, 1);
       break;
     }
     case 'p': {
