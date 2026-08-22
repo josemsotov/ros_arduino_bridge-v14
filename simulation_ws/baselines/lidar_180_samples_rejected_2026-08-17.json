@@ -1,0 +1,19 @@
+{
+  "date": "2026-08-17",
+  "comparison_baseline": "amcl_balanced_2026-08-17.json",
+  "change_under_test": {
+    "lidar_samples_before": 360,
+    "lidar_samples_tested": 180,
+    "lidar_update_rate_hz": 10,
+    "amcl_max_beams": 90
+  },
+  "result": {
+    "completed_within_360_wall_seconds": false,
+    "gazebo_pose_x_m": 1.004790,
+    "gazebo_pose_y_m": -0.858399,
+    "distance_to_goal_at_observation_m": 0.1417,
+    "simulation_clock_at_observation_s": 79.230
+  },
+  "decision": "REJECTED",
+  "reason": "Halving source scan samples did not improve wall-time performance in the WSL/Gazebo environment. The original 360 samples were restored."
+}

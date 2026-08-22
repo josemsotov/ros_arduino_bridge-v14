@@ -1,0 +1,369 @@
+#!/usr/bin/env python3
+"""
+arduino_node.py — ROS2 Jazzy bridge para MOTOR-INTERFACE-V14
+Protocolo serial (115200 baud):
+  PC → Arduino : v <linear m/s> <angular rad/s>
+                 r  (reset encoders)
+                 e  (request encoders)
+                 s  (status)
+  Arduino → PC : T lin=.. ang=.. Lpwm=.. Rpwm=.. Lrpm=.. Rrpm=.. Ld=F Rd=F LmA=.. RmA=..
+                 e <L_total> <R_total>
+                 s <0|1|2>
+
+Topics publicados:
+  /odom           nav_msgs/Odometry
+  /motor_status   std_msgs/String   (telemetría T)
+  /encoder_counts std_msgs/String   (e L R)
+
+Topics suscritos:
+  /cmd_vel        geometry_msgs/Twist
+  /arduino/raw_command std_msgs/String
+"""
+
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist, TransformStamped
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import NavSatFix, NavSatStatus
+from std_msgs.msg import String
+import tf2_ros
+import serial
+import threading
+import math
+import time
+
+
+class ArduinoNode(Node):
+    def __init__(self):
+        super().__init__('arduino_bridge')
+
+        # ── Parámetros ──────────────────────────────────────────────────
+        self.declare_parameter('port',      '/dev/ttyACM0')
+        self.declare_parameter('baud',      115200)
+        self.declare_parameter('wheel_base', 0.82)    # metros entre ruedas
+        self.declare_parameter('wheel_dia',  0.20)    # metros diámetro rueda
+        self.declare_parameter('ppr',        45)      # pulsos por revolución
+        self.declare_parameter('cmd_timeout', 0.50)  # seconds without /cmd_vel
+
+        self.port      = self.get_parameter('port').value
+        self.baud      = self.get_parameter('baud').value
+        self.wheel_base = self.get_parameter('wheel_base').value
+        self.wheel_dia  = self.get_parameter('wheel_dia').value
+        self.ppr        = self.get_parameter('ppr').value
+        self.cmd_timeout = max(0.10, float(self.get_parameter('cmd_timeout').value))
+
+        # ── Odometría ────────────────────────────────────────────────────
+        self.x = self.y = self.theta = 0.0
+        self.raw_left_prev = None
+        self.raw_right_prev = None
+        self.enc_left_filtered = 0
+        self.enc_right_filtered = 0
+        self.enc_left_prev = 0
+        self.enc_right_prev = 0
+        self.dist_per_pulse = (math.pi * self.wheel_dia) / self.ppr
+        self.last_cmd_linear = 0.0
+        self.last_cmd_angular = 0.0
+        self.last_cmd_time = time.monotonic()
+        self.cmd_watchdog_stopped = True
+        self.last_left_pwm = 0
+        self.last_right_pwm = 0
+        self.last_noise_warn = 0.0
+
+        # ── Publishers ───────────────────────────────────────────────────
+        self.pub_odom   = self.create_publisher(Odometry, '/odom',           10)
+        self.pub_status = self.create_publisher(String,   '/motor_status',   10)
+        self.pub_enc    = self.create_publisher(String,   '/encoder_counts', 10)
+        self.pub_raw_rx = self.create_publisher(String,   '/arduino/raw_rx', 10)
+        self.pub_fix    = self.create_publisher(NavSatFix, '/fix',           10)
+        self.pub_gps    = self.create_publisher(String,   '/gps/status',     10)
+
+        # ── TF broadcaster ───────────────────────────────────────────────
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+
+        # ── Subscriber cmd_vel ───────────────────────────────────────────
+        self.sub_cmd = self.create_subscription(Twist, '/cmd_vel', self.cmd_vel_cb, 10)
+        self.sub_raw = self.create_subscription(String, '/arduino/raw_command',
+                                                self.raw_command_cb, 10)
+
+        # ── Timer para solicitar encoders cada 50ms ──────────────────────
+        self.create_timer(0.05, self.request_encoders)
+        self.create_timer(0.10, self.cmd_watchdog_cb)
+
+        # ── Serial ───────────────────────────────────────────────────────
+        self.ser = None
+        self._open_serial()
+
+        # ── Hilo lector ──────────────────────────────────────────────────
+        self.running = True
+        self.rx_thread = threading.Thread(target=self._rx_loop, daemon=True)
+        self.rx_thread.start()
+
+        self.get_logger().info(f'Arduino bridge iniciado — {self.port} @ {self.baud}')
+
+    # ── Serial ──────────────────────────────────────────────────────────
+    def _open_serial(self):
+        import os
+        if not os.path.exists(self.port):
+            now = time.monotonic()
+            if not hasattr(self, '_last_port_warn') or now - self._last_port_warn > 10.0:
+                self.get_logger().warn(f'Puerto serial {self.port} no existe. Esperando dispositivo...')
+                self._last_port_warn = now
+            self.ser = None
+            return
+
+        try:
+            self.ser = serial.Serial(self.port, self.baud, timeout=1)
+            time.sleep(2)  # esperar reset Arduino
+            while self.ser.in_waiting:
+                self.ser.readline()
+            self.get_logger().info('Serial conectado')
+        except Exception as e:
+            self.get_logger().error(f'Error serial al conectar: {e}')
+            self.ser = None
+
+    def _handle_serial_disconnect(self):
+        if self.ser:
+            try:
+                self.ser.close()
+            except Exception:
+                pass
+            self.ser = None
+
+    def _send(self, text: str):
+        if self.ser and self.ser.is_open:
+            try:
+                self.ser.write((text.strip() + '\n').encode())
+            except Exception as e:
+                self.get_logger().warn(f'Error write: {e}. Desconectando serial para reconexión.')
+                self._handle_serial_disconnect()
+
+    # ── cmd_vel → Arduino ────────────────────────────────────────────────
+    def cmd_vel_cb(self, msg: Twist):
+        v = msg.linear.x
+        w = msg.angular.z
+        self.last_cmd_linear = v
+        self.last_cmd_angular = w
+        self.last_cmd_time = time.monotonic()
+        self.cmd_watchdog_stopped = abs(v) < 1e-6 and abs(w) < 1e-6
+        self._send(f'v {v:.4f} {w:.4f}')
+
+    def cmd_watchdog_cb(self):
+        age = time.monotonic() - self.last_cmd_time
+        if age <= self.cmd_timeout or self.cmd_watchdog_stopped:
+            return
+        self.last_cmd_linear = 0.0
+        self.last_cmd_angular = 0.0
+        self.cmd_watchdog_stopped = True
+        self._send('v 0.0 0.0')
+        self.get_logger().warn(
+            f'cmd_vel timeout after {age:.2f}s; motors stopped'
+        )
+
+    def raw_command_cb(self, msg: String):
+        cmd = msg.data.strip()
+        if not cmd or '\n' in cmd or '\r' in cmd or len(cmd) > 96:
+            self.get_logger().warn('Comando raw ignorado: formato invalido')
+            return
+        self._send(cmd)
+
+    # ── Timer: pedir encoders ────────────────────────────────────────────
+    def request_encoders(self):
+        self._send('e')
+
+    # ── Hilo RX ──────────────────────────────────────────────────────────
+    def _rx_loop(self):
+        while self.running:
+            if not self.ser or not self.ser.is_open:
+                time.sleep(2.0)
+                if self.running and (not self.ser or not self.ser.is_open):
+                    self._open_serial()
+                continue
+            try:
+                line = self.ser.readline().decode('utf-8', errors='replace').strip()
+                if not line:
+                    continue
+                self.pub_raw_rx.publish(String(data=line))
+                if line.startswith('T '):
+                    self._parse_motor_status(line)
+                    self.pub_status.publish(String(data=line))
+                elif line.startswith('e '):
+                    self._process_encoders(line)
+                elif line.startswith('G '):
+                    self._process_gps(line)
+            except Exception as e:
+                self.get_logger().warn(f'Error read: {e}. Desconectando serial para reconexión.')
+                self._handle_serial_disconnect()
+                time.sleep(1.0)
+
+    def _parse_motor_status(self, line: str):
+        parts = {}
+        for token in line.split()[1:]:
+            if '=' not in token:
+                continue
+            key, value = token.split('=', 1)
+            parts[key] = value
+        try:
+            self.last_left_pwm = int(float(parts.get('Lpwm', self.last_left_pwm)))
+            self.last_right_pwm = int(float(parts.get('Rpwm', self.last_right_pwm)))
+        except ValueError:
+            return
+
+    # ── Odometría desde encoders ─────────────────────────────────────────
+    def _process_gps(self, line: str):
+        parts = {}
+        for token in line.split()[1:]:
+            if '=' not in token:
+                continue
+            key, value = token.split('=', 1)
+            parts[key] = value
+
+        self.pub_gps.publish(String(data=line))
+        fix_ok = parts.get('fix') in ('1', 'true', 'True')
+        if not fix_ok or 'lat' not in parts or 'lon' not in parts:
+            return
+
+        try:
+            lat = float(parts['lat'])
+            lon = float(parts['lon'])
+            hdop = float(parts.get('hdop', '0') or 0)
+        except ValueError:
+            return
+
+        msg = NavSatFix()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'gps_link'
+        msg.status.status = NavSatStatus.STATUS_FIX
+        msg.status.service = NavSatStatus.SERVICE_GPS
+        msg.latitude = lat
+        msg.longitude = lon
+        msg.altitude = float('nan')
+
+        variance = max(1.0, hdop * hdop) if hdop > 0 else 25.0
+        msg.position_covariance = [
+            variance, 0.0, 0.0,
+            0.0, variance, 0.0,
+            0.0, 0.0, variance * 4.0,
+        ]
+        msg.position_covariance_type = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
+        self.pub_fix.publish(msg)
+
+    def _process_encoders(self, line: str):
+        # formato: e <L_total> <R_total>
+        try:
+            parts = line.split()
+            l_enc = int(parts[1])
+            r_enc = int(parts[2])
+        except Exception:
+            return
+
+        if self.raw_left_prev is None or self.raw_right_prev is None:
+            self.raw_left_prev = l_enc
+            self.raw_right_prev = r_enc
+            self.enc_left_filtered = l_enc
+            self.enc_right_filtered = r_enc
+            self.enc_left_prev = l_enc
+            self.enc_right_prev = r_enc
+            self.pub_enc.publish(String(data=f'L={l_enc} R={r_enc}'))
+            return
+
+        raw_dl = l_enc - self.raw_left_prev
+        raw_dr = r_enc - self.raw_right_prev
+        self.raw_left_prev = l_enc
+        self.raw_right_prev = r_enc
+
+        use_dl = raw_dl
+        use_dr = raw_dr
+        if self.last_left_pwm == 0 and raw_dl != 0:
+            use_dl = 0
+            self._warn_encoder_noise('left', raw_dl, l_enc)
+        if self.last_right_pwm == 0 and raw_dr != 0:
+            use_dr = 0
+            self._warn_encoder_noise('right', raw_dr, r_enc)
+
+        self.enc_left_filtered += use_dl
+        self.enc_right_filtered += use_dr
+
+        dl = (self.enc_left_filtered - self.enc_left_prev) * self.dist_per_pulse
+        dr = (self.enc_right_filtered - self.enc_right_prev) * self.dist_per_pulse
+        self.enc_left_prev = self.enc_left_filtered
+        self.enc_right_prev = self.enc_right_filtered
+
+        d_center = (dl + dr) / 2.0
+        d_theta  = (dr - dl) / self.wheel_base
+
+        self.theta += d_theta
+        self.x     += d_center * math.cos(self.theta)
+        self.y     += d_center * math.sin(self.theta)
+
+        now = self.get_clock().now().to_msg()
+
+        # TF odom → base_link
+        tf = TransformStamped()
+        tf.header.stamp    = now
+        tf.header.frame_id = 'odom'
+        tf.child_frame_id  = 'base_link'
+        tf.transform.translation.x = self.x
+        tf.transform.translation.y = self.y
+        tf.transform.translation.z = 0.0
+        q = _yaw_to_quat(self.theta)
+        tf.transform.rotation.x = q[0]
+        tf.transform.rotation.y = q[1]
+        tf.transform.rotation.z = q[2]
+        tf.transform.rotation.w = q[3]
+        self.tf_broadcaster.sendTransform(tf)
+
+        # Odometry msg
+        odom = Odometry()
+        odom.header.stamp    = now
+        odom.header.frame_id = 'odom'
+        odom.child_frame_id  = 'base_link'
+        odom.pose.pose.position.x = self.x
+        odom.pose.pose.position.y = self.y
+        odom.pose.pose.orientation.x = q[0]
+        odom.pose.pose.orientation.y = q[1]
+        odom.pose.pose.orientation.z = q[2]
+        odom.pose.pose.orientation.w = q[3]
+        v_lin = d_center / 0.05  # dt ≈ 50ms
+        v_ang = d_theta  / 0.05
+        odom.twist.twist.linear.x  = v_lin
+        odom.twist.twist.angular.z = v_ang
+        self.pub_odom.publish(odom)
+
+        self.pub_enc.publish(String(data=f'L={self.enc_left_filtered} R={self.enc_right_filtered}'))
+
+    def _warn_encoder_noise(self, side: str, delta: int, raw_count: int):
+        now = time.monotonic()
+        if now - self.last_noise_warn < 2.0:
+            return
+        self.last_noise_warn = now
+        self.get_logger().warn(
+            f'Ignoring {side} encoder delta while PWM=0: delta={delta} raw={raw_count}'
+        )
+
+    def destroy_node(self):
+        self.running = False
+        if self.ser and self.ser.is_open:
+            self._send('v 0.0 0.0')
+            self.ser.close()
+        super().destroy_node()
+
+
+def _yaw_to_quat(yaw):
+    cy, sy = math.cos(yaw * 0.5), math.sin(yaw * 0.5)
+    return (0.0, 0.0, sy, cy)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = ArduinoNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

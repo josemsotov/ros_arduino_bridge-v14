@@ -129,6 +129,10 @@ void setup() {
     current_sensors_init();
   #endif
 
+  #ifdef ENABLE_GPS
+    gps_initialize();
+  #endif
+
   // Auto-activar balance anti-caída (requiere MPU ya inicializado)
   #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
     hoverboard_enable();
@@ -154,6 +158,10 @@ void loop() {
     processSerialCommand();
     processContinuousDebug();
   #endif
+
+  #ifdef ENABLE_GPS
+    gps_update();
+  #endif
   
   // ===== ACTUALIZACIÓN SENSORES DE CORRIENTE =====
   #ifdef ENABLE_CURRENT_SENSORS
@@ -163,6 +171,11 @@ void loop() {
   // ===== ACTUALIZACIÓN MPU + HOVERBOARD =====
   #ifdef ENABLE_MPU9250
     mpu_update();                 // Leer IMU y actualizar pitch/yaw (200 Hz, rate-limited interno)
+    static unsigned long mpu_ros_last_report_ms = 0;
+    if (millis() - mpu_ros_last_report_ms >= 50) {
+      mpu_ros_last_report_ms = millis();
+      mpu_printRosTelemetry();    // 20 Hz para /imu/data_raw
+    }
   #endif
   #if defined(ENABLE_HOVERBOARD_MODE) && defined(ENABLE_MPU9250)
     hoverboard_update();          // Calcular setpoints desde pitch e inyectarlos en ROS2 (50 Hz)

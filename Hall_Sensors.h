@@ -29,8 +29,12 @@ volatile uint32_t rightHallTotal = 0;
  * VARIABLES DE CONTROL DE TIEMPO
  */
 unsigned long lastHallTimeLeft = 0, lastHallTimeRight = 0;
-unsigned long lastHallPulseTimeLeft = 0, lastHallPulseTimeRight = 0;
+volatile unsigned long lastHallPulseTimeLeft = 0, lastHallPulseTimeRight = 0;
 volatile unsigned long hallPulseIntervalLeft = 0, hallPulseIntervalRight = 0;
+const unsigned long HALL_SPEED_UPDATE_MS = 100UL;
+const unsigned long HALL_SPEED_MIN_INTERVAL_US = 6000UL;
+volatile unsigned long hallSpeedPulseTimeLeft = 0, hallSpeedPulseTimeRight = 0;
+volatile unsigned long hallSpeedIntervalLeft = 0, hallSpeedIntervalRight = 0;
 
 /**
  * VELOCIDADES CALCULADAS
@@ -45,14 +49,66 @@ float currentSpeedRightHall = 0;  // RPM calculado motor derecho
 /**
  * RUTINAS DE SERVICIO DE INTERRUPCIÓN (ISR)
  */
+uint16_t optoLeftPermilleForHallInterval(uint32_t interval_us) {
+  // Mas rechazo contra rebote a baja velocidad; ventana menor a alta velocidad.
+  if (interval_us >= 50000UL) return 650U;
+  if (interval_us >= 27000UL) return 500U;
+  if (interval_us >= 12000UL) return 450U;
+  if (interval_us >= 8000UL) return 375U;
+  return 350U;
+}
+
 void leftHallISR() {
+  const uint32_t now = micros();
   leftHallCount++;
   leftHallTotal++;
+  unsigned long speedInterval = now - hallSpeedPulseTimeLeft;
+  if (hallSpeedPulseTimeLeft == 0 || speedInterval >= HALL_SPEED_MIN_INTERVAL_US) {
+    if (hallSpeedPulseTimeLeft != 0 && speedInterval < 1000000UL) hallSpeedIntervalLeft = speedInterval;
+    hallSpeedPulseTimeLeft = now;
+  }
+  #if defined(ENABLE_OPTO_ENCODERS) && defined(ENABLE_ADAPTIVE_OPTO_FILTER)
+  if (lastHallPulseTimeLeft != 0) {
+    uint32_t interval = now - lastHallPulseTimeLeft;
+    if (interval < 1000000UL) {
+      if (hallPulseIntervalLeft == 0 || interval < hallPulseIntervalLeft) {
+        hallPulseIntervalLeft = interval; // acelerar: reducir filtro inmediatamente
+      } else {
+        hallPulseIntervalLeft = (hallPulseIntervalLeft * 3UL + interval) / 4UL;
+      }
+      uint16_t adaptive_permille = optoLeftPermilleForHallInterval(hallPulseIntervalLeft);
+      uint32_t candidate = (hallPulseIntervalLeft * adaptive_permille) / 1000UL;
+      leftOptoFilterUs = constrain(candidate, OPTO_FILTER_LEFT_MIN_US, OPTO_FILTER_MAX_US);
+    }
+  }
+  lastHallPulseTimeLeft = now;
+  #endif
 }
 
 void rightHallISR() {
+  const uint32_t now = micros();
   rightHallCount++;
   rightHallTotal++;
+  unsigned long speedInterval = now - hallSpeedPulseTimeRight;
+  if (hallSpeedPulseTimeRight == 0 || speedInterval >= HALL_SPEED_MIN_INTERVAL_US) {
+    if (hallSpeedPulseTimeRight != 0 && speedInterval < 1000000UL) hallSpeedIntervalRight = speedInterval;
+    hallSpeedPulseTimeRight = now;
+  }
+  #if defined(ENABLE_OPTO_ENCODERS) && defined(ENABLE_ADAPTIVE_OPTO_FILTER)
+  if (lastHallPulseTimeRight != 0) {
+    uint32_t interval = now - lastHallPulseTimeRight;
+    if (interval < 1000000UL) {
+      if (hallPulseIntervalRight == 0 || interval < hallPulseIntervalRight) {
+        hallPulseIntervalRight = interval; // acelerar: reducir filtro inmediatamente
+      } else {
+        hallPulseIntervalRight = (hallPulseIntervalRight * 3UL + interval) / 4UL;
+      }
+      uint32_t candidate = (hallPulseIntervalRight * OPTO_FILTER_RIGHT_HALL_PERMILLE) / 1000UL;
+      rightOptoFilterUs = constrain(candidate, OPTO_FILTER_RIGHT_MIN_US, OPTO_FILTER_MAX_US);
+    }
+  }
+  lastHallPulseTimeRight = now;
+  #endif
 }
 
 //===========================================================================
@@ -81,6 +137,10 @@ void initializeHallSensors() {
   rightHallTotal = 0;
   lastHallTimeLeft = millis();
   lastHallTimeRight = millis();
+  lastHallPulseTimeLeft = 0;
+  lastHallPulseTimeRight = 0;
+  hallPulseIntervalLeft = 0;
+  hallPulseIntervalRight = 0;
   
   DEBUG_PRINTLN("Sensores Hall inicializados");
   DEBUG_PRINT("PPR configurado: ");
@@ -91,51 +151,75 @@ void initializeHallSensors() {
 //==================== FUNCIONES DE VELOCIDAD ============================
 //===========================================================================
 
+float hallHybridSpeedRpm(
+  uint16_t windowPulses,
+  unsigned long elapsedMs,
+  unsigned long pulseIntervalUs,
+  unsigned long lastPulseUs,
+  unsigned long nowUs,
+  float previousRpm
+) {
+  if (lastPulseUs == 0 || pulseIntervalUs == 0) return 0.0f;
+
+  // Tres periodos sin flanco (limitados a 0.3..1.0 s) confirman parada.
+  unsigned long stopTimeoutUs = constrain(pulseIntervalUs * 3UL, 300000UL, 1000000UL);
+  if ((unsigned long)(nowUs - lastPulseUs) > stopTimeoutUs) return 0.0f;
+
+  float rawRpm;
+  float alpha;
+  if (windowPulses >= 3 && elapsedMs > 0) {
+    // Velocidad media/alta: conteo de varios pulsos por ventana.
+    rawRpm = (float)windowPulses * 60000.0f /
+             ((float)PPR_HALL_SENSORS * (float)elapsedMs);
+    alpha = 0.50f;
+  } else {
+    // Baja velocidad: periodo entre flancos evita cuantizacion 0/13.3 RPM.
+    rawRpm = 60000000.0f /
+             ((float)PPR_HALL_SENSORS * (float)pulseIntervalUs);
+    alpha = 0.35f;
+  }
+
+  if (previousRpm <= 0.0f) return rawRpm;
+  return previousRpm + alpha * (rawRpm - previousRpm);
+}
+
 /**
  * CALCULAR VELOCIDADES RPM DE LOS MOTORES
  */
 void updateHallSpeeds() {
   unsigned long currentTime = millis();
-  
-  // Motor izquierdo
-  if (currentTime - lastHallTimeLeft >= 100) {  // Actualizar cada 100ms
-    // FIX Bug#3: lectura y reset atomicos — sin race condition con ISR
+  unsigned long nowUs = micros();
+
+  if (currentTime - lastHallTimeLeft >= HALL_SPEED_UPDATE_MS) {
     noInterrupts();
     uint16_t pulsesLeft = leftHallCount;
     leftHallCount = 0;
+    unsigned long intervalLeft = hallSpeedIntervalLeft;
+    unsigned long pulseTimeLeft = hallSpeedPulseTimeLeft;
     interrupts();
 
-    // Calcular tiempo transcurrido
     unsigned long timeElapsed = currentTime - lastHallTimeLeft;
-
-    // Calcular RPM: (pulsos / PPR) * (60000ms / tiempo_ms)
-    if (timeElapsed > 0) {
-      currentSpeedLeftHall = (float)pulsesLeft * 60000.0 / (PPR_HALL_SENSORS * timeElapsed);
-    }
-
+    currentSpeedLeftHall = hallHybridSpeedRpm(
+      pulsesLeft, timeElapsed, intervalLeft, pulseTimeLeft, nowUs,
+      currentSpeedLeftHall);
     lastHallTimeLeft = currentTime;
   }
-  
-  // Motor derecho
-  if (currentTime - lastHallTimeRight >= 100) {  // Actualizar cada 100ms
-    // FIX Bug#3: lectura y reset atomicos — sin race condition con ISR
+
+  if (currentTime - lastHallTimeRight >= HALL_SPEED_UPDATE_MS) {
     noInterrupts();
     uint16_t pulsesRight = rightHallCount;
     rightHallCount = 0;
+    unsigned long intervalRight = hallSpeedIntervalRight;
+    unsigned long pulseTimeRight = hallSpeedPulseTimeRight;
     interrupts();
 
-    // Calcular tiempo transcurrido
     unsigned long timeElapsed = currentTime - lastHallTimeRight;
-
-    // Calcular RPM: (pulsos / PPR) * (60000ms / tiempo_ms)
-    if (timeElapsed > 0) {
-      currentSpeedRightHall = (float)pulsesRight * 60000.0 / (PPR_HALL_SENSORS * timeElapsed);
-    }
-
+    currentSpeedRightHall = hallHybridSpeedRpm(
+      pulsesRight, timeElapsed, intervalRight, pulseTimeRight, nowUs,
+      currentSpeedRightHall);
     lastHallTimeRight = currentTime;
   }
 }
-
 /**
  * OBTENER VELOCIDAD MOTOR IZQUIERDO
  */
@@ -170,6 +254,14 @@ void resetHallCounters() {
   rightHallCount = 0;
   leftHallTotal = 0;
   rightHallTotal = 0;
+  lastHallPulseTimeLeft = 0;
+  lastHallPulseTimeRight = 0;
+  hallPulseIntervalLeft = 0;
+  hallPulseIntervalRight = 0;
+  hallSpeedPulseTimeLeft = 0;
+  hallSpeedPulseTimeRight = 0;
+  hallSpeedIntervalLeft = 0;
+  hallSpeedIntervalRight = 0;
   interrupts();
 
   lastHallTimeLeft = millis();

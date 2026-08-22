@@ -1,0 +1,19 @@
+{
+  "date": "2026-08-17",
+  "comparison_baseline": "d3d12_costmap_geometry_candidate",
+  "change_under_test": {
+    "movement_radius_before_m": 0.05,
+    "movement_radius_tested_m": 0.02,
+    "movement_allowance_before_s": 15.0,
+    "movement_allowance_tested_s": 30.0
+  },
+  "result": {
+    "status": "SUCCEEDED",
+    "wall_duration_s": 301.439,
+    "sim_duration_s": 164.684,
+    "real_time_factor": 0.5463,
+    "gazebo_goal_error_m": 0.0541
+  },
+  "decision": "REJECTED",
+  "reason": "The controller remained in low-progress alignment much longer. Original progress checker thresholds were restored."
+}

@@ -1,6 +1,6 @@
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
 $acli   = "C:\Program Files\Arduino CLI\arduino-cli.exe"
-$sketch = "F:\PROYECTOS JMS 2025\SMART-TROLLEY-JUN-2026\MOTOR-INTERFACE-V14"
+$sketch = "D:\1-EXTERNAL\PROYECTOS JMS 2025\SMART-TROLLEY-JUN-2026\MOTOR-INTERFACE-V14"
 $fqbn   = "arduino:avr:mega"
 $port   = "COM4"
 

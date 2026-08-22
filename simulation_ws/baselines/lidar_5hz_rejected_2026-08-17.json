@@ -1,0 +1,19 @@
+{
+  "date": "2026-08-17",
+  "comparison_baseline": "amcl_balanced_2026-08-17.json",
+  "change_under_test": {
+    "simulated_lidar_rate_hz_before": 10,
+    "simulated_lidar_rate_hz_tested": 5
+  },
+  "result": {
+    "status": "SUCCEEDED",
+    "action_status_code": 4,
+    "completed_within_first_240_wall_seconds": false,
+    "gazebo_goal_error_m": 0.0643,
+    "amcl_ground_truth_error_m": 0.0373,
+    "amcl_yaw_error_to_ground_truth_rad": 0.0158
+  },
+  "observation": "Idle scan throughput remained near 2.27 Hz real, but navigation did not complete within 240 wall seconds and showed a larger transient yaw mismatch during final alignment.",
+  "decision": "REJECTED",
+  "reason": "No robust wall-time gain and worse transient angular localization. The lidar rate was restored to 10 Hz."
+}

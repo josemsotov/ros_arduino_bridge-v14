@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-17",
+  "comparison_baseline": "amcl_balanced_2026-08-17.json",
+  "change_under_test": {
+    "local_costmap_publish_hz_before": 2.0,
+    "local_costmap_publish_hz_tested": 1.0,
+    "global_costmap_publish_hz_before": 1.0,
+    "global_costmap_publish_hz_tested": 0.5,
+    "costmap_update_rates_changed": false
+  },
+  "result": {
+    "status_after_327_wall_seconds": "EXECUTING",
+    "action_status_code": 2,
+    "gazebo_pose_x_m": 1.006450,
+    "gazebo_pose_y_m": -0.863186,
+    "distance_to_goal_at_observation_m": 0.1370
+  },
+  "decision": "REJECTED",
+  "reason": "No wall-time improvement was demonstrated. Original 2 Hz local and 1 Hz global publication rates were restored."
+}

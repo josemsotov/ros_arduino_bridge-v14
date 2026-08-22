@@ -1,0 +1,14 @@
+[Unit]
+Description=Smart Trolley ROS2 follower stack
+
+[Service]
+Type=simple
+ExecStart=/home/josemsotov/robot_ws/scripts/start_robot_follower.sh
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+KillSignal=SIGINT
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

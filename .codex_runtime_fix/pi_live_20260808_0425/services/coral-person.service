@@ -1,0 +1,14 @@
+[Unit]
+Description=Smart Trolley Coral Edge-TPU person detector
+After=robot-operator-web.service robot-follower.service
+Wants=robot-operator-web.service
+
+[Service]
+Type=simple
+ExecStart=/home/josemsotov/coral_runtime/miniforge/envs/pycoral/bin/python /home/josemsotov/coral_runtime/coral_person_detector.py
+Restart=always
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

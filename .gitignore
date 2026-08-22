@@ -3,8 +3,16 @@
 
 # Arduino build output
 build/
+build_output/
 MOTOR-INTERFACE-V-13/build/
 MOTOR-INTERFACE-V-13/slprj/
+
+# Local backups and credentials
+BACKUPS/
+.env
+*.env
+!.env.example
+!*.env.example
 
 # Arduino IDE / ArduinoIDE project files
 *.prj
@@ -15,9 +23,32 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Local robot camera diagnostics (may contain personal images)
+.codex_runtime_fix/pi8_face_static/*.jpg
+.codex_runtime_fix/pi8_safety_net/*.jpg
+
 # VS Code
 .vscode/
 
 # Windows
 Thumbs.db
 desktop.ini
+
+# ROS 2 / colcon generated output
+simulation_ws/build/
+simulation_ws/install/
+simulation_ws/log/
+simulation_ws/build_native/
+simulation_ws/install_native/
+simulation_ws/log_native/
+
+# Local snapshots retained on the workstation, not source of truth
+simulation_ws/src/**/*.before_*
+simulation_ws/src/**/*.bak_*
+simulation_ws/src/**/*.orig
+simulation_ws/src/**/__pycache__/
+
+# Nested vendor checkouts are restored independently
+simulation_ws/src/arduino_bridge/
+simulation_ws/src/ldlidar_stl_ros2/
+simulation_ws/src/my_package/

@@ -1,0 +1,104 @@
+# Perfil trazable de hardware real. No sustituir valores pendientes con estimaciones.
+profile_version: 1
+source_date: "2026-08-09"
+
+drive:
+  max_linear_m_s: 0.40
+  max_angular_rad_s: 0.70
+  pwm_min: 10
+  pwm_max: 40
+  pwm_right_min_working_latest: 10
+  feedforward_pwm_per_m_s:
+    left_forward: 100.0
+    right_forward: 100.0
+    left_backward: 100.0
+    right_backward: 100.0
+  speed_match_kp_pwm_per_rpm: 0.50
+  speed_match_max_pwm: 8.0
+  simulation_only_pending_identification:
+    max_linear_acceleration_m_s2: 0.50
+    max_angular_acceleration_rad_s2: 1.00
+
+# Convención ROS: +x frente, +y izquierda, +z arriba. Unidades SI.
+# Las medidas originales suministradas están en centímetros.
+configurations:
+  A_deployed:
+    wheel_separation_m: 0.90
+    caster_front_to_rear_m: 0.90
+    center_of_gravity_xyz_m: [0.10, 0.0, 0.14]
+    lidar_xyz_m: [-0.10, 0.0, 1.35]
+    lidar_rpy_rad: [0.0, 0.0, 0.0]
+    kinect_xyz_m: [-0.10, 0.0, 1.30]
+    kinect_rpy_rad: [0.0, 0.0, 0.0]
+  B_undeployed_high:
+    wheel_separation_m: 0.40
+    caster_front_to_rear_m: 0.80
+    center_of_gravity_xyz_m: [0.10, 0.0, 0.14]
+    lidar_xyz_m: [-0.10, 0.0, 0.78]
+    lidar_rpy_rad: [0.0, 0.0, 0.0]
+    kinect_xyz_m: [-0.10, 0.0, 0.72]
+    kinect_rpy_rad: [0.0, 0.0, 0.0]
+  C_undeployed_low:
+    wheel_separation_m: 0.40
+    caster_front_to_rear_m: 0.80
+    center_of_gravity_xyz_m: [0.10, 0.0, 0.14]
+    lidar_xyz_m: [-0.10, 0.0, 0.65]
+    lidar_rpy_rad: [0.0, 0.0, 0.0]
+    kinect_xyz_m: [-0.10, 0.0, 0.59]
+    kinect_rpy_rad: [0.0, 0.0, 0.0]
+
+physical:
+  mass_kg: 14.0
+  wheel_diameter_m: 0.28
+  wheel_radius_m: 0.14
+  chassis_size_xyz_m: [0.60, 0.40, 0.60]
+  caster_count: 2
+  caster_wheel_diameter_m: 0.12
+  caster_wheel_radius_m: 0.06
+  caster_wheel_tread_width_m: 0.02
+  caster_lateral_separation_m: 0.12
+  caster_swivel_offset_m: 0.04
+
+encoders:
+  active_type: optoencoder_module
+  pulses_per_revolution: 60
+  left_pin: 3
+  right_pin: 2
+
+# Caracterizacion historica de los Hall; no usar como escala de odometria activa.
+hall_legacy:
+  pulses_per_revolution: 45
+  sample_period_s: 1.0
+  # Banco en rueda libre; conservar asimetría medida, no idealizar ruedas.
+  pwm_pulses_per_second:
+    - {pwm: 10, left: 22, right: 0}
+    - {pwm: 15, left: 36, right: 0}
+    - {pwm: 20, left: 52, right: 24}
+    - {pwm: 25, left: 67, right: 47}
+    - {pwm: 30, left: 82, right: 57}
+    - {pwm: 35, left: 97, right: 68}
+    - {pwm: 40, left: 112, right: 79}
+
+imu:
+  model: MPU9250/MPU6500
+  update_rate_hz: 200
+  dlpf_hz: 41
+  firmware_ema_alpha: 0.15
+  heading_filter_alpha: 0.18
+  gyro_z_bias_rad_s: -0.00024
+  gyro_noise_stddev_rad_s: 0.004
+  gyro_sign: -1.0
+  heading_hold_kp: 0.035
+  heading_rate_kp: 0.30
+  max_heading_correction_rad_s: 0.35
+
+follower:
+  target_distance_m: 2.50
+  target_band_m: [2.00, 3.00]
+  max_detection_distance_m: 5.00
+  max_linear_m_s: 0.35
+  max_angular_rad_s: 0.60
+  lidar_distance_smoothing_alpha: 0.25
+  lidar_angle_smoothing_alpha: 0.35
+
+geometry_pending_measurement: []

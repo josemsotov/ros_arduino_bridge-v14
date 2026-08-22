@@ -1,0 +1,1752 @@
+{
+  "mode": "arduino_direct_serial_only",
+  "created_at": "2026-07-01T11:11:04+0100",
+  "service_actions": [
+    {
+      "cmd": "systemctl --user stop robot-follower.service",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cmd": "systemctl --user start robot-follower.service",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "port_candidates": [
+    {
+      "score": 8,
+      "device": "/dev/ttyACM0",
+      "description": "Arduino Mega",
+      "hwid": "USB VID:PID=2A03:0042 SER=85438333036351A040D0 LOCATION=4-2.3:1.0"
+    },
+    {
+      "score": 3,
+      "device": "/dev/ttyUSB0",
+      "description": "CP2102 USB to UART Bridge Controller - CP2102 USB to UART Bridge Controller",
+      "hwid": "USB VID:PID=10C4:EA60 SER=0001 LOCATION=4-2.4"
+    },
+    {
+      "score": 0,
+      "device": "/dev/ttyAMA10",
+      "description": "n/a",
+      "hwid": "n/a"
+    }
+  ],
+  "tests": [
+    {
+      "label": "both_forward_pwm_40",
+      "command": "p 40",
+      "duration_s": 1.259,
+      "ack": [
+        "p OK pwm=40"
+      ],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        92,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 11,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 28,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 46,
+          "right": 0
+        },
+        {
+          "t": 0.746,
+          "left": 63,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 80,
+          "right": 0
+        },
+        {
+          "t": 1.189,
+          "left": 90,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 92,
+        "right_pulses": 0,
+        "left_speed_mps": 1.0202,
+        "right_speed_mps": 0.0,
+        "left_position_m": 1.2846,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": 0.0,
+        "mismatch_pct": 200.0
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 92,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 92 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=92 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "both_forward_pwm_50",
+      "command": "p 50",
+      "duration_s": 1.259,
+      "ack": [
+        "p OK pwm=50"
+      ],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        119,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 12,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 34,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 57,
+          "right": 0
+        },
+        {
+          "t": 0.746,
+          "left": 79,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 100,
+          "right": 0
+        },
+        {
+          "t": 1.189,
+          "left": 114,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 119,
+        "right_pulses": 0,
+        "left_speed_mps": 1.3196,
+        "right_speed_mps": 0.0,
+        "left_position_m": 1.6616,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": 0.0,
+        "mismatch_pct": 200.0
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 119,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 119 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=119 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "both_forward_pwm_60",
+      "command": "p 60",
+      "duration_s": 1.259,
+      "ack": [
+        "p OK pwm=60"
+      ],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        148,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 15,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 41,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 68,
+          "right": 0
+        },
+        {
+          "t": 0.746,
+          "left": 95,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 121,
+          "right": 0
+        },
+        {
+          "t": 1.189,
+          "left": 139,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 148,
+        "right_pulses": 0,
+        "left_speed_mps": 1.6412,
+        "right_speed_mps": 0.0,
+        "left_position_m": 2.0665,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": 0.0,
+        "mismatch_pct": 200.0
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 148,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 148 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=148 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "both_forward_pwm_70",
+      "command": "p 70",
+      "duration_s": 1.259,
+      "ack": [
+        "p OK pwm=70"
+      ],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        176,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 17,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 48,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 79,
+          "right": 0
+        },
+        {
+          "t": 0.745,
+          "left": 109,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 140,
+          "right": 0
+        },
+        {
+          "t": 1.189,
+          "left": 162,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 176,
+        "right_pulses": 0,
+        "left_speed_mps": 1.9519,
+        "right_speed_mps": 0.0,
+        "left_position_m": 2.4574,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": 0.0,
+        "mismatch_pct": 200.0
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 176,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 176 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=176 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "left_only_pwm_40",
+      "command": "L 40",
+      "duration_s": 1.007,
+      "ack": [],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        26,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 11,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 23,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 26,
+          "right": 0
+        },
+        {
+          "t": 0.745,
+          "left": 26,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 26,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 26,
+        "right_pulses": 0,
+        "left_speed_mps": 0.3604,
+        "right_speed_mps": 0.0,
+        "left_position_m": 0.363,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": 0.0,
+        "mismatch_pct": 200.0
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 26,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 26 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=26 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "right_only_pwm_40",
+      "command": "R 40",
+      "duration_s": 1.007,
+      "ack": [],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        0,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.745,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 0,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 0,
+        "right_pulses": 0,
+        "left_speed_mps": 0.0,
+        "right_speed_mps": 0.0,
+        "left_position_m": 0.0,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": null,
+        "mismatch_pct": null
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 0 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "left_only_pwm_60",
+      "command": "L 60",
+      "duration_s": 1.007,
+      "ack": [],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        48,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 15,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 36,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 47,
+          "right": 0
+        },
+        {
+          "t": 0.745,
+          "left": 48,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 48,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 48,
+        "right_pulses": 0,
+        "left_speed_mps": 0.6653,
+        "right_speed_mps": 0.0,
+        "left_position_m": 0.6702,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": 0.0,
+        "mismatch_pct": 200.0
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 1,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 48,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 48 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=48 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    },
+    {
+      "label": "right_only_pwm_60",
+      "command": "R 60",
+      "duration_s": 1.007,
+      "ack": [],
+      "encoder_start": [
+        0,
+        0
+      ],
+      "encoder_end": [
+        0,
+        0
+      ],
+      "samples": [
+        {
+          "t": 0.081,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.302,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.524,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.745,
+          "left": 0,
+          "right": 0
+        },
+        {
+          "t": 0.967,
+          "left": 0,
+          "right": 0
+        }
+      ],
+      "metrics": {
+        "left_pulses": 0,
+        "right_pulses": 0,
+        "left_speed_mps": 0.0,
+        "right_speed_mps": 0.0,
+        "left_position_m": 0.0,
+        "right_position_m": 0.0,
+        "right_left_speed_ratio": null,
+        "mismatch_pct": null
+      },
+      "pin_status_start": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "pin_status_end": {
+        "L": {
+          "PWM_pin": 46,
+          "DIR_pin": 52,
+          "BRAKE_pin": 50,
+          "STOP_pin": 48,
+          "DIR": 1,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "R": {
+          "PWM_pin": 44,
+          "DIR_pin": 30,
+          "BRAKE_pin": 28,
+          "STOP_pin": 26,
+          "DIR": 0,
+          "BRAKE": 0,
+          "BRAKE_mode": "INPUT",
+          "STOP": 0,
+          "STOP_mode": "INPUT",
+          "enabled": 1,
+          "braked": 0,
+          "pwm": 0
+        },
+        "HALL": {
+          "L_pin": 19,
+          "R_pin": 18,
+          "L": 0,
+          "R": 0,
+          "L_total": 0,
+          "R_total": 0,
+          "L_rpm": 0.0,
+          "R_rpm": 0.0
+        },
+        "STATE": {
+          "STATE": 2,
+          "_connected": 1,
+          "Kp_v": 0.7,
+          "Ki_v": 0.18
+        }
+      },
+      "raw": {
+        "start_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ],
+        "encoder_start": [
+          "e 0 0"
+        ],
+        "encoder_end": [
+          "e 0 0"
+        ],
+        "stop": [
+          "p STOP",
+          "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+        ],
+        "end_status": [
+          "z PIN_STATUS_START",
+          "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+          "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+          "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+          "z PIN_STATUS_END"
+        ]
+      }
+    }
+  ],
+  "final_stop_ok": true,
+  "port": "/dev/ttyACM0",
+  "initial_pin_status": {
+    "L": {
+      "PWM_pin": 46,
+      "DIR_pin": 52,
+      "BRAKE_pin": 50,
+      "STOP_pin": 48,
+      "DIR": 1,
+      "BRAKE": 0,
+      "BRAKE_mode": "INPUT",
+      "STOP": 0,
+      "STOP_mode": "INPUT",
+      "enabled": 1,
+      "braked": 0,
+      "pwm": 0
+    },
+    "R": {
+      "PWM_pin": 44,
+      "DIR_pin": 30,
+      "BRAKE_pin": 28,
+      "STOP_pin": 26,
+      "DIR": 0,
+      "BRAKE": 0,
+      "BRAKE_mode": "INPUT",
+      "STOP": 0,
+      "STOP_mode": "INPUT",
+      "enabled": 1,
+      "braked": 0,
+      "pwm": 0
+    },
+    "HALL": {
+      "L_pin": 19,
+      "R_pin": 18,
+      "L": 0,
+      "R": 0,
+      "L_total": 0,
+      "R_total": 0,
+      "L_rpm": 0.0,
+      "R_rpm": 0.0
+    },
+    "STATE": {
+      "STATE": 2,
+      "_connected": 1,
+      "Kp_v": 0.7,
+      "Ki_v": 0.18
+    }
+  },
+  "initial_pin_status_raw": [
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END"
+  ],
+  "final_stop_raw": [
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00"
+  ],
+  "final_pin_status": {
+    "L": {
+      "PWM_pin": 46,
+      "DIR_pin": 52,
+      "BRAKE_pin": 50,
+      "STOP_pin": 48,
+      "DIR": 1,
+      "BRAKE": 0,
+      "BRAKE_mode": "INPUT",
+      "STOP": 0,
+      "STOP_mode": "OUTPUT",
+      "enabled": 0,
+      "braked": 0,
+      "pwm": 0
+    },
+    "R": {
+      "PWM_pin": 44,
+      "DIR_pin": 30,
+      "BRAKE_pin": 28,
+      "STOP_pin": 26,
+      "DIR": 0,
+      "BRAKE": 0,
+      "BRAKE_mode": "INPUT",
+      "STOP": 0,
+      "STOP_mode": "OUTPUT",
+      "enabled": 0,
+      "braked": 0,
+      "pwm": 0
+    },
+    "HALL": {
+      "L_pin": 19,
+      "R_pin": 18,
+      "L": 0,
+      "R": 0,
+      "L_total": 0,
+      "R_total": 0,
+      "L_rpm": 0.0,
+      "R_rpm": 0.0
+    },
+    "STATE": {
+      "STATE": 0,
+      "_connected": 1,
+      "Kp_v": 0.7,
+      "Ki_v": 0.18
+    }
+  },
+  "final_pin_status_raw": [
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=OUTPUT enabled=0 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=OUTPUT enabled=0 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=0 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END"
+  ],
+  "serial_tail": [
+    "e 90 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 92 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=92 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "p OK pwm=50",
+    "e 12 0",
+    "e 34 0",
+    "e 57 0",
+    "e 79 0",
+    "e 100 0",
+    "e 114 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 119 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=119 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "p OK pwm=60",
+    "e 15 0",
+    "e 41 0",
+    "e 68 0",
+    "e 95 0",
+    "e 121 0",
+    "e 139 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 148 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=148 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "p OK pwm=70",
+    "e 17 0",
+    "e 48 0",
+    "e 79 0",
+    "e 109 0",
+    "e 140 0",
+    "e 162 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 176 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=176 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "e 11 0",
+    "e 23 0",
+    "e 26 0",
+    "e 26 0",
+    "e 26 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 26 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=26 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 0 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=1 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "e 15 0",
+    "e 36 0",
+    "e 47 0",
+    "e 48 0",
+    "e 48 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 48 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=48 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "\u2705 Encoders reseteados",
+    "r OK",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "e 0 0",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "e 0 0",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=INPUT enabled=1 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=2 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END",
+    "p STOP",
+    "T lin=0.000 ang=0.000 Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 Ld=F Rd=F LmA=0.00 RmA=0.00",
+    "STATE:INHABILITADO",
+    "z PIN_STATUS_START",
+    "z L PWM_pin=46 DIR_pin=52 BRAKE_pin=50 STOP_pin=48 | DIR=1 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=OUTPUT enabled=0 braked=0 pwm=0",
+    "z R PWM_pin=44 DIR_pin=30 BRAKE_pin=28 STOP_pin=26 | DIR=0 BRAKE=0 BRAKE_mode=INPUT STOP=0 STOP_mode=OUTPUT enabled=0 braked=0 pwm=0",
+    "z HALL L_pin=19 R_pin=18 | L=0 R=0 L_total=0 R_total=0 L_rpm=0.0 R_rpm=0.0",
+    "z STATE=0 ros2_connected=1 Kp_v=0.7000 Ki_v=0.1800",
+    "z PIN_STATUS_END"
+  ]
+}

@@ -37,6 +37,7 @@
 
 #define MPU_I2C_ADDR        0x68    // AD0 = GND
 #define MPU_I2C_ADDR_ALT    0x69    // AD0 = VCC (alternativo)
+static uint8_t mpu_i2c_addr = MPU_I2C_ADDR;
 
 // Registros MPU6500/9250
 #define MPU_REG_SMPLRT_DIV   0x19
@@ -154,25 +155,25 @@ unsigned long mpu_lastDebugOutput = 0;
 //===========================================================================
 
 void mpu_writeRegister(uint8_t reg, uint8_t value) {
-  Wire.beginTransmission(MPU_I2C_ADDR);
+  Wire.beginTransmission(mpu_i2c_addr);
   Wire.write(reg);
   Wire.write(value);
   Wire.endTransmission();
 }
 
 uint8_t mpu_readRegister(uint8_t reg) {
-  Wire.beginTransmission(MPU_I2C_ADDR);
+  Wire.beginTransmission(mpu_i2c_addr);
   Wire.write(reg);
   Wire.endTransmission(false);
-  Wire.requestFrom((uint8_t)MPU_I2C_ADDR, (uint8_t)1);
+  Wire.requestFrom(mpu_i2c_addr, (uint8_t)1);
   return Wire.available() ? Wire.read() : 0;
 }
 
 void mpu_readRegisters(uint8_t reg, uint8_t count, uint8_t* buf) {
-  Wire.beginTransmission(MPU_I2C_ADDR);
+  Wire.beginTransmission(mpu_i2c_addr);
   Wire.write(reg);
   Wire.endTransmission(false);
-  Wire.requestFrom((uint8_t)MPU_I2C_ADDR, count);
+  Wire.requestFrom(mpu_i2c_addr, count);
   for (uint8_t i = 0; i < count && Wire.available(); i++) {
     buf[i] = Wire.read();
   }
@@ -186,6 +187,7 @@ void mpu_readRegisters(uint8_t reg, uint8_t count, uint8_t* buf) {
  * Verifica que el MPU responde en I2C y lee WHO_AM_I
  */
 bool mpu_detect() {
+  mpu_i2c_addr = MPU_I2C_ADDR;
   mpu_whoAmI = mpu_readRegister(MPU_REG_WHO_AM_I);
   if (mpu_whoAmI == MPU6500_WHO_AM_I ||
       mpu_whoAmI == MPU9250_WHO_AM_I ||
@@ -194,10 +196,16 @@ bool mpu_detect() {
     return true;
   }
   // Intentar dirección alternativa
-  Wire.beginTransmission(MPU_I2C_ADDR_ALT);
-  if (Wire.endTransmission() == 0) {
+  mpu_i2c_addr = MPU_I2C_ADDR_ALT;
+  mpu_whoAmI = mpu_readRegister(MPU_REG_WHO_AM_I);
+  if (mpu_whoAmI == MPU6500_WHO_AM_I ||
+      mpu_whoAmI == MPU9250_WHO_AM_I ||
+      mpu_whoAmI == MPU6050_WHO_AM_I) {
+    mpu_found = true;
     Serial.println("[MPU] Sensor encontrado en dirección 0x69 (AD0=VCC)");
+    return true;
   }
+  mpu_i2c_addr = MPU_I2C_ADDR;
   return false;
 }
 
@@ -443,6 +451,23 @@ float mpu_getTemp()   { return mpu_tempC; }
 
 /** True si el sensor respondió correctamente en I2C */
 bool mpu_isReady()    { return mpu_initialized && mpu_found; }
+
+/** Telemetria compacta para el puente ROS 2. Unidades: g, grados/s y grados. */
+void mpu_printRosTelemetry() {
+  Serial.print(F("I ready=")); Serial.print(mpu_isReady() ? 1 : 0);
+  if (mpu_isReady()) {
+    Serial.print(F(" ax=")); Serial.print(mpu_accelX_f, 4);
+    Serial.print(F(" ay=")); Serial.print(mpu_accelY_f, 4);
+    Serial.print(F(" az=")); Serial.print(mpu_accelZ_f, 4);
+    Serial.print(F(" gx=")); Serial.print(mpu_gyroX_f, 3);
+    Serial.print(F(" gy=")); Serial.print(mpu_gyroY_f, 3);
+    Serial.print(F(" gz=")); Serial.print(mpu_gyroZ_f, 3);
+    Serial.print(F(" yaw=")); Serial.print(mpu_yaw, 2);
+    Serial.print(F(" pitch=")); Serial.print(mpu_pitch, 2);
+    Serial.print(F(" temp=")); Serial.print(mpu_tempC, 1);
+  }
+  Serial.println();
+}
 
 //===========================================================================
 //========================== IMPRESIÓN DE ESTADO ============================

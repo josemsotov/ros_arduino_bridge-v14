@@ -44,6 +44,10 @@
   #include "Current_Sensors.h"   // Sensores corriente ACS712 (A3=derecho, A4=izquierdo)
 #endif
 
+#ifdef ENABLE_GPS
+  #include "GPS_Module.h"        // GPS NMEA por Serial3
+#endif
+
 /**
  * SENSOR INERCIAL
  * Incluir antes de ROS2_Bridge y Balance_Controller (ambos dependen de mpu_*)

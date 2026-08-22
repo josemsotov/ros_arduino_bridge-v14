@@ -1,0 +1,127 @@
+# Handover — Smart Trolley V14
+
+Actualizado: 2026-07-24
+
+## Estado de cierre
+
+- Raspberry Pi 5 de 8 GB: `josemsotov@192.168.40.73`.
+- Interfaz: `http://192.168.40.73:8080`.
+- Servicios activos:
+  - `robot-follower.service`
+  - `robot-operator-web.service`
+- Estado seguro verificado:
+  - modo `STADIA`
+  - follower deshabilitado
+  - `/cmd_vel = 0 / 0`
+  - PWM `0/0`
+  - RPM `0/0`
+- No se realizó ninguna prueba con movimiento real.
+- Mantener el robot suspendido para las próximas pruebas.
+
+## Safety net vigente
+
+- Stadia es el modo predeterminado y toma control al conectarse por Bluetooth.
+- El mando exige palancas centradas antes de armarse.
+- Solo `/follower/authorized_enable` puede habilitar intencionalmente FOLLOWER.
+- Stadia, OFF, desconexión y STOP cancelan autorizaciones anteriores.
+- El follower exige una sesión facial válida para arrancar.
+- Watchdog Arduino: `cmd_timeout=0.5`.
+- Paro reproducible:
+  `.codex_runtime_fix/pi8_safety_net/emergency_stadia_stop.sh`.
+
+## Cambios desplegados el 2026-07-24
+
+En `follower_node.py` y `follower_params.yaml`:
+
+- Agrupación de puntos LiDAR contiguos y selección por alineación visual,
+  continuidad de distancia y tamaño.
+- Telemetría de distancia/ángulo crudos, cantidad de clústeres y estado.
+- Procesamiento body–LiDAR disponible en `FACE_STATIC_DRY_RUN`, siempre con salida cero.
+- Sin body track fresco:
+  - estado `no_person_track`
+  - STOP
+  - no se crea un objetivo nuevo.
+- Un objetivo inicial exige rostro visible, sesión válida e identidad verificada.
+- Cada enrolamiento reinicia completamente la referencia LiDAR heredada.
+- Se conserva la última referencia durante pérdidas visuales breves.
+- Compuerta de distancia facial:
+  - escala inicial `face_distance_scale_m=0.185`
+  - margen `lidar_face_distance_gate_m=0.45`
+  - timeout `1.50 s`
+  - estado de rechazo `face_distance_mismatch`.
+- Compensación de montaje cámara–LiDAR:
+  - `lidar_camera_yaw_deg=90.0`
+  - ángulos normalizados a `[-π, π]`.
+- Política final de continuidad:
+  - cambios mayores de `0.25 m` durante la misma sesión se rechazan
+  - estado `distance_discontinuity`
+  - STOP y conservación de la última distancia válida
+  - ya no se acepta otro objeto después de varios barridos.
+
+## Resultados observados
+
+### Aprobado
+
+- Rostro frontal:
+  - `face_x=0.526–0.532`
+  - identidad verificada.
+- Body track aproximadamente `0.94`.
+- Después de compensar `90°`, adquisición corporal estable:
+  - distancia `1.23–1.29 m`
+  - clúster `16–22` puntos
+  - ángulo aproximado `0.05 rad`.
+- En todas las muestras:
+  - `/cmd_vel=0`
+  - PWM/RPM en cero.
+
+### Falló de forma segura
+
+- En la prueba lateral, al salir parcialmente del cuadro el selector migró desde
+  `≈1.27 m` hacia un objeto de `≈0.72–0.76 m`.
+- La sesión facial y el body track se perdieron temporalmente.
+- No hubo movimiento porque el modo era dry-run.
+- La causa fue la política anterior que aceptaba una discontinuidad después de tres
+  barridos consistentes.
+- Esa política fue eliminada y sustituida por rechazo estricto de cambios `>0.25 m`.
+
+### Pendiente de validar
+
+La nueva política `distance_discontinuity` fue desplegada, compilada y el servicio quedó
+activo, pero todavía no se repitió la adquisición central ni la prueba lateral después
+de este último cambio.
+
+## Reanudación recomendada
+
+1. Confirmar robot suspendido y paro físico accesible.
+2. Abrir `http://192.168.40.73:8080`.
+3. Colocarse a aproximadamente `1.3 m`, torso centrado y rostro mirando al lente.
+4. Iniciar `FACE_STATIC_ENROLL`.
+5. Aprobar adquisición central solo si:
+   - identidad y sesión válidas
+   - body track fresco
+   - LiDAR `≈1.2–1.4 m`
+   - clúster corporal consistente
+   - `/cmd_vel`, PWM y RPM en cero.
+6. Repetir desplazamiento lateral en dry-run.
+7. Confirmar que un objeto a `≈0.72 m` produzca `distance_discontinuity` y que la
+   referencia corporal no cambie.
+8. Regresar al centro y confirmar recuperación a `≈1.2–1.4 m`.
+9. Solo después evaluar una prueba muy limitada con ruedas suspendidas.
+10. No apoyar las ruedas hasta validar STOP, pérdida de persona y takeover de Stadia.
+
+## Fuente activa respaldada
+
+- `.codex_runtime_fix/pi8_safety_net/current/follower_node.py`
+- `.codex_runtime_fix/pi8_safety_net/current/follower_params.yaml`
+- `.codex_runtime_fix/pi8_safety_net/current/stadia_node.py`
+- `.codex_runtime_fix/pi8_safety_net/current/arduino_node.py`
+- `.codex_runtime_fix/pi8_safety_net/web_current/`
+
+Las capturas de cámara y cachés Python permanecen excluidas de GitHub.
+
+## Comandos útiles
+
+```text
+ssh josemsotov@192.168.40.73
+systemctl --user status robot-follower.service robot-operator-web.service
+```

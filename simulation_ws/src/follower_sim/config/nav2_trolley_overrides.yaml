@@ -1,0 +1,82 @@
+amcl:
+  ros__parameters:
+    laser_model_type: likelihood_field_prob
+    max_beams: 90
+    min_particles: 500
+    max_particles: 1500
+    update_min_d: 0.05
+    update_min_a: 0.05
+    pf_err: 0.03
+    pf_z: 0.99
+    laser_likelihood_max_dist: 2.0
+    alpha1: 0.05
+    alpha2: 0.05
+    alpha3: 0.05
+    alpha4: 0.05
+    alpha5: 0.05
+
+controller_server:
+  ros__parameters:
+    controller_frequency: 10.0
+    general_goal_checker.plugin: "nav2_controller::SimpleGoalChecker"
+    general_goal_checker.xy_goal_tolerance: 0.06
+    general_goal_checker.yaw_goal_tolerance: 0.15
+    general_goal_checker.stateful: true
+    progress_checker.plugin: "nav2_controller::SimpleProgressChecker"
+    progress_checker.required_movement_radius: 0.05
+    progress_checker.movement_time_allowance: 15.0
+    FollowPath.plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+    FollowPath.desired_linear_vel: 0.35
+    FollowPath.lookahead_dist: 0.60
+    FollowPath.min_lookahead_dist: 0.30
+    FollowPath.max_lookahead_dist: 0.80
+    FollowPath.lookahead_time: 1.5
+    FollowPath.use_velocity_scaled_lookahead_dist: true
+    FollowPath.rotate_to_heading_angular_vel: 0.50
+    FollowPath.use_rotate_to_heading: true
+    FollowPath.rotate_to_heading_min_angle: 0.50
+    FollowPath.max_angular_accel: 1.0
+    FollowPath.min_approach_linear_velocity: 0.05
+    FollowPath.approach_velocity_scaling_dist: 0.80
+    FollowPath.use_collision_detection: true
+    FollowPath.max_allowed_time_to_collision_up_to_carrot: 1.0
+    FollowPath.use_regulated_linear_velocity_scaling: true
+    FollowPath.use_cost_regulated_linear_velocity_scaling: true
+    FollowPath.cost_scaling_dist: 0.60
+    FollowPath.cost_scaling_gain: 1.0
+    FollowPath.regulated_linear_scaling_min_radius: 0.90
+    FollowPath.regulated_linear_scaling_min_speed: 0.15
+    FollowPath.allow_reversing: false
+    FollowPath.stateful: true
+
+planner_server:
+  ros__parameters:
+    GridBased.tolerance: 0.10
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      footprint: "[[0.51, 0.48], [0.51, -0.48], [-0.51, -0.48], [-0.51, 0.48]]"
+      footprint_padding: 0.02
+      # Must exceed the 0.7286 m circumscribed footprint radius so MPPI can
+      # use the costmap potential field instead of full polygon checks.
+      inflation_layer.inflation_radius: 0.80
+      inflation_layer.cost_scaling_factor: 3.0
+      # The planar lidar is mounted at z=1.35 m. Keep the 16-voxel depth but
+      # move its vertical window around the actual scan plane.
+      voxel_layer.origin_z: 1.0
+      voxel_layer.z_resolution: 0.05
+      voxel_layer.z_voxels: 16
+      voxel_layer.max_obstacle_height: 1.8
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 2.0
+      publish_frequency: 1.0
+      footprint: "[[0.51, 0.48], [0.51, -0.48], [-0.51, -0.48], [-0.51, 0.48]]"
+      footprint_padding: 0.02
+      inflation_layer.inflation_radius: 0.80
+      inflation_layer.cost_scaling_factor: 3.0
