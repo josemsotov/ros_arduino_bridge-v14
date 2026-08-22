@@ -225,3 +225,14 @@ systemctl --user status robot-follower.service robot-operator-web.service
 - Logs reproducibles: `.diagnostics/low_speed_kp_0.25.log`, `0.50`, `0.75`, `low_speed_v4_kp_0.75.log`, `low_speed_v4_highkp_1.00.log` y `1.50.log`.
 - Estado final confirmado: `robot-follower.service` activo; `lin=0`, PWM L/R=0/0, RPM L/R=0/0.
 - Proximo paso: colocar robot en suelo, despejar trayectoria y ejecutar escalon/rampa limitada a 0.06 m/s; comparar Kp 0.50 y 0.75 antes de introducir Ki.
+
+## 2026-08-22 - Baseline V6 validado en suelo
+
+- Se agrego boost de friccion estatica por flanco parada->movimiento: PWM 17 durante 500 ms; no se rearma durante la modulacion 0/10.
+- Configuracion validada: comando 0.06 m/s, PI Kp=0.50 Ki=0, heading-hold temporal y 20 mensajes a 10 Hz.
+- Prueba observada sin heading: 7.6 cm, giro a la izquierda; Hall L/R=4/6.
+- Prueba observada con heading: 10.0 cm, trayectoria recta; Hall L/R=6/5, estimacion Hall=10.4 cm (error aproximado 4%).
+- El heading-hold aplico correcciones suaves entre aproximadamente -0.006 y +0.013 rad/s; sin saturacion ni tirones observados.
+- Los optos siguen sobrecontando a baja velocidad; para la siguiente prueba de posicion usar exclusivamente los conteos Hall crudos HL/HR.
+- Estado final: motors PWM/RPM=0/0, fusion STOP, robot-follower.service activo; PI y heading desactivados por cleanup.
+- Siguiente prueba: objetivo 20 cm = 10.61 pulsos Hall promedio; usar 11 pulsos como umbral y parada ROS inmediata, manteniendo PI Kp=0.50 y heading-hold.

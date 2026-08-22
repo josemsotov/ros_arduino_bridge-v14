@@ -85,6 +85,12 @@ static int ros2_pwm_applied_left = -1;
 static int ros2_pwm_applied_right = -1;
 static float ros2_pwm_accumulator_left = 0.0f;
 static float ros2_pwm_accumulator_right = 0.0f;
+static const int ROS2_STARTUP_BOOST_PWM = 17;
+static const unsigned long ROS2_STARTUP_BOOST_MS = 500;
+static bool ros2_was_moving_left = false;
+static bool ros2_was_moving_right = false;
+static unsigned long ros2_motion_start_left_ms = 0;
+static unsigned long ros2_motion_start_right_ms = 0;
 
 #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
 // Starts disabled until gyro sign is confirmed once on the physical robot.
@@ -236,6 +242,10 @@ void ros2_clear_pwm_demands() {
   ros2_pwm_accumulator_left = 0.0f;
   ros2_pwm_accumulator_right = 0.0f;
   ros2_pwm_last_apply_ms = 0;
+  ros2_was_moving_left = false;
+  ros2_was_moving_right = false;
+  ros2_motion_start_left_ms = 0;
+  ros2_motion_start_right_ms = 0;
   ros2_pwm_applied_left = -1;
   ros2_pwm_applied_right = -1;
 #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
@@ -400,11 +410,26 @@ void ros2_processCmdVel(String cmd) {
 
       bool l_moving = (fabsf(v_left_raw)  > 0.01f);
       bool r_moving = (fabsf(v_right_raw) > 0.01f);
+      unsigned long motion_now_ms = millis();
+      if (l_moving && !ros2_was_moving_left) ros2_motion_start_left_ms = motion_now_ms;
+      if (r_moving && !ros2_was_moving_right) ros2_motion_start_right_ms = motion_now_ms;
+      ros2_was_moving_left = l_moving;
+      ros2_was_moving_right = r_moving;
 
       float demand_left = l_moving
         ? constrain(fabsf(v_left_raw) * ff_l, 0.0f, (float)MAX_PWM_VALUE) : 0.0f;
       float demand_right = r_moving
         ? constrain(fabsf(v_right_raw) * ff_r, 0.0f, (float)MAX_PWM_VALUE) : 0.0f;
+
+      // Briefly overcome ground stiction only on the stop-to-motion edge.
+      if (l_moving && motion_now_ms - ros2_motion_start_left_ms < ROS2_STARTUP_BOOST_MS &&
+          demand_left < (float)ROS2_STARTUP_BOOST_PWM) {
+        demand_left = (float)ROS2_STARTUP_BOOST_PWM;
+      }
+      if (r_moving && motion_now_ms - ros2_motion_start_right_ms < ROS2_STARTUP_BOOST_MS &&
+          demand_right < (float)ROS2_STARTUP_BOOST_PWM) {
+        demand_right = (float)ROS2_STARTUP_BOOST_PWM;
+      }
       int abs_left = (int)roundf(demand_left);
       int abs_right = (int)roundf(demand_right);
 
