@@ -212,3 +212,16 @@ systemctl --user status robot-follower.service robot-operator-web.service
 - Diagnostico: el PI funciona, pero el estimador Hall actual usa ventanas de 100 ms y cuantiza demasiado a baja velocidad. No ajustar Kp/Ki sobre esta medicion.
 - Proximo paso: estimador Hall hibrido (periodo entre pulsos a baja velocidad, conteo por ventana a velocidad media/alta), suavizado ligero y timeout explicito a cero; repetir la misma prueba A/B antes de ajustar Ki.
 - Cierre de sesion: comando cero enviado, k off, Lpwm=0 Rpwm=0 Lrpm=0 Rrpm=0 y robot-follower.service activo.
+
+## 2026-08-22 - Hall hibrido V2 y PI de baja velocidad V4
+
+- Firmware instalado y verificado por `avrdude`: 63524 bytes flash; 6784/8192 bytes RAM (82%, 1408 libres).
+- Estimador Hall hibrido: conteo por ventana con >=3 pulsos y periodo entre flancos a baja velocidad; suavizado y timeout adaptativo; flancos menores de 6000 us excluidos del estimador de velocidad.
+- La temporizacion de velocidad Hall queda separada del intervalo usado por el filtro opto adaptativo, evitando picos falsos de 691-1120 RPM observados en V1.
+- PWM subminimo: modulacion por densidad de pulsos con quantum determinista de 50 ms; el PI conserva demanda fraccional antes de convertirla a pulsos 0/10.
+- Autoridad PI asimetrica: correccion positiva limitada a +6 PWM y negativa a -10 PWM. PI permanece apagado al arrancar y al finalizar pruebas.
+- Barrido suspendido a 0.10 m/s, objetivo 7.1 RPM, Ki=0: Kp 0.25 = 14.82/15.45 RPM; Kp 0.50 = 12.12/13.04; Kp 0.75 = 11.73/12.35. Kp 1.0 y 1.5 no mejoraron porque las ruedas continuaron girando por inercia aun con duty cercano a cero.
+- Candidato conservador para la siguiente prueba con carga: Kp=0.75, Ki=0. No dejarlo persistente ni activado hasta validar en suelo con rampa corta desde 0.06 m/s.
+- Logs reproducibles: `.diagnostics/low_speed_kp_0.25.log`, `0.50`, `0.75`, `low_speed_v4_kp_0.75.log`, `low_speed_v4_highkp_1.00.log` y `1.50.log`.
+- Estado final confirmado: `robot-follower.service` activo; `lin=0`, PWM L/R=0/0, RPM L/R=0/0.
+- Proximo paso: colocar robot en suelo, despejar trayectoria y ejecutar escalon/rampa limitada a 0.06 m/s; comparar Kp 0.50 y 0.75 antes de introducir Ki.

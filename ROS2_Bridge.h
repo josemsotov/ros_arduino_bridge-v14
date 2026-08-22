@@ -50,7 +50,8 @@ static float velocity_pi_corr_left = 0.0f;
 static float velocity_pi_corr_right = 0.0f;
 static float velocity_pi_target_left_rpm = 0.0f;
 static float velocity_pi_target_right_rpm = 0.0f;
-static const float VELOCITY_PI_MAX_CORRECTION_PWM = 6.0f;
+static const float VELOCITY_PI_MAX_POSITIVE_CORRECTION_PWM = 6.0f;
+static const float VELOCITY_PI_MAX_NEGATIVE_CORRECTION_PWM = 10.0f;
 static const float VELOCITY_PI_INTEGRAL_LIMIT = 30.0f;
 
 void pid_per_wheel_reset() {
@@ -72,8 +73,10 @@ unsigned long ros2_last_cmd_time = 0;
 float ros2_linear_vel = 0.0;   // m/s
 float ros2_angular_vel = 0.0;  // rad/s
 
-// Continuous low-speed output. Calibration on 2026-08-04 confirmed both
-// wheels rotate continuously from PWM=10; temporal pulsing is unnecessary.
+// Low-speed pulse-density modulation. The 50 ms quantum gives each minimum
+// PWM pulse enough mechanical duration while preserving a fractional average.
+static const unsigned long ROS2_PWM_MODULATION_INTERVAL_MS = 50;
+static unsigned long ros2_pwm_last_apply_ms = 0;
 static float ros2_pwm_demand_left = 0.0f;
 static float ros2_pwm_demand_right = 0.0f;
 static bool ros2_pwm_dir_left = true;
@@ -203,6 +206,12 @@ int ros2_time_proportioned_pwm(float demand, int working_pwm,
 }
 
 void ros2_apply_pwm_demands() {
+  unsigned long now = millis();
+  if (ros2_pwm_last_apply_ms != 0 &&
+      now - ros2_pwm_last_apply_ms < ROS2_PWM_MODULATION_INTERVAL_MS) {
+    return;
+  }
+  ros2_pwm_last_apply_ms = now;
   int next_left = ros2_time_proportioned_pwm(
     ros2_pwm_demand_left, MIN_PWM_VALUE, ros2_pwm_accumulator_left);
   int next_right = ros2_time_proportioned_pwm(
@@ -226,6 +235,7 @@ void ros2_clear_pwm_demands() {
   ros2_pwm_demand_right = 0.0f;
   ros2_pwm_accumulator_left = 0.0f;
   ros2_pwm_accumulator_right = 0.0f;
+  ros2_pwm_last_apply_ms = 0;
   ros2_pwm_applied_left = -1;
   ros2_pwm_applied_right = -1;
 #if defined(ENABLE_MPU9250) && defined(ENABLE_MPU_HEADING_CONTROL)
@@ -423,20 +433,22 @@ void ros2_processCmdVel(String cmd) {
           integral_left = constrain(integral_left + left_error_rpm * velocity_pi_dt,
             -VELOCITY_PI_INTEGRAL_LIMIT, VELOCITY_PI_INTEGRAL_LIMIT);
           velocity_pi_corr_left = constrain(Kp_v * left_error_rpm + Ki_v * integral_left,
-            -VELOCITY_PI_MAX_CORRECTION_PWM, VELOCITY_PI_MAX_CORRECTION_PWM);
-          abs_left = constrain((int)roundf(demand_left + velocity_pi_corr_left),
-            0, MAX_PWM_VALUE);
+            -VELOCITY_PI_MAX_NEGATIVE_CORRECTION_PWM,
+            VELOCITY_PI_MAX_POSITIVE_CORRECTION_PWM);
+          demand_left = constrain(demand_left + velocity_pi_corr_left,
+            0.0f, (float)MAX_PWM_VALUE);
         }
         if (r_moving && currentSpeedRightHall > 0.5f) {
           integral_right = constrain(integral_right + right_error_rpm * velocity_pi_dt,
             -VELOCITY_PI_INTEGRAL_LIMIT, VELOCITY_PI_INTEGRAL_LIMIT);
           velocity_pi_corr_right = constrain(Kp_v * right_error_rpm + Ki_v * integral_right,
-            -VELOCITY_PI_MAX_CORRECTION_PWM, VELOCITY_PI_MAX_CORRECTION_PWM);
-          abs_right = constrain((int)roundf(demand_right + velocity_pi_corr_right),
-            0, MAX_PWM_VALUE);
+            -VELOCITY_PI_MAX_NEGATIVE_CORRECTION_PWM,
+            VELOCITY_PI_MAX_POSITIVE_CORRECTION_PWM);
+          demand_right = constrain(demand_right + velocity_pi_corr_right,
+            0.0f, (float)MAX_PWM_VALUE);
         }
-        demand_left = (float)abs_left;
-        demand_right = (float)abs_right;
+        abs_left = (int)roundf(demand_left);
+        abs_right = (int)roundf(demand_right);
       }
 
       // Speed-matching Hall: corrige asimetria RPM en linea recta
@@ -839,7 +851,9 @@ void ros2_processCommand(String cmd) {
       Serial.print("k enabled="); Serial.print(velocity_pi_enabled ? 1 : 0);
       Serial.print(" Kp_v="); Serial.print(Kp_v, 4);
       Serial.print(" Ki_v="); Serial.print(Ki_v, 4);
-      Serial.print(" maxcorr="); Serial.println(VELOCITY_PI_MAX_CORRECTION_PWM, 1);
+      Serial.print(" corr=[-"); Serial.print(VELOCITY_PI_MAX_NEGATIVE_CORRECTION_PWM, 1);
+      Serial.print(",+"); Serial.print(VELOCITY_PI_MAX_POSITIVE_CORRECTION_PWM, 1);
+      Serial.println("]");
       break;
     }
     case 'p': {
